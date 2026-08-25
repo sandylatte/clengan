@@ -123,8 +123,12 @@ note. A transfer toggle reveals a second account field and writes the linked
 pair. Account and category inputs remember previous values.
 
 **List** — month picker, optional filter by account and category. Rows show
-date, category, account, amount. Tap to edit or delete. Deleting a transfer
-side deletes both.
+date, category, account, amount. Each row has a delete control; deleting
+either side of a transfer deletes both, after a confirmation that says so.
+
+In-place editing is deferred — correcting an entry means deleting it and
+re-adding. `db.updateTransaction` exists for import to use, so adding an edit
+form later touches only the UI.
 
 **Summary (the dashboard)** — see the Dashboard section below.
 
