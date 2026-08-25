@@ -53,3 +53,9 @@ test('formatAmount marks positives with a plus', () => {
   assert.equal(formatAmount(-4500), '-45.00');
   assert.equal(formatAmount(0), '0.00');
 });
+
+test('toCents handles exponential notation', () => {
+  assert.equal(toCents('1e2'), 10000);   // 100.00
+  assert.equal(toCents('1e-2'), 1);      // 0.01
+  assert.equal(toCents('-1e2'), -10000); // -100.00
+});

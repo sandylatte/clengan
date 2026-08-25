@@ -1,4 +1,7 @@
 export function toCents(value) {
+  let number;
+  let useStringParsing = false;
+
   if (typeof value === 'string') {
     const trimmed = value.trim();
 
@@ -8,21 +11,27 @@ export function toCents(value) {
     }
 
     // Validate by parsing as number
-    const number = Number(trimmed);
+    number = Number(trimmed);
     if (!Number.isFinite(number)) {
       throw new TypeError(`not a finite number: ${JSON.stringify(value)}`);
     }
 
-    // Parse string directly to handle decimals with proper rounding
-    return toCentsFromString(trimmed);
+    // Use character-level parsing for plain decimals only; exponential
+    // notation routes through the number path to avoid silent corruption.
+    useStringParsing = !/[eE]/.test(trimmed);
+    if (useStringParsing) {
+      return toCentsFromString(trimmed);
+    }
+  } else {
+    // Handle number input
+    if (typeof value !== 'number' || !Number.isFinite(value)) {
+      throw new TypeError(`not a finite number: ${JSON.stringify(value)}`);
+    }
+    number = value;
   }
 
-  // Handle number input
-  if (typeof value !== 'number' || !Number.isFinite(value)) {
-    throw new TypeError(`not a finite number: ${JSON.stringify(value)}`);
-  }
-
-  const scaled = value * 100;
+  // Use number path for exponential notation and non-string numbers
+  const scaled = number * 100;
   // Round half away from zero (not banker's rounding)
   const rounded = scaled >= 0
     ? Math.floor(scaled + 0.5)
