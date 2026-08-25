@@ -1,0 +1,106 @@
+:root {
+  --color-primary: #1E40AF;
+  --color-accent: #059669;
+  --color-destructive: #DC2626;
+  --color-background: #0F172A;
+  --color-foreground: #FFFFFF;
+  --color-muted: #101A34;
+  --color-border: rgba(255, 255, 255, 0.08);
+
+  --space-1: 8px;
+  --space-2: 12px;
+  --space-3: 16px;
+  --space-4: 24px;
+  --space-5: 32px;
+
+  --font-ui: "Fira Sans", system-ui, -apple-system, sans-serif;
+  --font-num: "Fira Code", ui-monospace, "SF Mono", Menlo, monospace;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  padding: 0 0 72px;
+  background: var(--color-background);
+  color: var(--color-foreground);
+  font-family: var(--font-ui);
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+.amount { font-family: var(--font-num); font-variant-numeric: tabular-nums; }
+.amount--in { color: var(--color-accent); }
+.amount--out { color: var(--color-destructive); }
+
+.view { padding: var(--space-3); }
+.view[hidden] { display: none; }
+
+.card {
+  background: var(--color-muted);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  padding: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+
+.tabbar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  background: var(--color-muted);
+  border-top: 1px solid var(--color-border);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.tabbar button {
+  flex: 1;
+  min-height: 44px;
+  background: none;
+  border: none;
+  color: var(--color-foreground);
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 150ms ease;
+}
+
+.tabbar button[aria-current="page"] {
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+label { display: block; margin-bottom: 4px; font-size: 14px; }
+
+input, select, button.primary {
+  width: 100%;
+  min-height: 44px;
+  padding: 0 var(--space-2);
+  margin-bottom: var(--space-2);
+  background: var(--color-background);
+  color: var(--color-foreground);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  font: inherit;
+}
+
+button.primary {
+  background: var(--color-primary);
+  border: none;
+  font-weight: 600;
+  cursor: pointer;
+  transition: filter 150ms ease;
+}
+
+button.primary:hover { filter: brightness(1.15); }
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; }
+}

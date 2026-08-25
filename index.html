@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>MoneyTrack</title>
+<link rel="manifest" href="./manifest.json">
+<link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+
+<section class="view" id="view-add"><h1>Add</h1></section>
+<section class="view" id="view-list" hidden><h1>List</h1></section>
+<section class="view" id="view-summary" hidden><h1>Summary</h1></section>
+<section class="view" id="view-settings" hidden><h1>Settings</h1></section>
+
+<nav class="tabbar">
+  <button data-view="add" aria-current="page">Add</button>
+  <button data-view="list">List</button>
+  <button data-view="summary">Summary</button>
+  <button data-view="settings">Settings</button>
+</nav>
+
+<script type="module" src="./app.js"></script>
+</body>
+</html>
