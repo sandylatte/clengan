@@ -350,7 +350,15 @@ export function formatAmount(cents) {
 }
 ```
 
-Note on `toCents('2.675')`: the float nearest `2.675` is slightly below it, so scaling gives `267.49999...` and the result is `268` only if the rounding is applied after scaling. The assertion in the test pins this behaviour; if it fails, the fix is scaling before rounding, never a tolerance fudge.
+**Correction (verified 2026-08-26):** the reference implementation above is
+WRONG and fails its own test suite — `1.005 * 100` is `100.49999999999999` in
+float, so scale-then-round returns `100` where the spec requires `101`. The
+shipped `money.js` parses plain-decimal strings at character level instead,
+and routes exponential-notation strings (which the character parser cannot
+read) through the float path behind a `/[eE]/` gate. Read the committed
+`money.js` rather than the block above.
+
+Original note on `toCents('2.675')`: the float nearest `2.675` is slightly below it, so scaling gives `267.49999...` and the result is `268` only if the rounding is applied after scaling. The assertion in the test pins this behaviour; if it fails, the fix is scaling before rounding, never a tolerance fudge.
 
 - [ ] **Step 4: Run the test to verify it passes**
 
