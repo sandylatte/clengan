@@ -312,7 +312,7 @@ test('formatAmount marks positives with a plus', () => {
 
 - [ ] **Step 2: Run the test to verify it fails**
 
-Run: `node --test test/`
+Run: `node --test`
 Expected: FAIL — cannot find module `../money.js`.
 
 - [ ] **Step 3: Write the implementation**
@@ -354,7 +354,7 @@ Note on `toCents('2.675')`: the float nearest `2.675` is slightly below it, so s
 
 - [ ] **Step 4: Run the test to verify it passes**
 
-Run: `node --test test/`
+Run: `node --test`
 Expected: PASS, 8 tests.
 
 - [ ] **Step 5: Commit**
@@ -469,7 +469,7 @@ test('netTrend returns one entry per requested month, zero-filled', () => {
 
 - [ ] **Step 2: Run the test to verify it fails**
 
-Run: `node --test test/`
+Run: `node --test`
 Expected: FAIL — cannot find module `../rollup.js`. The `money.js` tests still pass.
 
 - [ ] **Step 3: Write the implementation**
@@ -529,7 +529,7 @@ export function netTrend(txns, months) {
 
 - [ ] **Step 4: Run the tests to verify they pass**
 
-Run: `node --test test/`
+Run: `node --test`
 Expected: PASS, all tests in both files.
 
 - [ ] **Step 5: Commit**
@@ -1474,7 +1474,7 @@ test('sheetDataToRows rejects a non-numeric amount', () => {
 
 - [ ] **Step 3: Run the test to verify it fails**
 
-Run: `node --test test/`
+Run: `node --test`
 Expected: FAIL — cannot find module `../xlsx-io.js`.
 
 - [ ] **Step 4: Write the implementation**
@@ -1551,7 +1551,7 @@ export async function importXlsx(file) {
 
 - [ ] **Step 5: Run the test to verify it passes**
 
-Run: `node --test test/`
+Run: `node --test`
 Expected: PASS, all files. The browser-only functions are never called under Node, so the missing `XLSX` global is harmless.
 
 - [ ] **Step 6: Load SheetJS and replace the `view-settings` section in `index.html`**
@@ -1829,7 +1829,7 @@ Note: iOS requires HTTPS for service workers on anything but `localhost`. For re
 - [ ] **Step 8: Run the whole verification suite**
 
 ```bash
-node --test test/
+node --test
 ```
 Expected: PASS, all three test files.
 
@@ -1848,11 +1848,11 @@ git commit -m "feat: offline shell, vendored fonts, installable manifest"
 
 | Layer | Command | Covers |
 | --- | --- | --- |
-| Money arithmetic | `node --test test/` | rounding, sign, float error, round trip |
-| Rollups | `node --test test/` | transfer exclusion, breakdown order, balances, trend |
-| Excel round trip | `node --test test/` | field preservation, malformed-row rejection |
+| Money arithmetic | `node --test` | rounding, sign, float error, round trip |
+| Rollups | `node --test` | transfer exclusion, breakdown order, balances, trend |
+| Excel round trip | `node --test` | field preservation, malformed-row rejection |
 | Database invariants | `test.html` in a browser | transfer pairs written and deleted together, import idempotence |
 | The app itself | Task 7 Step 4 and Task 8 Step 8, by hand | the numbers a user actually sees |
 | Offline | Task 9 Step 7 | shell cache, installability |
 
-A change to `rollup.js` or `money.js` that does not break `node --test test/` is not proven correct — add the case that would have caught it.
+A change to `rollup.js` or `money.js` that does not break `node --test` is not proven correct — add the case that would have caught it.
