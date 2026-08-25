@@ -126,11 +126,81 @@ pair. Account and category inputs remember previous values.
 date, category, account, amount. Tap to edit or delete. Deleting a transfer
 side deletes both.
 
-**Summary** — for the selected month: income, spending, net. Per-category
-breakdown. Current balance per account plus the total.
+**Summary (the dashboard)** — see the Dashboard section below.
 
 **Settings** — Excel export and import. Add, rename, and remove accounts and
 categories. Set opening balances.
+
+## Dashboard
+
+The Summary view is the reason to open the app. Three blocks, top to bottom,
+for the selected month.
+
+**Stat row** — Income, Spent, Net. Net is the number the user came for, so it
+is the largest. Income green, spending red, net green or red by sign.
+
+**Category breakdown** — horizontal bars, largest first, category name on the
+left and amount on the right. Bars are `div` elements sized by percentage of
+the month's largest category. Bars are chosen over a donut because lengths
+from a shared baseline can be compared precisely, and because the bars degrade
+to a readable list rather than to nothing.
+
+**Trend** — net per month for the last six months, drawn as an inline SVG
+`polyline`. Six points is below the threshold where a charting library earns
+its size.
+
+Below the three blocks: balance per account and the total.
+
+No charting library. The two visuals are a sized `div` and a `polyline`.
+Treemap and sunburst were considered and rejected — both grade C for
+accessibility and require a table alternative anyway. Here the markup *is* the
+table: every bar is a labelled row carrying its own value as text, so the
+information survives with images off, at any zoom, and in a screen reader.
+
+## Visual design
+
+Derived from a `ui-ux-pro-max` design-system query, with its pattern and style
+recommendations discarded — the tool returned a landing-page pattern ("Minimal
+Single Column") and an editorial style ("Exaggerated Minimalism", `font-size:
+clamp(3rem, 10vw, 12rem)`), neither of which suits a dense data screen. Colour,
+typography, and density were kept.
+
+**Colour** — CSS custom properties, dark by default:
+
+| token | value | use |
+| --- | --- | --- |
+| `--color-primary` | `#1E40AF` | actions, active tab |
+| `--color-accent` | `#059669` | income, positive net |
+| `--color-destructive` | `#DC2626` | spending, negative net, delete |
+| `--color-background` | `#0F172A` | page |
+| `--color-foreground` | `#FFFFFF` | text |
+| `--color-muted` | `#101A34` | cards, bar troughs |
+| `--color-border` | `rgba(255,255,255,0.08)` | dividers |
+
+Green and red both meet WCAG AA against the background. Neither is the sole
+carrier of meaning: income and spending are also distinguished by sign, by
+position, and by label.
+
+**Typography** — Fira Sans for UI, Fira Code for every monetary amount.
+Amounts need tabular figures; proportional digits make a column of numbers
+misalign and defeat visual scanning. Both fonts are vendored as WOFF2 — a
+Google Fonts URL would break the app offline. System fallbacks are declared so
+a failed font load degrades rather than blocking render.
+
+**Density** — spacing scale 8/12/16/24/32px.
+
+**No component framework.** Tailwind's CDN build requires the network, which
+would break offline use, and shadcn requires React and a build step this
+project does not have. Roughly 150 lines of plain CSS covers the form, list,
+tabs, cards, and bars.
+
+**Icons** — Lucide SVGs pasted inline as needed. No emoji as icons, no icon
+font, no icon package.
+
+**Accessibility floor** — touch targets at least 44×44px, visible focus rings
+(never removed), labels on every input rather than placeholder-only, contrast
+at least 4.5:1, and `prefers-reduced-motion` respected. Transitions stay in the
+150–300ms range and exist only to show that state changed.
 
 ## Excel export and import
 
@@ -153,12 +223,13 @@ each other's `transfer_id`.
 
 ```
 index.html      markup and the four views
+styles.css      design tokens and all styling
 app.js          UI wiring and rendering
 db.js           IndexedDB access; sole owner of the transfer-pair invariant
 xlsx-io.js      Excel export and import
 sw.js           service worker, caches the shell for offline use
 manifest.json   PWA manifest: name, icons, standalone display
-vendor/xlsx.full.min.js
+vendor/         xlsx.full.min.js, Fira WOFF2 files
 test.html       assertion-based self-check
 ```
 
