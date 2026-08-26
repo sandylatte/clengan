@@ -243,86 +243,76 @@ function lastSixMonths(endMonth) {
   return months;
 }
 
-// One corrupt row (e.g. a non-numeric amount) can make monthlyTotals /
-// categoryBreakdown / accountBalances return NaN, and fromCents/formatAmount
-// throw on that. Each section below is rendered independently and guarded so
-// a bad row degrades one part of the dashboard instead of blanking all of it,
-// and the user is told something is wrong via #summary-status.
-function renderSummary(txns, accounts) {
-  const warnings = [];
-  const guard = (label, fn) => {
-    try {
-      fn();
-    } catch (error) {
-      warnings.push(label);
-    }
-  };
+// txns here is already filtered to rows with an integer amount (see refresh()),
+// so none of the calls below can coerce a bad value into a string/NaN and no
+// try/catch is needed: every section renders fully from clean data. Rows that
+// failed that filter are passed separately, only to name them in the banner.
+function renderSummary(txns, accounts, invalidTxns) {
+  const totals = monthlyTotals(txns, state.month);
+  document.getElementById('stat-income').textContent = fromCents(totals.income);
+  document.getElementById('stat-spent').textContent = fromCents(-totals.spending);
+  const net = document.getElementById('stat-net');
+  net.textContent = formatAmount(totals.net);
+  net.className = `amount ${totals.net >= 0 ? 'amount--in' : 'amount--out'}`;
 
-  guard('totals', () => {
-    const totals = monthlyTotals(txns, state.month);
-    document.getElementById('stat-income').textContent = fromCents(totals.income);
-    document.getElementById('stat-spent').textContent = fromCents(-totals.spending);
-    const net = document.getElementById('stat-net');
-    net.textContent = formatAmount(totals.net);
-    net.className = `amount ${totals.net >= 0 ? 'amount--in' : 'amount--out'}`;
-  });
+  const breakdown = categoryBreakdown(txns, state.month);
+  const largest = breakdown.length ? breakdown[0].total : 0;
+  document.getElementById('bars-empty').hidden = breakdown.length > 0;
+  document.querySelector('#bars tbody').replaceChildren(...breakdown.map(({ category, total }) => {
+    const row = document.createElement('tr');
+    // largest is 0 only when breakdown is empty, so this never divides by zero
+    row.style.setProperty('--bar', `${Math.round((total / largest) * 100)}%`);
+    const name = document.createElement('td');
+    name.textContent = category;
+    const value = document.createElement('td');
+    value.className = 'amount';
+    value.textContent = fromCents(total);
+    row.append(name, value);
+    return row;
+  }));
 
-  guard('category breakdown', () => {
-    const breakdown = categoryBreakdown(txns, state.month);
-    const largest = breakdown.length ? breakdown[0].total : 0;
-    document.getElementById('bars-empty').hidden = breakdown.length > 0;
-    document.querySelector('#bars tbody').replaceChildren(...breakdown.map(({ category, total }) => {
+  const balances = accountBalances(txns, accounts);
+  document.querySelector('#balances tbody').replaceChildren(
+    ...balances.map(({ account, balance }) => {
       const row = document.createElement('tr');
-      // largest is 0 only when breakdown is empty, so this never divides by zero
-      row.style.setProperty('--bar', `${Math.round((total / largest) * 100)}%`);
       const name = document.createElement('td');
-      name.textContent = category;
+      name.textContent = account;
       const value = document.createElement('td');
-      value.className = 'amount';
+      value.className = `amount ${balance < 0 ? 'amount--out' : ''}`;
+      value.textContent = fromCents(balance);
+      row.append(name, value);
+      return row;
+    }),
+    (() => {
+      const row = document.createElement('tr');
+      const name = document.createElement('td');
+      const strong = document.createElement('strong');
+      strong.textContent = 'Total';
+      name.append(strong);
+      const value = document.createElement('td');
+      const total = balances.reduce((sum, b) => sum + b.balance, 0);
+      value.className = `amount ${total < 0 ? 'amount--out' : ''}`;
       value.textContent = fromCents(total);
       row.append(name, value);
       return row;
-    }));
-  });
+    })(),
+  );
 
-  guard('balances', () => {
-    const balances = accountBalances(txns, accounts);
-    document.querySelector('#balances tbody').replaceChildren(
-      ...balances.map(({ account, balance }) => {
-        const row = document.createElement('tr');
-        const name = document.createElement('td');
-        name.textContent = account;
-        const value = document.createElement('td');
-        value.className = `amount ${balance < 0 ? 'amount--out' : ''}`;
-        value.textContent = fromCents(balance);
-        row.append(name, value);
-        return row;
-      }),
-      (() => {
-        const row = document.createElement('tr');
-        const name = document.createElement('td');
-        const strong = document.createElement('strong');
-        strong.textContent = 'Total';
-        name.append(strong);
-        const value = document.createElement('td');
-        const total = balances.reduce((sum, b) => sum + b.balance, 0);
-        value.className = `amount ${total < 0 ? 'amount--out' : ''}`;
-        value.textContent = fromCents(total);
-        row.append(name, value);
-        return row;
-      })(),
-    );
-  });
-
-  guard('trend', () => {
-    renderTrend(netTrend(txns, lastSixMonths(state.month)));
-  });
+  renderTrend(netTrend(txns, lastSixMonths(state.month)));
 
   const statusEl = document.getElementById('summary-status');
-  statusEl.style.color = warnings.length ? 'var(--color-destructive)' : '';
-  statusEl.textContent = warnings.length
-    ? `Some data could not be displayed (${warnings.join(', ')}). Totals may be incomplete.`
-    : '';
+  if (invalidTxns.length) {
+    statusEl.style.color = 'var(--color-destructive)';
+    const label = invalidTxns.length === 1 ? 'transaction' : 'transactions';
+    const list = invalidTxns
+      .map((t) => [t && t.id, t && t.date, t && t.account].filter(Boolean).join(' '))
+      .join('; ');
+    statusEl.textContent =
+      `Figures exclude ${invalidTxns.length} unreadable ${label} (fix or delete in List): ${list}.`;
+  } else {
+    statusEl.style.color = '';
+    statusEl.textContent = '';
+  }
 }
 
 function renderTrend(points) {
@@ -354,7 +344,16 @@ async function refresh() {
   const [txns, accounts] = await Promise.all([db.allTransactions(), db.allAccounts()]);
   await fillDatalists();
   renderList(txns);
-  renderSummary(txns, accounts);
+
+  // The List view (renderList above) needs every row, including corrupt ones,
+  // so its per-row placeholder (Task 6) can surface them individually. The
+  // dashboard instead partitions once here and computes every total, bar,
+  // balance and trend point from valid rows only, so one bad row can't poison
+  // a shared value (e.g. `spending += 'lots'` silently string-concatenating)
+  // or leave sections mid-render at different states of the data.
+  const validTxns = txns.filter((t) => Number.isInteger(t.amount));
+  const invalidTxns = txns.filter((t) => !Number.isInteger(t.amount));
+  renderSummary(validTxns, accounts, invalidTxns);
 }
 
 document.getElementById('add-date').value = new Date().toISOString().slice(0, 10);
