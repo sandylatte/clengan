@@ -143,7 +143,25 @@ function renderList(txns) {
   const list = document.getElementById('list-rows');
   document.getElementById('list-empty').hidden = rows.length > 0;
 
-  list.replaceChildren(...rows.map((txn) => {
+  function buildDeleteButton(txn, label) {
+    const remove = document.createElement('button');
+    remove.className = 'row__delete';
+    remove.type = 'button';
+    remove.innerHTML = TRASH_ICON;
+    remove.setAttribute('aria-label', label);
+    remove.addEventListener('click', async () => {
+      const isTransfer = Boolean(txn.transfer_id);
+      const message = isTransfer
+        ? 'Delete this transfer? Both sides will be removed.'
+        : 'Delete this transaction?';
+      if (!confirm(message)) return;
+      await db.deleteTransaction(txn.id);
+      await refresh();
+    });
+    return remove;
+  }
+
+  function buildRow(txn) {
     const item = document.createElement('li');
     item.className = 'row';
 
@@ -161,23 +179,39 @@ function renderList(txns) {
     amount.className = `amount ${txn.amount > 0 ? 'amount--in' : 'amount--out'}`;
     amount.textContent = formatAmount(txn.amount);
 
-    const remove = document.createElement('button');
-    remove.className = 'row__delete';
-    remove.type = 'button';
-    remove.innerHTML = TRASH_ICON;
-    remove.setAttribute('aria-label', `Delete ${title.textContent} ${formatAmount(txn.amount)} on ${txn.date}`);
-    remove.addEventListener('click', async () => {
-      const isTransfer = Boolean(txn.transfer_id);
-      const message = isTransfer
-        ? 'Delete this transfer? Both sides will be removed.'
-        : 'Delete this transaction?';
-      if (!confirm(message)) return;
-      await db.deleteTransaction(txn.id);
-      await refresh();
-    });
+    const remove = buildDeleteButton(txn, `Delete ${title.textContent} ${formatAmount(txn.amount)} on ${txn.date}`);
 
     item.append(main, amount, remove);
     return item;
+  }
+
+  function buildErrorRow(txn) {
+    const item = document.createElement('li');
+    item.className = 'row';
+
+    const main = document.createElement('div');
+    main.className = 'row__main';
+    const title = document.createElement('span');
+    title.className = 'row__title';
+    title.style.color = 'var(--color-destructive)';
+    title.textContent = 'Unreadable transaction';
+    const meta = document.createElement('span');
+    meta.className = 'row__meta';
+    meta.textContent = [txn && txn.id, txn && txn.date, txn && txn.account].filter(Boolean).join(' · ');
+    main.append(title, meta);
+
+    const remove = buildDeleteButton(txn, `Delete unreadable transaction ${(txn && txn.id) || ''}`);
+
+    item.append(main, remove);
+    return item;
+  }
+
+  list.replaceChildren(...rows.map((txn) => {
+    try {
+      return buildRow(txn);
+    } catch {
+      return buildErrorRow(txn);
+    }
   }));
 }
 
