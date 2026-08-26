@@ -90,13 +90,22 @@ export function exportXlsx(txns) {
 export async function importXlsx(file) {
   const buffer = await file.arrayBuffer();
   const book = XLSX.read(buffer, { type: 'array' });
+  if (book.SheetNames.length === 0) {
+    throw new Error('workbook has no sheets');
+  }
   const sheetName = book.SheetNames[0];
   const sheet = book.Sheets[sheetName];
   // raw:false keeps cells as the text the user sees, so a date Excel
   // reformatted still arrives as a string this code can validate.
   const rows = XLSX.utils.sheet_to_json(sheet, { raw: false, defval: '' });
-  if (rows.length === 0) {
-    throw new Error(`sheet "${sheetName}" has no data rows`);
-  }
-  return sheetDataToRows(rows);
+  // Zero rows is a valid state (an empty database backs up to an empty
+  // sheet, and must be re-importable) — but the caller still needs to know
+  // which sheet was actually read, so a data-on-a-second-sheet mistake is
+  // still obvious even though this no longer throws.
+  const txns = sheetDataToRows(rows);
+  // Non-enumerable so the array still deep-equals a plain Txn[] in tests
+  // and callers that don't care about it; app.js reads it to name which
+  // sheet was read, especially when it turned out to hold 0 rows.
+  Object.defineProperty(txns, 'sheetName', { value: sheetName, enumerable: false });
+  return txns;
 }

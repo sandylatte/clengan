@@ -390,7 +390,12 @@ document.getElementById('import-input').addEventListener('change', async (event)
     }
     await db.putTransactions(rows);
     ioStatus.style.color = 'var(--color-accent)';
-    ioStatus.textContent = `Imported ${rows.length} transactions.`;
+    // 0 rows is valid (an empty database backs up to an empty sheet), but
+    // naming the sheet makes it obvious if the user actually picked the
+    // wrong file or the data sits on a different sheet than expected.
+    ioStatus.textContent = rows.length === 0
+      ? `Imported 0 transactions from sheet "${rows.sheetName}".`
+      : `Imported ${rows.length} transactions.`;
     await refresh();
   } catch (error) {
     ioStatus.style.color = 'var(--color-destructive)';

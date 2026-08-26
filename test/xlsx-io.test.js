@@ -66,6 +66,10 @@ test('sheetDataToRows rejects a transfer pair that does not point back at each o
   assert.throws(() => sheetDataToRows(rows), /does not point back/);
 });
 
+test('round trip on an empty transaction list returns an empty array, not a throw', () => {
+  assert.deepEqual(sheetDataToRows(rowsToSheetData([])), []);
+});
+
 test('sheetDataToRows rejects a transfer pair whose amounts do not sum to zero', () => {
   const rows = [
     { id: 'e', date: '2026-08-06', account: 'Bank', amount: '-200.00', category: 'Transfer', transfer_id: 'f', note: '' },
