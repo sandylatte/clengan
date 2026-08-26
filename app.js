@@ -432,3 +432,10 @@ async function renderAccounts(accounts) {
 document.getElementById('add-date').value = new Date().toISOString().slice(0, 10);
 syncKind();
 await refresh();
+
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./sw.js').catch(() => {
+    // Registration fails on file:// and on some private-mode profiles. The
+    // app works without it; only offline caching is lost.
+  });
+}
