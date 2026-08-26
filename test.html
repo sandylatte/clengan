@@ -99,6 +99,57 @@ test('putTransactions updates a row with a known id', async () => {
   if (stored[0].amount !== 9999) throw new Error('update did not take effect');
 });
 
+test('updating a transfer half amount cascades to the partner', async () => {
+  await db.clearAll();
+  const [fromId, toId] = await db.addTransfer({ date: '2026-08-06', from: 'Bank', to: 'Savings', amount: 20000, note: '' });
+  const rows = await db.allTransactions();
+  const from = rows.find((r) => r.id === fromId);
+  await db.updateTransaction({ ...from, amount: -30000 });
+  const after = await db.allTransactions();
+  const newFrom = after.find((r) => r.id === fromId);
+  const newTo = after.find((r) => r.id === toId);
+  if (newFrom.amount !== -30000) throw new Error(`edited half not updated: ${newFrom.amount}`);
+  if (newTo.amount !== 30000) throw new Error(`partner did not cascade: ${newTo.amount}`);
+  if (newFrom.amount + newTo.amount !== 0) throw new Error('pair no longer sums to zero');
+});
+
+test('updateTransaction rejects clearing a transfer half\'s transfer_id', async () => {
+  await db.clearAll();
+  const [fromId] = await db.addTransfer({ date: '2026-08-06', from: 'Bank', to: 'Savings', amount: 20000, note: '' });
+  const rows = await db.allTransactions();
+  const from = rows.find((r) => r.id === fromId);
+  let threw = false;
+  try {
+    await db.updateTransaction({ ...from, transfer_id: null });
+  } catch { threw = true; }
+  if (!threw) throw new Error('detaching a transfer half must be rejected');
+  const after = await db.allTransactions();
+  if (after.length !== 2) throw new Error('rejected update must not have partially applied');
+});
+
+test('updateTransaction still edits a plain flow normally', async () => {
+  await db.clearAll();
+  const id = await db.addFlow({ date: '2026-08-03', account: 'Bank', amount: -4500, category: 'Food', note: '' });
+  await db.updateTransaction({ id, date: '2026-08-03', account: 'Bank', amount: -5000, category: 'Food', transfer_id: null, note: 'edited' });
+  const rows = await db.allTransactions();
+  if (rows.length !== 1) throw new Error('flow update changed row count');
+  if (rows[0].amount !== -5000) throw new Error('flow amount edit did not take effect');
+});
+
+test('updateTransaction allows editing note/date on a transfer half without disturbing the partner', async () => {
+  await db.clearAll();
+  const [fromId, toId] = await db.addTransfer({ date: '2026-08-06', from: 'Bank', to: 'Savings', amount: 20000, note: '' });
+  const rows = await db.allTransactions();
+  const from = rows.find((r) => r.id === fromId);
+  await db.updateTransaction({ ...from, date: '2026-08-07', note: 'renamed' });
+  const after = await db.allTransactions();
+  const newFrom = after.find((r) => r.id === fromId);
+  const newTo = after.find((r) => r.id === toId);
+  if (newFrom.date !== '2026-08-07' || newFrom.note !== 'renamed') throw new Error('note/date edit did not take effect');
+  if (newFrom.amount !== -20000) throw new Error('amount should not have changed');
+  if (newTo.amount !== 20000 || newTo.transfer_id !== fromId) throw new Error('partner was disturbed by an unrelated field edit');
+});
+
 let passed = 0;
 for (const { name, fn } of tests) {
   const item = document.createElement('li');

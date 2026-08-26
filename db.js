@@ -3,6 +3,9 @@ const DB_VERSION = 1;
 
 let dbPromise = null;
 
+// name is only honoured on the very first call in the module's lifetime —
+// dbPromise is memoised at module scope, so a later call with a different
+// name silently returns the already-open database.
 export function openDb(name = DB_NAME) {
   if (dbPromise) return dbPromise;
   dbPromise = new Promise((resolve, reject) => {
@@ -76,12 +79,49 @@ export function addTransfer({ date, from, to, amount, note }) {
   });
 }
 
+// Enforces the transfer-pair invariant on edits: a transfer half cannot be
+// detached from its partner (transfer_id changed/cleared), a plain flow
+// cannot be promoted into a transfer half, and an amount edit on one half
+// cascades to the partner so the pair keeps summing to zero.
 export function updateTransaction(txn) {
   if (!Number.isInteger(txn.amount)) throw new TypeError('amount must be integer cents');
-  return run('transactions', 'readwrite', (store) => {
-    store.put(txn);
-    return { value: undefined };
-  });
+  return openDb().then((database) => new Promise((resolve, reject) => {
+    const transaction = database.transaction('transactions', 'readwrite');
+    const store = transaction.objectStore('transactions');
+    let failure = null;
+    const fail = (message) => { failure = new Error(message); transaction.abort(); };
+
+    const request = store.get(txn.id);
+    request.onsuccess = () => {
+      const existing = request.result;
+      if (!existing) { store.put(txn); return; }
+
+      if (existing.transfer_id) {
+        if (txn.transfer_id !== existing.transfer_id) {
+          fail('cannot change or clear transfer_id on a transfer half');
+          return;
+        }
+        if (txn.amount === existing.amount) { store.put(txn); return; }
+        const partnerRequest = store.get(existing.transfer_id);
+        partnerRequest.onsuccess = () => {
+          const partner = partnerRequest.result;
+          if (!partner) { fail('transfer partner is missing'); return; }
+          store.put(txn);
+          store.put({ ...partner, amount: -txn.amount });
+        };
+      } else {
+        if (txn.transfer_id) {
+          fail('cannot promote a flow into a transfer half via update');
+          return;
+        }
+        store.put(txn);
+      }
+    };
+
+    transaction.oncomplete = () => resolve();
+    transaction.onerror = () => reject(failure || transaction.error);
+    transaction.onabort = () => reject(failure || transaction.error);
+  }));
 }
 
 // Deleting either side of a transfer deletes both. Leaving one half behind
