@@ -2,20 +2,32 @@ import { toCents, fromCents } from './money.js';
 
 export const COLUMNS = ['id', 'date', 'account', 'amount', 'category', 'transfer_id', 'note'];
 
+// A row whose amount is not a valid integer cent value (corrupt data that
+// reached the db some other way — see Task 6/7) must still make it into the
+// backup. Writing the raw stored value through lets the user repair it by
+// hand in Excel instead of losing the row, or the whole export, silently.
 export function rowsToSheetData(txns) {
-  return txns.map((txn) => ({
-    id: txn.id,
-    date: txn.date,
-    account: txn.account,
-    amount: fromCents(txn.amount),
-    category: txn.category,
-    transfer_id: txn.transfer_id ?? '',
-    note: txn.note ?? '',
-  }));
+  return txns.map((txn) => {
+    let amount;
+    try {
+      amount = fromCents(txn.amount);
+    } catch {
+      amount = txn.amount;
+    }
+    return {
+      id: txn.id,
+      date: txn.date,
+      account: txn.account,
+      amount,
+      category: txn.category,
+      transfer_id: txn.transfer_id ?? '',
+      note: txn.note ?? '',
+    };
+  });
 }
 
 export function sheetDataToRows(rows) {
-  return rows.map((row, index) => {
+  const parsed = rows.map((row, index) => {
     const where = `row ${index + 2}`; // +2: one-based, plus the header row
     const id = String(row.id ?? '').trim();
     if (!id) throw new Error(`${where}: missing id`);
@@ -42,6 +54,27 @@ export function sheetDataToRows(rows) {
       note: String(row.note ?? ''),
     };
   });
+
+  // A transfer half is only meaningful with its partner in the same file:
+  // both rows must exist, must point at each other, and must sum to zero.
+  // A file that fails this could silently produce an unbalanced ledger,
+  // exactly the corruption the two-row schema exists to prevent.
+  const byId = new Map(parsed.map((row) => [row.id, row]));
+  for (const row of parsed) {
+    if (!row.transfer_id) continue;
+    const partner = byId.get(row.transfer_id);
+    if (!partner) {
+      throw new Error(`row with id "${row.id}": transfer partner "${row.transfer_id}" is not in this file`);
+    }
+    if (partner.transfer_id !== row.id) {
+      throw new Error(`row with id "${row.id}": transfer partner "${row.transfer_id}" does not point back to it`);
+    }
+    if (row.amount + partner.amount !== 0) {
+      throw new Error(`row with id "${row.id}": transfer pair amounts do not sum to zero`);
+    }
+  }
+
+  return parsed;
 }
 
 // Browser-only below this line. XLSX is the global from vendor/xlsx.full.min.js,
@@ -57,9 +90,13 @@ export function exportXlsx(txns) {
 export async function importXlsx(file) {
   const buffer = await file.arrayBuffer();
   const book = XLSX.read(buffer, { type: 'array' });
-  const sheet = book.Sheets[book.SheetNames[0]];
+  const sheetName = book.SheetNames[0];
+  const sheet = book.Sheets[sheetName];
   // raw:false keeps cells as the text the user sees, so a date Excel
   // reformatted still arrives as a string this code can validate.
   const rows = XLSX.utils.sheet_to_json(sheet, { raw: false, defval: '' });
+  if (rows.length === 0) {
+    throw new Error(`sheet "${sheetName}" has no data rows`);
+  }
   return sheetDataToRows(rows);
 }

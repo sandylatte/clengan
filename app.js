@@ -361,9 +361,18 @@ async function refresh() {
 const ioStatus = document.getElementById('io-status');
 
 document.getElementById('export-button').addEventListener('click', async () => {
-  exportXlsx(await db.allTransactions());
-  ioStatus.style.color = 'var(--color-accent)';
-  ioStatus.textContent = 'Exported.';
+  try {
+    const txns = await db.allTransactions();
+    exportXlsx(txns);
+    const unreadable = txns.filter((t) => !Number.isInteger(t.amount)).length;
+    ioStatus.style.color = 'var(--color-accent)';
+    ioStatus.textContent = unreadable
+      ? `Exported. ${unreadable} row${unreadable === 1 ? '' : 's'} had an unreadable amount — fix the raw value in the file and re-import.`
+      : 'Exported.';
+  } catch (error) {
+    ioStatus.style.color = 'var(--color-destructive)';
+    ioStatus.textContent = `Export failed. ${error.message}`;
+  }
 });
 
 document.getElementById('import-input').addEventListener('change', async (event) => {
@@ -371,19 +380,21 @@ document.getElementById('import-input').addEventListener('change', async (event)
   if (!file) return;
   try {
     const rows = await importXlsx(file);
-    await db.putTransactions(rows);
-    // Any account named in the file must exist, or its rows would be
-    // invisible in Balances.
+    // Create any account named in the file BEFORE writing transactions.
+    // Account creation is additive and carries no money, so if it fails
+    // nothing about the ledger has changed yet — the transaction write
+    // below is the only step that commits money data, so it goes last.
     const known = new Set((await db.allAccounts()).map((a) => a.name));
     for (const name of new Set(rows.map((r) => r.account))) {
       if (!known.has(name)) await db.putAccount(name, 0);
     }
+    await db.putTransactions(rows);
     ioStatus.style.color = 'var(--color-accent)';
     ioStatus.textContent = `Imported ${rows.length} transactions.`;
     await refresh();
   } catch (error) {
     ioStatus.style.color = 'var(--color-destructive)';
-    ioStatus.textContent = `Import failed — nothing was changed. ${error.message}`;
+    ioStatus.textContent = `Import failed — no transactions were changed. ${error.message}`;
   }
   event.target.value = '';
 });

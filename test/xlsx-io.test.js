@@ -46,3 +46,30 @@ test('sheetDataToRows rejects a malformed date', () => {
 test('sheetDataToRows rejects a non-numeric amount', () => {
   assert.throws(() => sheetDataToRows([{ id: 'x', date: '2026-08-01', account: 'Bank', amount: 'lots', category: 'Food' }]));
 });
+
+test('rowsToSheetData writes the raw amount through for a corrupt (non-integer) row instead of throwing', () => {
+  const corrupt = [{ id: 'x', date: '2026-08-01', account: 'Bank', amount: 'lots', category: 'Food', transfer_id: null, note: '' }];
+  const [row] = rowsToSheetData(corrupt);
+  assert.equal(row.amount, 'lots');
+});
+
+test('sheetDataToRows rejects a transfer row whose partner is missing from the file', () => {
+  const rows = [{ id: 'e', date: '2026-08-06', account: 'Bank', amount: '-200.00', category: 'Transfer', transfer_id: 'f', note: '' }];
+  assert.throws(() => sheetDataToRows(rows), /transfer partner/);
+});
+
+test('sheetDataToRows rejects a transfer pair that does not point back at each other', () => {
+  const rows = [
+    { id: 'e', date: '2026-08-06', account: 'Bank', amount: '-200.00', category: 'Transfer', transfer_id: 'f', note: '' },
+    { id: 'f', date: '2026-08-06', account: 'Savings', amount: '200.00', category: 'Transfer', transfer_id: 'g', note: '' },
+  ];
+  assert.throws(() => sheetDataToRows(rows), /does not point back/);
+});
+
+test('sheetDataToRows rejects a transfer pair whose amounts do not sum to zero', () => {
+  const rows = [
+    { id: 'e', date: '2026-08-06', account: 'Bank', amount: '-200.00', category: 'Transfer', transfer_id: 'f', note: '' },
+    { id: 'f', date: '2026-08-06', account: 'Savings', amount: '150.00', category: 'Transfer', transfer_id: 'e', note: '' },
+  ];
+  assert.throws(() => sheetDataToRows(rows), /sum to zero/);
+});
