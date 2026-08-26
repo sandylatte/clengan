@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>MoneyTrack tests</title>
+<style>
+body { font-family: system-ui, sans-serif; background: #0F172A; color: #fff; padding: 24px; }
+li { margin-bottom: 6px; }
+.pass::before { content: "PASS "; color: #059669; font-weight: 700; }
+.fail::before { content: "FAIL "; color: #DC2626; font-weight: 700; }
+pre { color: #DC2626; margin: 4px 0 0 24px; }
+</style>
+</head>
+<body>
+<h1>MoneyTrack tests</h1>
+<p id="summary">running…</p>
+<ul id="results"></ul>
+
+<script type="module">
+import * as db from './db.js';
+
+const tests = [];
+const test = (name, fn) => tests.push({ name, fn });
+const results = document.getElementById('results');
+
+test('addFlow stores one row with a derived-expense sign', async () => {
+  await db.clearAll();
+  const id = await db.addFlow({ date: '2026-08-03', account: 'Bank', amount: -4500, category: 'Food', note: '' });
+  const rows = await db.allTransactions();
+  if (rows.length !== 1) throw new Error(`expected 1 row, got ${rows.length}`);
+  if (rows[0].id !== id) throw new Error('returned id does not match the stored row');
+  if (rows[0].amount !== -4500) throw new Error(`amount changed: ${rows[0].amount}`);
+  if (rows[0].transfer_id !== null) throw new Error('a flow must not have a transfer_id');
+});
+
+test('addTransfer writes two rows pointing at each other', async () => {
+  await db.clearAll();
+  const [fromId, toId] = await db.addTransfer({ date: '2026-08-06', from: 'Bank', to: 'Savings', amount: 20000, note: '' });
+  const rows = await db.allTransactions();
+  if (rows.length !== 2) throw new Error(`expected 2 rows, got ${rows.length}`);
+  const from = rows.find((r) => r.id === fromId);
+  const to = rows.find((r) => r.id === toId);
+  if (from.amount !== -20000) throw new Error(`source must be negative, got ${from.amount}`);
+  if (to.amount !== 20000) throw new Error(`destination must be positive, got ${to.amount}`);
+  if (from.transfer_id !== toId || to.transfer_id !== fromId) throw new Error('rows do not point at each other');
+});
+
+test('addTransfer rejects a non-positive amount', async () => {
+  await db.clearAll();
+  let threw = false;
+  try {
+    await db.addTransfer({ date: '2026-08-06', from: 'Bank', to: 'Savings', amount: -1, note: '' });
+  } catch { threw = true; }
+  if (!threw) throw new Error('a negative transfer amount must be rejected');
+});
+
+test('addTransfer rejects a transfer to the same account', async () => {
+  await db.clearAll();
+  let threw = false;
+  try {
+    await db.addTransfer({ date: '2026-08-06', from: 'Bank', to: 'Bank', amount: 100, note: '' });
+  } catch { threw = true; }
+  if (!threw) throw new Error('a self-transfer must be rejected');
+});
+
+test('deleting one side of a transfer deletes both', async () => {
+  await db.clearAll();
+  const [fromId] = await db.addTransfer({ date: '2026-08-06', from: 'Bank', to: 'Savings', amount: 20000, note: '' });
+  await db.deleteTransaction(fromId);
+  const rows = await db.allTransactions();
+  if (rows.length !== 0) throw new Error(`orphaned half left behind: ${rows.length} rows remain`);
+});
+
+test('deleting a flow leaves other rows untouched', async () => {
+  await db.clearAll();
+  const keep = await db.addFlow({ date: '2026-08-01', account: 'Bank', amount: 300000, category: 'Salary', note: '' });
+  const drop = await db.addFlow({ date: '2026-08-03', account: 'Bank', amount: -4500, category: 'Food', note: '' });
+  await db.deleteTransaction(drop);
+  const rows = await db.allTransactions();
+  if (rows.length !== 1 || rows[0].id !== keep) throw new Error('wrong row deleted');
+});
+
+test('putTransactions is idempotent on repeated import', async () => {
+  await db.clearAll();
+  const rows = [
+    { id: 'x1', date: '2026-08-01', account: 'Bank', amount: 1000, category: 'Salary', transfer_id: null, note: '' },
+    { id: 'x2', date: '2026-08-02', account: 'Bank', amount: -250, category: 'Food', transfer_id: null, note: '' },
+  ];
+  await db.putTransactions(rows);
+  await db.putTransactions(rows);
+  const stored = await db.allTransactions();
+  if (stored.length !== 2) throw new Error(`re-import duplicated rows: ${stored.length}`);
+});
+
+test('putTransactions updates a row with a known id', async () => {
+  await db.clearAll();
+  await db.putTransactions([{ id: 'x1', date: '2026-08-01', account: 'Bank', amount: 1000, category: 'Salary', transfer_id: null, note: '' }]);
+  await db.putTransactions([{ id: 'x1', date: '2026-08-01', account: 'Bank', amount: 9999, category: 'Salary', transfer_id: null, note: 'edited' }]);
+  const stored = await db.allTransactions();
+  if (stored.length !== 1) throw new Error('update inserted instead of replacing');
+  if (stored[0].amount !== 9999) throw new Error('update did not take effect');
+});
+
+let passed = 0;
+for (const { name, fn } of tests) {
+  const item = document.createElement('li');
+  try {
+    await fn();
+    item.className = 'pass';
+    item.textContent = name;
+    passed += 1;
+  } catch (error) {
+    item.className = 'fail';
+    item.textContent = name;
+    const detail = document.createElement('pre');
+    detail.textContent = error.message;
+    item.append(detail);
+  }
+  results.append(item);
+}
+document.getElementById('summary').textContent = `${passed} / ${tests.length} passed`;
+await db.clearAll();
+</script>
+</body>
+</html>
