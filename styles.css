@@ -109,3 +109,30 @@ button.primary:hover { filter: brightness(1.15); }
 #add-kind label { display: flex; align-items: center; gap: 6px; min-height: 44px; margin: 0; }
 #add-kind input { width: auto; min-height: 0; margin: 0; }
 #add-status { min-height: 24px; font-size: 14px; color: var(--color-accent); }
+
+.rows { list-style: none; margin: 0; padding: 0; }
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.row__main { flex: 1; min-width: 0; }
+.row__title { display: block; }
+.row__meta { display: block; font-size: 13px; opacity: 0.7; }
+
+.row__delete {
+  min-width: 44px;
+  min-height: 44px;
+  background: none;
+  border: none;
+  color: var(--color-destructive);
+  cursor: pointer;
+  border-radius: 8px;
+  transition: background 150ms ease;
+}
+
+.row__delete:hover { background: rgba(220, 38, 38, 0.15); }

@@ -1,5 +1,6 @@
 import * as db from './db.js';
-import { toCents } from './money.js';
+import { toCents, formatAmount } from './money.js';
+import { filterMonth } from './rollup.js';
 
 function showView(name) {
   for (const section of document.querySelectorAll('.view')) {
@@ -125,8 +126,65 @@ form.addEventListener('submit', async (event) => {
   }
 });
 
+const state = { month: new Date().toISOString().slice(0, 7) };
+
+const monthInput = document.getElementById('list-month');
+monthInput.value = state.month;
+monthInput.addEventListener('change', () => {
+  state.month = monthInput.value;
+  refresh();
+});
+
+const TRASH_ICON = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>`;
+
+function renderList(txns) {
+  const rows = filterMonth(txns, state.month)
+    .sort((a, b) => b.date.localeCompare(a.date));
+  const list = document.getElementById('list-rows');
+  document.getElementById('list-empty').hidden = rows.length > 0;
+
+  list.replaceChildren(...rows.map((txn) => {
+    const item = document.createElement('li');
+    item.className = 'row';
+
+    const main = document.createElement('div');
+    main.className = 'row__main';
+    const title = document.createElement('span');
+    title.className = 'row__title';
+    title.textContent = txn.transfer_id ? 'Transfer' : (txn.category || '');
+    const meta = document.createElement('span');
+    meta.className = 'row__meta';
+    meta.textContent = [txn.date, txn.account, txn.note].filter(Boolean).join(' · ');
+    main.append(title, meta);
+
+    const amount = document.createElement('span');
+    amount.className = `amount ${txn.amount > 0 ? 'amount--in' : 'amount--out'}`;
+    amount.textContent = formatAmount(txn.amount);
+
+    const remove = document.createElement('button');
+    remove.className = 'row__delete';
+    remove.type = 'button';
+    remove.innerHTML = TRASH_ICON;
+    remove.setAttribute('aria-label', `Delete ${title.textContent} ${formatAmount(txn.amount)} on ${txn.date}`);
+    remove.addEventListener('click', async () => {
+      const isTransfer = Boolean(txn.transfer_id);
+      const message = isTransfer
+        ? 'Delete this transfer? Both sides will be removed.'
+        : 'Delete this transaction?';
+      if (!confirm(message)) return;
+      await db.deleteTransaction(txn.id);
+      await refresh();
+    });
+
+    item.append(main, amount, remove);
+    return item;
+  }));
+}
+
 async function refresh() {
+  const txns = await db.allTransactions();
   await fillDatalists();
+  renderList(txns);
 }
 
 document.getElementById('add-date').value = new Date().toISOString().slice(0, 10);

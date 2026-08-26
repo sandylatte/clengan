@@ -46,7 +46,13 @@
     <p id="add-status" role="status"></p>
   </form>
 </section>
-<section class="view" id="view-list" hidden><h1>List</h1></section>
+<section class="view" id="view-list" hidden>
+  <h1>List</h1>
+  <label for="list-month">Month</label>
+  <input type="month" id="list-month">
+  <ul id="list-rows" class="rows"></ul>
+  <p id="list-empty" hidden>No transactions this month.</p>
+</section>
 <section class="view" id="view-summary" hidden><h1>Summary</h1></section>
 <section class="view" id="view-settings" hidden><h1>Settings</h1></section>
 
