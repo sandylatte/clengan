@@ -3,6 +3,7 @@ import { toCents, fromCents, formatAmount } from './money.js';
 import {
   filterMonth, monthlyTotals, categoryBreakdown, accountBalances, netTrend,
 } from './rollup.js';
+import { exportXlsx, importXlsx } from './xlsx-io.js';
 
 function showView(name) {
   for (const section of document.querySelectorAll('.view')) {
@@ -354,6 +355,62 @@ async function refresh() {
   const validTxns = txns.filter((t) => Number.isInteger(t.amount));
   const invalidTxns = txns.filter((t) => !Number.isInteger(t.amount));
   renderSummary(validTxns, accounts, invalidTxns);
+  await renderAccounts(accounts);
+}
+
+const ioStatus = document.getElementById('io-status');
+
+document.getElementById('export-button').addEventListener('click', async () => {
+  exportXlsx(await db.allTransactions());
+  ioStatus.style.color = 'var(--color-accent)';
+  ioStatus.textContent = 'Exported.';
+});
+
+document.getElementById('import-input').addEventListener('change', async (event) => {
+  const [file] = event.target.files;
+  if (!file) return;
+  try {
+    const rows = await importXlsx(file);
+    await db.putTransactions(rows);
+    // Any account named in the file must exist, or its rows would be
+    // invisible in Balances.
+    const known = new Set((await db.allAccounts()).map((a) => a.name));
+    for (const name of new Set(rows.map((r) => r.account))) {
+      if (!known.has(name)) await db.putAccount(name, 0);
+    }
+    ioStatus.style.color = 'var(--color-accent)';
+    ioStatus.textContent = `Imported ${rows.length} transactions.`;
+    await refresh();
+  } catch (error) {
+    ioStatus.style.color = 'var(--color-destructive)';
+    ioStatus.textContent = `Import failed — nothing was changed. ${error.message}`;
+  }
+  event.target.value = '';
+});
+
+document.getElementById('account-form').addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const name = document.getElementById('account-name').value.trim();
+  if (!name) return;
+  await db.putAccount(name, toCents(document.getElementById('account-opening').value || 0));
+  event.target.reset();
+  document.getElementById('account-opening').value = '0';
+  await refresh();
+});
+
+async function renderAccounts(accounts) {
+  document.getElementById('account-list').replaceChildren(...accounts.map(({ name, opening_balance }) => {
+    const item = document.createElement('li');
+    item.className = 'row';
+    const main = document.createElement('div');
+    main.className = 'row__main';
+    main.textContent = name;
+    const value = document.createElement('span');
+    value.className = 'amount';
+    value.textContent = fromCents(opening_balance);
+    item.append(main, value);
+    return item;
+  }));
 }
 
 document.getElementById('add-date').value = new Date().toISOString().slice(0, 10);
