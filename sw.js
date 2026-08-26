@@ -1,3 +1,10 @@
+// RELEASE RULE: if you change ANY file listed in SHELL below (app.js,
+// rollup.js, money.js, styles.css, etc.), you MUST bump this string
+// (e.g. 'moneytrack-v1' -> 'moneytrack-v2') as part of that change.
+// The fetch handler is cache-first and activate() only deletes caches whose
+// NAME differs from CACHE — so an unbumped CACHE means every user with the
+// worker already installed keeps being served the OLD shell forever, silently,
+// including any money bug that edit was meant to fix.
 const CACHE = 'moneytrack-v1';
 
 const SHELL = [
@@ -19,6 +26,11 @@ const SHELL = [
 
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(SHELL)));
+  // skipWaiting + clients.claim (below) are safe here only because the
+  // entire shell is fetched upfront in one addAll — a client that gets
+  // claimed always has the full matching set of modules, never a mix of
+  // old and new. If a module is ever lazy-loaded instead of listed in
+  // SHELL, that guarantee breaks and this needs revisiting.
   self.skipWaiting();
 });
 
