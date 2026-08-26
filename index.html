@@ -9,7 +9,43 @@
 </head>
 <body>
 
-<section class="view" id="view-add"><h1>Add</h1></section>
+<section class="view" id="view-add">
+  <h1>Add</h1>
+  <form id="add-form">
+    <label for="add-date">Date</label>
+    <input type="date" id="add-date" required>
+
+    <label for="add-amount">Amount</label>
+    <input type="number" id="add-amount" step="0.01" min="0" inputmode="decimal" required>
+
+    <div id="add-kind" role="group" aria-label="Kind">
+      <label><input type="radio" name="kind" value="expense" checked> Expense</label>
+      <label><input type="radio" name="kind" value="income"> Income</label>
+      <label><input type="radio" name="kind" value="transfer"> Transfer</label>
+    </div>
+
+    <label for="add-account" id="add-account-label">Account</label>
+    <input list="accounts" id="add-account" required>
+    <datalist id="accounts"></datalist>
+
+    <div id="add-to-wrap" hidden>
+      <label for="add-to">To account</label>
+      <input list="accounts" id="add-to">
+    </div>
+
+    <div id="add-category-wrap">
+      <label for="add-category">Category</label>
+      <input list="categories" id="add-category" required>
+      <datalist id="categories"></datalist>
+    </div>
+
+    <label for="add-note">Note</label>
+    <input type="text" id="add-note">
+
+    <button type="submit" class="primary">Save</button>
+    <p id="add-status" role="status"></p>
+  </form>
+</section>
 <section class="view" id="view-list" hidden><h1>List</h1></section>
 <section class="view" id="view-summary" hidden><h1>Summary</h1></section>
 <section class="view" id="view-settings" hidden><h1>Settings</h1></section>
