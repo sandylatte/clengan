@@ -137,6 +137,12 @@ monthInput.addEventListener('change', () => {
 
 const TRASH_ICON = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>`;
 
+function showListStatus(message) {
+  const status = document.getElementById('list-status');
+  status.style.color = message ? 'var(--color-destructive)' : '';
+  status.textContent = message;
+}
+
 function renderList(txns) {
   const rows = filterMonth(txns, state.month)
     .sort((a, b) => b.date.localeCompare(a.date));
@@ -150,12 +156,22 @@ function renderList(txns) {
     remove.innerHTML = TRASH_ICON;
     remove.setAttribute('aria-label', label);
     remove.addEventListener('click', async () => {
+      if (!txn || !txn.id) {
+        showListStatus('This row has no id and cannot be removed automatically.');
+        return;
+      }
       const isTransfer = Boolean(txn.transfer_id);
       const message = isTransfer
         ? 'Delete this transfer? Both sides will be removed.'
         : 'Delete this transaction?';
       if (!confirm(message)) return;
-      await db.deleteTransaction(txn.id);
+      try {
+        await db.deleteTransaction(txn.id);
+      } catch (error) {
+        showListStatus(`Delete failed: ${error.message}`);
+        return;
+      }
+      showListStatus('');
       await refresh();
     });
     return remove;
