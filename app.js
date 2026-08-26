@@ -1,6 +1,8 @@
 import * as db from './db.js';
-import { toCents, formatAmount } from './money.js';
-import { filterMonth } from './rollup.js';
+import { toCents, fromCents, formatAmount } from './money.js';
+import {
+  filterMonth, monthlyTotals, categoryBreakdown, accountBalances, netTrend,
+} from './rollup.js';
 
 function showView(name) {
   for (const section of document.querySelectorAll('.view')) {
@@ -231,10 +233,128 @@ function renderList(txns) {
   }));
 }
 
+function lastSixMonths(endMonth) {
+  const [year, month] = endMonth.split('-').map(Number);
+  const months = [];
+  for (let back = 5; back >= 0; back -= 1) {
+    const date = new Date(Date.UTC(year, month - 1 - back, 1));
+    months.push(date.toISOString().slice(0, 7));
+  }
+  return months;
+}
+
+// One corrupt row (e.g. a non-numeric amount) can make monthlyTotals /
+// categoryBreakdown / accountBalances return NaN, and fromCents/formatAmount
+// throw on that. Each section below is rendered independently and guarded so
+// a bad row degrades one part of the dashboard instead of blanking all of it,
+// and the user is told something is wrong via #summary-status.
+function renderSummary(txns, accounts) {
+  const warnings = [];
+  const guard = (label, fn) => {
+    try {
+      fn();
+    } catch (error) {
+      warnings.push(label);
+    }
+  };
+
+  guard('totals', () => {
+    const totals = monthlyTotals(txns, state.month);
+    document.getElementById('stat-income').textContent = fromCents(totals.income);
+    document.getElementById('stat-spent').textContent = fromCents(-totals.spending);
+    const net = document.getElementById('stat-net');
+    net.textContent = formatAmount(totals.net);
+    net.className = `amount ${totals.net >= 0 ? 'amount--in' : 'amount--out'}`;
+  });
+
+  guard('category breakdown', () => {
+    const breakdown = categoryBreakdown(txns, state.month);
+    const largest = breakdown.length ? breakdown[0].total : 0;
+    document.getElementById('bars-empty').hidden = breakdown.length > 0;
+    document.querySelector('#bars tbody').replaceChildren(...breakdown.map(({ category, total }) => {
+      const row = document.createElement('tr');
+      // largest is 0 only when breakdown is empty, so this never divides by zero
+      row.style.setProperty('--bar', `${Math.round((total / largest) * 100)}%`);
+      const name = document.createElement('td');
+      name.textContent = category;
+      const value = document.createElement('td');
+      value.className = 'amount';
+      value.textContent = fromCents(total);
+      row.append(name, value);
+      return row;
+    }));
+  });
+
+  guard('balances', () => {
+    const balances = accountBalances(txns, accounts);
+    document.querySelector('#balances tbody').replaceChildren(
+      ...balances.map(({ account, balance }) => {
+        const row = document.createElement('tr');
+        const name = document.createElement('td');
+        name.textContent = account;
+        const value = document.createElement('td');
+        value.className = `amount ${balance < 0 ? 'amount--out' : ''}`;
+        value.textContent = fromCents(balance);
+        row.append(name, value);
+        return row;
+      }),
+      (() => {
+        const row = document.createElement('tr');
+        const name = document.createElement('td');
+        const strong = document.createElement('strong');
+        strong.textContent = 'Total';
+        name.append(strong);
+        const value = document.createElement('td');
+        const total = balances.reduce((sum, b) => sum + b.balance, 0);
+        value.className = `amount ${total < 0 ? 'amount--out' : ''}`;
+        value.textContent = fromCents(total);
+        row.append(name, value);
+        return row;
+      })(),
+    );
+  });
+
+  guard('trend', () => {
+    renderTrend(netTrend(txns, lastSixMonths(state.month)));
+  });
+
+  const statusEl = document.getElementById('summary-status');
+  statusEl.style.color = warnings.length ? 'var(--color-destructive)' : '';
+  statusEl.textContent = warnings.length
+    ? `Some data could not be displayed (${warnings.join(', ')}). Totals may be incomplete.`
+    : '';
+}
+
+function renderTrend(points) {
+  const svg = document.getElementById('trend');
+  const values = points.map((p) => p.net);
+  const high = Math.max(...values, 0);
+  const low = Math.min(...values, 0);
+  const span = high - low || 1;
+  const y = (value) => 75 - ((value - low) / span) * 70;
+  const x = (index) => (index / Math.max(points.length - 1, 1)) * 300;
+
+  const line = points.map((point, index) => `${x(index)},${y(point.net)}`).join(' ');
+  const zero = y(0);
+
+  svg.innerHTML = `
+    <line x1="0" y1="${zero}" x2="300" y2="${zero}" stroke="var(--color-border)" stroke-width="1"/>
+    <polyline points="${line}" fill="none" stroke="var(--color-primary)" stroke-width="2"
+              stroke-linejoin="round" stroke-linecap="round"/>
+    ${points.map((point, index) =>
+      `<circle cx="${x(index)}" cy="${y(point.net)}" r="3"
+               fill="${point.net >= 0 ? 'var(--color-accent)' : 'var(--color-destructive)'}"/>`).join('')}
+  `;
+
+  document.getElementById('trend-desc').textContent =
+    'Net by month: ' + points.map((p) => `${p.month} ${fromCents(p.net)}`).join(', ') + '.';
+}
+
 async function refresh() {
-  const txns = await db.allTransactions();
+  const [txns, accounts] = await Promise.all([db.allTransactions(), db.allAccounts()]);
   await fillDatalists();
   renderList(txns);
+  renderSummary(txns, accounts);
 }
 
 document.getElementById('add-date').value = new Date().toISOString().slice(0, 10);
