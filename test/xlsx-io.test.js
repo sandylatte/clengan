@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { rowsToSheetData, sheetDataToRows } from '../xlsx-io.js';
+import { rowsToSheetData, sheetDataToRows, accountsToSheetData, sheetDataToAccounts } from '../xlsx-io.js';
 
 const txns = [
   { id: 'a', date: '2026-08-01', account: 'Bank', amount: 300000, category: 'Salary', transfer_id: null, note: 'pay' },
@@ -76,4 +76,28 @@ test('sheetDataToRows rejects a transfer pair whose amounts do not sum to zero',
     { id: 'f', date: '2026-08-06', account: 'Savings', amount: '150.00', category: 'Transfer', transfer_id: 'e', note: '' },
   ];
   assert.throws(() => sheetDataToRows(rows), /sum to zero/);
+});
+
+const accounts = [
+  { name: 'Bank', opening_balance: 100000 },
+  { name: 'Cash', opening_balance: 5000 },
+];
+
+test('accountsToSheetData writes decimal opening balances', () => {
+  assert.deepEqual(accountsToSheetData(accounts), [
+    { name: 'Bank', opening_balance: '1000.00' },
+    { name: 'Cash', opening_balance: '50.00' },
+  ]);
+});
+
+test('accounts round trip preserves every field exactly', () => {
+  assert.deepEqual(sheetDataToAccounts(accountsToSheetData(accounts)), accounts);
+});
+
+test('sheetDataToAccounts rejects a row with no name', () => {
+  assert.throws(() => sheetDataToAccounts([{ name: '', opening_balance: '10.00' }]), /name/);
+});
+
+test('sheetDataToAccounts rejects a malformed opening_balance', () => {
+  assert.throws(() => sheetDataToAccounts([{ name: 'Bank', opening_balance: 'lots' }]), /opening_balance/);
 });

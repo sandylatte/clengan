@@ -1,6 +1,7 @@
 import { toCents, fromCents } from './money.js';
 
 export const COLUMNS = ['id', 'date', 'account', 'amount', 'category', 'transfer_id', 'note'];
+export const ACCOUNTS_COLUMNS = ['name', 'opening_balance'];
 
 // A row whose amount is not a valid integer cent value (corrupt data that
 // reached the db some other way — see Task 6/7) must still make it into the
@@ -77,12 +78,38 @@ export function sheetDataToRows(rows) {
   return parsed;
 }
 
+export function accountsToSheetData(accounts) {
+  return accounts.map((account) => ({
+    name: account.name,
+    opening_balance: fromCents(account.opening_balance),
+  }));
+}
+
+export function sheetDataToAccounts(rows) {
+  return rows.map((row, index) => {
+    const where = `accounts row ${index + 2}`; // +2: one-based, plus the header row
+    const name = String(row.name ?? '').trim();
+    if (!name) throw new Error(`${where}: missing name`);
+    let opening_balance;
+    try {
+      opening_balance = toCents(row.opening_balance);
+    } catch {
+      throw new Error(`${where}: opening_balance is not a number: "${row.opening_balance}"`);
+    }
+    return { name, opening_balance };
+  });
+}
+
 // Browser-only below this line. XLSX is the global from vendor/xlsx.full.min.js,
 // loaded by a plain <script> tag in index.html.
-export function exportXlsx(txns) {
-  const sheet = XLSX.utils.json_to_sheet(rowsToSheetData(txns), { header: COLUMNS });
+export function exportXlsx(txns, accounts) {
   const book = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(book, sheet, 'transactions');
+  const txSheet = XLSX.utils.json_to_sheet(rowsToSheetData(txns), { header: COLUMNS });
+  XLSX.utils.book_append_sheet(book, txSheet, 'transactions');
+  // The accounts sheet is what makes this a real backup — without it,
+  // opening balances are lost on restore (see Task 10 final review).
+  const accSheet = XLSX.utils.json_to_sheet(accountsToSheetData(accounts), { header: ACCOUNTS_COLUMNS });
+  XLSX.utils.book_append_sheet(book, accSheet, 'accounts');
   const stamp = new Date().toISOString().slice(0, 10);
   XLSX.writeFile(book, `moneytrack-${stamp}.xlsx`);
 }
@@ -103,9 +130,14 @@ export async function importXlsx(file) {
   // which sheet was actually read, so a data-on-a-second-sheet mistake is
   // still obvious even though this no longer throws.
   const txns = sheetDataToRows(rows);
-  // Non-enumerable so the array still deep-equals a plain Txn[] in tests
-  // and callers that don't care about it; app.js reads it to name which
-  // sheet was read, especially when it turned out to hold 0 rows.
-  Object.defineProperty(txns, 'sheetName', { value: sheetName, enumerable: false });
-  return txns;
+
+  // A file with no "accounts" sheet is a legacy backup (or one written by
+  // an older version of this app) and must still import exactly as before.
+  let accounts = [];
+  if (book.SheetNames.includes('accounts')) {
+    const accRows = XLSX.utils.sheet_to_json(book.Sheets.accounts, { raw: false, defval: '' });
+    accounts = sheetDataToAccounts(accRows);
+  }
+
+  return { rows: txns, accounts, sheetName };
 }

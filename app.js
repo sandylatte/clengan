@@ -134,6 +134,9 @@ const state = { month: new Date().toISOString().slice(0, 7) };
 const monthInput = document.getElementById('list-month');
 monthInput.value = state.month;
 monthInput.addEventListener('change', () => {
+  // Clearable on Android Chrome. An empty value has no month to render —
+  // keep showing the last valid month rather than feeding '' downstream.
+  if (!monthInput.value) return;
   state.month = monthInput.value;
   refresh();
 });
@@ -352,18 +355,27 @@ async function refresh() {
   // balance and trend point from valid rows only, so one bad row can't poison
   // a shared value (e.g. `spending += 'lots'` silently string-concatenating)
   // or leave sections mid-render at different states of the data.
-  const validTxns = txns.filter((t) => Number.isInteger(t.amount));
-  const invalidTxns = txns.filter((t) => !Number.isInteger(t.amount));
-  renderSummary(validTxns, accounts, invalidTxns);
-  await renderAccounts(accounts);
+  try {
+    const validTxns = txns.filter((t) => Number.isInteger(t.amount));
+    const invalidTxns = txns.filter((t) => !Number.isInteger(t.amount));
+    renderSummary(validTxns, accounts, invalidTxns);
+    await renderAccounts(accounts);
+  } catch (error) {
+    // A render failure used to fail silently (an unhandled rejection with
+    // nothing on screen). Surface it instead of leaving a half-painted or
+    // stale dashboard with no indication anything went wrong.
+    const summaryStatus = document.getElementById('summary-status');
+    summaryStatus.style.color = 'var(--color-destructive)';
+    summaryStatus.textContent = `Could not render dashboard: ${error.message}`;
+  }
 }
 
 const ioStatus = document.getElementById('io-status');
 
 document.getElementById('export-button').addEventListener('click', async () => {
   try {
-    const txns = await db.allTransactions();
-    exportXlsx(txns);
+    const [txns, accounts] = await Promise.all([db.allTransactions(), db.allAccounts()]);
+    exportXlsx(txns, accounts);
     const unreadable = txns.filter((t) => !Number.isInteger(t.amount)).length;
     ioStatus.style.color = 'var(--color-accent)';
     ioStatus.textContent = unreadable
@@ -379,12 +391,18 @@ document.getElementById('import-input').addEventListener('change', async (event)
   const [file] = event.target.files;
   if (!file) return;
   try {
-    const rows = await importXlsx(file);
-    // Create any account named in the file BEFORE writing transactions.
-    // Account creation is additive and carries no money, so if it fails
-    // nothing about the ledger has changed yet — the transaction write
-    // below is the only step that commits money data, so it goes last.
+    const { rows, accounts, sheetName } = await importXlsx(file);
+    // Write accounts named in the file BEFORE writing transactions, with
+    // their real opening balances. Account creation is additive and carries
+    // no money by itself, so if it fails nothing about the ledger has
+    // changed yet — the transaction write below is the only step that
+    // commits money data, so it goes last.
     const known = new Set((await db.allAccounts()).map((a) => a.name));
+    for (const account of accounts) {
+      await db.putAccount(account.name, account.opening_balance);
+      known.add(account.name);
+    }
+    // Zero-fill only ever creates accounts the file did not describe.
     for (const name of new Set(rows.map((r) => r.account))) {
       if (!known.has(name)) await db.putAccount(name, 0);
     }
@@ -394,7 +412,7 @@ document.getElementById('import-input').addEventListener('change', async (event)
     // naming the sheet makes it obvious if the user actually picked the
     // wrong file or the data sits on a different sheet than expected.
     ioStatus.textContent = rows.length === 0
-      ? `Imported 0 transactions from sheet "${rows.sheetName}".`
+      ? `Imported 0 transactions from sheet "${sheetName}".`
       : `Imported ${rows.length} transactions.`;
     await refresh();
   } catch (error) {
@@ -414,6 +432,34 @@ document.getElementById('account-form').addEventListener('submit', async (event)
   await refresh();
 });
 
+function showAccountStatus(message) {
+  const el = document.getElementById('account-status');
+  el.style.color = message ? 'var(--color-destructive)' : '';
+  el.textContent = message;
+}
+
+// Deleting an account is the only escape hatch for the case-typo trap
+// (typing "bank" then "Bank" permanently splits one real account in two —
+// see Task 10 final review): it must never orphan a transaction, so it
+// refuses whenever any transaction still references the account by name.
+async function deleteAccount(name) {
+  const txns = await db.allTransactions();
+  const count = txns.filter((t) => t.account === name).length;
+  if (count > 0) {
+    showAccountStatus(`Cannot remove ${name} — ${count} transaction${count === 1 ? '' : 's'} still ${count === 1 ? 'uses' : 'use'} it.`);
+    return;
+  }
+  const database = await db.openDb();
+  await new Promise((resolve, reject) => {
+    const tx = database.transaction('accounts', 'readwrite');
+    tx.objectStore('accounts').delete(name);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+  showAccountStatus('');
+  await refresh();
+}
+
 async function renderAccounts(accounts) {
   document.getElementById('account-list').replaceChildren(...accounts.map(({ name, opening_balance }) => {
     const item = document.createElement('li');
@@ -424,7 +470,22 @@ async function renderAccounts(accounts) {
     const value = document.createElement('span');
     value.className = 'amount';
     value.textContent = fromCents(opening_balance);
-    item.append(main, value);
+
+    const remove = document.createElement('button');
+    remove.className = 'row__delete';
+    remove.type = 'button';
+    remove.innerHTML = TRASH_ICON;
+    remove.setAttribute('aria-label', `Delete account ${name}`);
+    remove.addEventListener('click', async () => {
+      if (!confirm(`Remove account ${name}?`)) return;
+      try {
+        await deleteAccount(name);
+      } catch (error) {
+        showAccountStatus(`Delete failed: ${error.message}`);
+      }
+    });
+
+    item.append(main, value, remove);
     return item;
   }));
 }
