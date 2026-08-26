@@ -101,3 +101,26 @@ test('sheetDataToAccounts rejects a row with no name', () => {
 test('sheetDataToAccounts rejects a malformed opening_balance', () => {
   assert.throws(() => sheetDataToAccounts([{ name: 'Bank', opening_balance: 'lots' }]), /opening_balance/);
 });
+
+test('sheetDataToAccounts rejects a duplicate account name with a row-identifying message', () => {
+  assert.throws(
+    () => sheetDataToAccounts([
+      { name: 'Bank', opening_balance: '100.00' },
+      { name: 'Bank', opening_balance: '999.00' },
+    ]),
+    /accounts row 3: duplicate account "Bank"/,
+  );
+});
+
+test('sheetDataToAccounts treats differently-cased names as distinct accounts', () => {
+  assert.deepEqual(
+    sheetDataToAccounts([
+      { name: 'bank', opening_balance: '10.00' },
+      { name: 'Bank', opening_balance: '20.00' },
+    ]),
+    [
+      { name: 'bank', opening_balance: 1000 },
+      { name: 'Bank', opening_balance: 2000 },
+    ],
+  );
+});

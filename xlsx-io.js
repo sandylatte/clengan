@@ -86,10 +86,13 @@ export function accountsToSheetData(accounts) {
 }
 
 export function sheetDataToAccounts(rows) {
+  const seen = new Set();
   return rows.map((row, index) => {
     const where = `accounts row ${index + 2}`; // +2: one-based, plus the header row
     const name = String(row.name ?? '').trim();
     if (!name) throw new Error(`${where}: missing name`);
+    if (seen.has(name)) throw new Error(`${where}: duplicate account "${name}"`);
+    seen.add(name);
     let opening_balance;
     try {
       opening_balance = toCents(row.opening_balance);

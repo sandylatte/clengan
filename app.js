@@ -398,6 +398,10 @@ document.getElementById('import-input').addEventListener('change', async (event)
     // changed yet — the transaction write below is the only step that
     // commits money data, so it goes last.
     const known = new Set((await db.allAccounts()).map((a) => a.name));
+    // ponytail: N separate putAccount calls, not one IndexedDB transaction —
+    // a mid-loop crash could leave some accounts written. Transactions are
+    // always written last and separately, which is what keeps the "no
+    // transactions were changed" message above truthful.
     for (const account of accounts) {
       await db.putAccount(account.name, account.opening_balance);
       known.add(account.name);
@@ -442,6 +446,8 @@ function showAccountStatus(message) {
 // (typing "bank" then "Bank" permanently splits one real account in two —
 // see Task 10 final review): it must never orphan a transaction, so it
 // refuses whenever any transaction still references the account by name.
+// ponytail: check-then-delete — a transaction added between the check and
+// the delete below would not be caught; acceptable in a single-user local app.
 async function deleteAccount(name) {
   const txns = await db.allTransactions();
   const count = txns.filter((t) => t.account === name).length;
