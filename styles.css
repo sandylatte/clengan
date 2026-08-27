@@ -12,20 +12,31 @@
   font-display: swap;
 }
 
+/* Palette from DESIGN.md (Linear). Keep changes there, not inline. */
 :root {
-  --color-primary: #1E40AF;
-  --color-accent: #059669;
-  --color-destructive: #DC2626;
-  --color-background: #0F172A;
-  --color-foreground: #FFFFFF;
-  --color-muted: #101A34;
-  --color-border: rgba(255, 255, 255, 0.08);
+  --color-primary: #5E6AD2;
+  --color-primary-hover: #828FFF;
+  --color-accent: #27A644;
+  --color-destructive: #E5484D; /* DESIGN.md defines no red; money in/out needs one */
+  --color-background: #010102;
+  --color-foreground: #F7F8F8;
+  --color-muted: #0F1011;
+  --color-input: #141516;
+  --color-subtle: #8A8F98;
+  --color-border: #23252A;
+  --color-border-strong: #34343A;
 
+  --space-0: 4px;
   --space-1: 8px;
   --space-2: 12px;
   --space-3: 16px;
   --space-4: 24px;
   --space-5: 32px;
+  --space-6: 48px;
+
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
 
   --font-ui: "Fira Sans", system-ui, -apple-system, sans-serif;
   --font-num: "Fira Code", ui-monospace, "SF Mono", Menlo, monospace;
@@ -35,26 +46,46 @@
 
 body {
   margin: 0;
-  padding: 0 0 72px;
+  padding: 0 0 88px;
   background: var(--color-background);
   color: var(--color-foreground);
   font-family: var(--font-ui);
   font-size: 16px;
   line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Type scale — DESIGN.md display steps, negative tracking on the large end. */
+h1 {
+  font-size: 40px;
+  font-weight: 600;
+  line-height: 1.1;
+  letter-spacing: -1.5px;
+  margin: 0 0 var(--space-4);
+}
+
+h2 {
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-subtle);
+  margin: 0 0 var(--space-3);
 }
 
 .amount { font-family: var(--font-num); font-variant-numeric: tabular-nums; }
 .amount--in { color: var(--color-accent); }
 .amount--out { color: var(--color-destructive); }
 
-.view { padding: var(--space-3); }
+.view { padding: var(--space-4) var(--space-3); }
 .view[hidden] { display: none; }
 
+/* Surface ladder: canvas → card → input. Depth without shadows. */
 .card {
   background: var(--color-muted);
   border: 1px solid var(--color-border);
-  border-radius: 12px;
-  padding: var(--space-3);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
   margin-bottom: var(--space-3);
 }
 
@@ -64,63 +95,121 @@ body {
   left: 0;
   right: 0;
   display: flex;
-  background: var(--color-muted);
+  background: color-mix(in srgb, var(--color-muted) 92%, transparent);
+  backdrop-filter: blur(12px);
   border-top: 1px solid var(--color-border);
   padding-bottom: env(safe-area-inset-bottom);
 }
 
 .tabbar button {
+  position: relative;
   flex: 1;
-  min-height: 44px;
+  min-height: 52px;
   background: none;
   border: none;
-  color: var(--color-foreground);
+  color: var(--color-subtle);
   font: inherit;
-  font-size: 14px;
+  font-size: 13px;
   cursor: pointer;
-  transition: background 150ms ease;
+  transition: color 150ms ease;
 }
 
+.tabbar button:hover { color: var(--color-foreground); }
+
 .tabbar button[aria-current="page"] {
-  color: var(--color-primary);
+  /* primary is 4.44:1 on dark — below AA for small text; hover tint is 6.6:1 */
+  color: var(--color-primary-hover);
   font-weight: 600;
 }
 
+/* Active tab marker rides the top hairline. */
+.tabbar button[aria-current="page"]::before {
+  content: "";
+  position: absolute;
+  top: -1px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 28px;
+  height: 2px;
+  background: var(--color-primary-hover);
+}
+
 :focus-visible {
-  outline: 2px solid var(--color-primary);
+  outline: 2px solid var(--color-primary-hover);
   outline-offset: 2px;
 }
 
-label { display: block; margin-bottom: 4px; font-size: 14px; }
+label {
+  display: block;
+  margin-bottom: var(--space-0);
+  font-size: 13px;
+  color: var(--color-subtle);
+}
 
 input, select, button.primary {
   width: 100%;
   min-height: 44px;
   padding: 0 var(--space-2);
-  margin-bottom: var(--space-2);
-  background: var(--color-background);
+  margin-bottom: var(--space-3);
+  background: var(--color-input);
   color: var(--color-foreground);
   border: 1px solid var(--color-border);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   font: inherit;
+  transition: border-color 150ms ease;
 }
 
+input:hover { border-color: var(--color-border-strong); }
+input[type="number"], input[type="date"], input[type="month"] { font-family: var(--font-num); }
+
 button.primary {
+  margin-top: var(--space-1);
   background: var(--color-primary);
   border: none;
   font-weight: 600;
   cursor: pointer;
-  transition: filter 150ms ease;
+  transition: background 150ms ease;
 }
 
-button.primary:hover { filter: brightness(1.15); }
+button.primary:hover { background: var(--color-primary-hover); }
+button.primary:active { background: #5E69D1; }
 
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; animation: none !important; }
 }
 
-#add-kind { display: flex; gap: var(--space-2); margin-bottom: var(--space-2); }
-#add-kind label { display: flex; align-items: center; gap: 6px; min-height: 44px; margin: 0; }
+/* Segmented control, built from the existing radio markup. */
+#add-kind {
+  display: flex;
+  gap: var(--space-0);
+  padding: var(--space-0);
+  margin-bottom: var(--space-3);
+  background: var(--color-input);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+#add-kind label {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 38px;
+  margin: 0;
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  color: var(--color-subtle);
+  cursor: pointer;
+  transition: background 150ms ease, color 150ms ease;
+}
+
+#add-kind label:has(input:checked) {
+  background: var(--color-primary);
+  color: #fff;
+  font-weight: 600;
+}
+
 #add-kind input { width: auto; min-height: 0; margin: 0; }
 #add-status { min-height: 24px; font-size: 14px; color: var(--color-accent); }
 
@@ -130,26 +219,38 @@ button.primary:hover { filter: brightness(1.15); }
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  padding: var(--space-2) 0;
+  padding: var(--space-2) var(--space-1);
+  margin: 0 calc(var(--space-1) * -1);
+  border-radius: var(--radius-md);
   border-bottom: 1px solid var(--color-border);
+  transition: background 150ms ease;
 }
+
+.row:hover { background: var(--color-muted); }
+.row:last-child { border-bottom: none; }
 
 .row__main { flex: 1; min-width: 0; }
 .row__title { display: block; }
-.row__meta { display: block; font-size: 13px; opacity: 0.7; }
+.row__meta {
+  display: block;
+  font-size: 12px;
+  font-family: var(--font-num);
+  color: var(--color-subtle);
+}
 
 .row__delete {
   min-width: 44px;
   min-height: 44px;
   background: none;
   border: none;
-  color: var(--color-destructive);
+  color: var(--color-subtle);
   cursor: pointer;
-  border-radius: 8px;
-  transition: background 150ms ease;
+  border-radius: var(--radius-md);
+  transition: background 150ms ease, color 150ms ease;
 }
 
-.row__delete:hover { background: rgba(220, 38, 38, 0.15); }
+.row:hover .row__delete { color: var(--color-destructive); }
+.row__delete:hover { background: color-mix(in srgb, var(--color-destructive) 15%, transparent); }
 
 .visually-hidden {
   position: absolute;
@@ -161,18 +262,63 @@ button.primary:hover { filter: brightness(1.15); }
   border: 0;
 }
 
-.stats { display: flex; gap: var(--space-2); }
-.stat { flex: 1; display: flex; flex-direction: column; }
-.stat__label { font-size: 13px; opacity: 0.7; }
-.stat .amount { font-size: 20px; }
-.stat--net .amount { font-size: 28px; font-weight: 700; }
+/* Net is the headline; income and spent are the supporting pair. */
+.stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
+}
+
+.stat { display: flex; flex-direction: column; gap: var(--space-0); }
+
+.stat__label {
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-subtle);
+}
+
+.stat .amount { font-size: 20px; font-weight: 500; }
+
+.stat--net {
+  grid-column: 1 / -1;
+  order: -1;
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.stat--net .amount {
+  font-size: 40px;
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -1.5px;
+}
 
 .bars { width: 100%; border-collapse: collapse; }
 .bars thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
-.bars td { padding: var(--space-1) var(--space-2); position: relative; }
-.bars tbody tr { background-image: linear-gradient(to right, var(--color-primary) var(--bar, 0%), transparent var(--bar, 0%)); }
-.bars td:last-child { text-align: right; }
 
-#trend { width: 100%; height: auto; }
-h2 { font-size: 15px; margin: 0 0 var(--space-2); opacity: 0.8; }
-#summary-status { min-height: 20px; font-size: 14px; }
+.bars td {
+  padding: var(--space-2);
+  position: relative;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.bars tbody tr:last-child td { border-bottom: none; }
+
+/* Translucent fill + solid leading edge — reads at any bar width,
+   and keeps the label legible instead of sitting on flat lavender.
+   Scoped to #bars: #balances shares .bars but never sets --bar. */
+#bars tbody tr {
+  background-image:
+    linear-gradient(to right, var(--color-primary) 2px, transparent 2px),
+    linear-gradient(to right,
+      color-mix(in srgb, var(--color-primary) 22%, transparent) var(--bar, 0%),
+      transparent var(--bar, 0%));
+  background-repeat: no-repeat;
+}
+
+.bars td:last-child { text-align: right; font-family: var(--font-num); }
+
+#trend { width: 100%; height: auto; overflow: visible; }
+#summary-status, #list-status { min-height: 20px; font-size: 14px; color: var(--color-subtle); }
