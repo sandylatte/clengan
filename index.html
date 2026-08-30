@@ -12,9 +12,6 @@
 <section class="view" id="view-add">
   <h1>Add</h1>
   <form id="add-form">
-    <label for="add-date">Date</label>
-    <input type="date" id="add-date" required>
-
     <label for="add-amount">Amount</label>
     <input type="number" id="add-amount" step="0.01" min="0" inputmode="decimal" required>
 
@@ -41,6 +38,9 @@
 
     <label for="add-note">Note</label>
     <input type="text" id="add-note">
+
+    <label for="add-date">Date</label>
+    <input type="date" id="add-date" required>
 
     <button type="submit" class="primary">Save</button>
     <p id="add-status" role="status"></p>
@@ -113,11 +113,20 @@
   </div>
 </section>
 
+<!-- Icons: Lucide (plus, list, pie-chart, sliders-horizontal), one stroke weight. -->
 <nav class="tabbar">
-  <button data-view="add" aria-current="page">Add</button>
-  <button data-view="list">List</button>
-  <button data-view="summary">Summary</button>
-  <button data-view="settings">Settings</button>
+  <button data-view="add" aria-current="page">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg>Add
+  </button>
+  <button data-view="list">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h13"/><path d="M8 12h13"/><path d="M8 18h13"/><path d="M3 6h.01"/><path d="M3 12h.01"/><path d="M3 18h.01"/></svg>List
+  </button>
+  <button data-view="summary">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></svg>Summary
+  </button>
+  <button data-view="settings">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 4h-7"/><path d="M10 4H3"/><path d="M21 12h-9"/><path d="M8 12H3"/><path d="M21 20h-5"/><path d="M12 20H3"/><path d="M10 2v4"/><path d="M8 10v4"/><path d="M14 18v4"/></svg>Settings
+  </button>
 </nav>
 
 <script src="./vendor/xlsx.full.min.js"></script>

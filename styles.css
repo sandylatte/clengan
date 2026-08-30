@@ -55,13 +55,21 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* Type scale — DESIGN.md display steps, negative tracking on the large end. */
+/* App title bar, not a display heading: the tab bar already names the view,
+   so this stays out of the way and lets content own the fold. */
 h1 {
-  font-size: 40px;
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  margin: calc(var(--space-4) * -1) calc(var(--space-3) * -1) var(--space-4);
+  padding: var(--space-2) var(--space-3);
+  background: color-mix(in srgb, var(--color-background) 88%, transparent);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--color-border);
+  font-size: 17px;
   font-weight: 600;
-  line-height: 1.1;
-  letter-spacing: -1.5px;
-  margin: 0 0 var(--space-4);
+  line-height: 1.4;
+  letter-spacing: -0.01em;
 }
 
 h2 {
@@ -77,7 +85,12 @@ h2 {
 .amount--in { color: var(--color-accent); }
 .amount--out { color: var(--color-destructive); }
 
-.view { padding: var(--space-4) var(--space-3); }
+/* Phone-first, but a laptop should not get 1400px-wide inputs. */
+.view {
+  max-width: 620px;
+  margin: 0 auto;
+  padding: var(--space-4) var(--space-3);
+}
 .view[hidden] { display: none; }
 
 /* Surface ladder: canvas → card → input. Depth without shadows. */
@@ -95,6 +108,7 @@ h2 {
   left: 0;
   right: 0;
   display: flex;
+  justify-content: center;
   background: color-mix(in srgb, var(--color-muted) 92%, transparent);
   backdrop-filter: blur(12px);
   border-top: 1px solid var(--color-border);
@@ -104,14 +118,31 @@ h2 {
 .tabbar button {
   position: relative;
   flex: 1;
-  min-height: 52px;
+  max-width: 155px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  min-height: 56px;
   background: none;
   border: none;
   color: var(--color-subtle);
   font: inherit;
-  font-size: 13px;
+  font-size: 11px;
+  letter-spacing: 0.01em;
   cursor: pointer;
   transition: color 150ms ease;
+}
+
+.tabbar svg {
+  width: 20px;
+  height: 20px;
+  stroke: currentColor;
+  stroke-width: 1.75;
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .tabbar button:hover { color: var(--color-foreground); }
@@ -160,7 +191,38 @@ input, select, button.primary {
 }
 
 input:hover { border-color: var(--color-border-strong); }
+input:focus { border-color: var(--color-border-strong); }
 input[type="number"], input[type="date"], input[type="month"] { font-family: var(--font-num); }
+
+/* The amount is what the user opened the app to type. Size says so. */
+#add-amount {
+  min-height: 64px;
+  font-size: 34px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  margin-bottom: var(--space-2);
+}
+
+/* The browser default file button ignores every token in this file. */
+input[type="file"] {
+  padding: var(--space-1) var(--space-2);
+  cursor: pointer;
+}
+
+input[type="file"]::file-selector-button {
+  margin-right: var(--space-2);
+  padding: 0 var(--space-2);
+  min-height: 28px;
+  background: var(--color-muted);
+  color: var(--color-foreground);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+input[type="file"]::file-selector-button:hover { background: var(--color-input); }
 
 button.primary {
   margin-top: var(--space-1);
@@ -231,6 +293,7 @@ button.primary:active { background: #5E69D1; }
 
 .row__main { flex: 1; min-width: 0; }
 .row__title { display: block; }
+.row > .amount { font-size: 15px; font-weight: 500; white-space: nowrap; }
 .row__meta {
   display: block;
   font-size: 12px;
