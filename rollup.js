@@ -1,3 +1,5 @@
+import { splitBudget, bucketOf } from './budget.js';
+
 // A transfer moves money between the user's own accounts. It is neither
 // income nor spending, and both of its rows must be excluded from every
 // total, or moving 200.00 into savings would read as 200.00 of spending.
@@ -31,6 +33,40 @@ export function categoryBreakdown(txns, month) {
   return [...totals]
     .map(([category, total]) => ({ category, total }))
     .sort((a, b) => b.total - a.total || a.category.localeCompare(b.category));
+}
+
+// Budget comes from income actually recorded in the month, not from a
+// separately entered forecast. One number the user already keys in drives
+// the whole split, and there is no second figure to drift out of sync.
+//
+// Spending in a category with no bucket (deleted category, or an import that
+// named one we do not know) is returned as `unbucketed` rather than being
+// folded into either budget. Silently charging it to "flexible" would make a
+// remaining figure the user cannot reconcile against their own rows.
+export function bucketTotals(txns, categories, month, split) {
+  const { income } = monthlyTotals(txns, month);
+  const budget = splitBudget(income, split);
+
+  const spent = { fixed: 0, flexible: 0 };
+  let unbucketed = 0;
+  for (const txn of filterMonth(txns, month)) {
+    if (!isFlow(txn) || txn.amount >= 0) continue;
+    const bucket = bucketOf(categories, txn.category);
+    if (bucket === 'fixed' || bucket === 'flexible') spent[bucket] -= txn.amount;
+    else unbucketed -= txn.amount;
+  }
+
+  const unspent = (budget.fixed - spent.fixed) + (budget.flexible - spent.flexible);
+  return {
+    income,
+    unbucketed,
+    fixed: { budget: budget.fixed, spent: spent.fixed, remaining: budget.fixed - spent.fixed },
+    flexible: { budget: budget.flexible, spent: spent.flexible, remaining: budget.flexible - spent.flexible },
+    // The planner's best idea: underspending is not just a smaller number,
+    // it becomes savings. `projected` is the target plus whatever the two
+    // spending buckets left on the table.
+    savings: { budget: budget.savings, unspent, projected: budget.savings + unspent },
+  };
 }
 
 export function accountBalances(txns, accounts) {
