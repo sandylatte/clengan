@@ -26,7 +26,7 @@
   <h1>Add <span class="h1-meta amount" id="head-balance"></span></h1>
   <form id="add-form">
     <label for="add-amount">Amount</label>
-    <input type="number" id="add-amount" step="1" min="0" inputmode="numeric" required>
+    <input type="number" id="add-amount" step="1000" min="0" inputmode="numeric" required>
 
     <div id="add-kind" role="group" aria-label="Kind">
       <label><input type="radio" name="kind" value="expense" checked> Expense</label>
@@ -72,9 +72,9 @@
   <p id="summary-status" role="status"></p>
 
   <div class="card stats">
-    <div class="stat"><span class="stat__label">Income</span><span class="amount amount--in" id="stat-income">0.00</span></div>
-    <div class="stat"><span class="stat__label">Spent</span><span class="amount amount--out" id="stat-spent">0.00</span></div>
-    <div class="stat stat--net"><span class="stat__label">Net</span><span class="amount" id="stat-net">0.00</span></div>
+    <div class="stat"><span class="stat__label">Income</span><span class="amount amount--in" id="stat-income">Rp 0</span></div>
+    <div class="stat"><span class="stat__label">Spent</span><span class="amount amount--out" id="stat-spent">Rp 0</span></div>
+    <div class="stat stat--net"><span class="stat__label">Net</span><span class="amount" id="stat-net">Rp 0</span></div>
   </div>
 
   <div class="card">
@@ -125,6 +125,20 @@
 </section>
 <section class="view" id="view-settings" hidden>
   <h1>Settings</h1>
+
+  <div class="card">
+    <h2>Accounts</h2>
+    <p class="hint">Nothing can be recorded until an account exists. The balance you enter is the starting point; every transaction moves it from there.</p>
+    <form id="account-form">
+      <label for="account-name">Name</label>
+      <input type="text" id="account-name" required>
+      <label for="account-opening">Initial balance</label>
+      <input type="number" id="account-opening" step="1000" value="0" inputmode="numeric">
+      <button type="submit" class="primary">Save account</button>
+    </form>
+    <p id="account-status" role="status"></p>
+    <ul id="account-list" class="rows"></ul>
+  </div>
 
   <div class="card">
     <h2>Appearance</h2>
@@ -199,16 +213,10 @@
   </div>
 
   <div class="card">
-    <h2>Accounts</h2>
-    <form id="account-form">
-      <label for="account-name">Name</label>
-      <input type="text" id="account-name" required>
-      <label for="account-opening">Opening balance</label>
-      <input type="number" id="account-opening" step="1" value="0" inputmode="numeric">
-      <button type="submit" class="primary">Save account</button>
-    </form>
-    <p id="account-status" role="status"></p>
-    <ul id="account-list" class="rows"></ul>
+    <h2>App version</h2>
+    <p class="hint">The shell is served from an offline cache, so a stale one keeps showing old numbers with no sign anything is wrong. This names the version actually running and forces a fresh copy.</p>
+    <p id="version-status" role="status"></p>
+    <button type="button" class="primary" id="update-button">Fetch the latest version</button>
   </div>
 </section>
 

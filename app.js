@@ -904,7 +904,17 @@ async function renderAccounts(accounts) {
     item.className = 'row';
     const main = document.createElement('div');
     main.className = 'row__main';
-    main.textContent = name;
+    const title = document.createElement('span');
+    title.className = 'row__title';
+    title.textContent = name;
+    // The figure here is the starting point, not what the account holds now.
+    // Unlabelled next to an account name it reads as the current balance,
+    // which is on the Summary's Balances card and is usually a different
+    // number entirely.
+    const meta = document.createElement('span');
+    meta.className = 'row__meta';
+    meta.textContent = 'Initial balance';
+    main.append(title, meta);
     const value = document.createElement('span');
     value.className = 'amount';
     value.textContent = formatIDR(opening_balance);
@@ -927,6 +937,41 @@ async function renderAccounts(accounts) {
     return item;
   }));
 }
+
+// The cache name is the only honest version marker: it is what the fetch
+// handler is actually serving, not what the source on disk says. When those
+// two disagree the app looks broken in ways that have nothing to do with the
+// code, which is exactly the confusion this exists to end.
+const versionStatus = document.getElementById('version-status');
+
+async function showVersion() {
+  // On a first visit the worker is still installing when this runs, and
+  // reading the cache list too early reports "none" for an app that is about
+  // to have one. Wait for the worker to be ready before believing the answer.
+  if ('serviceWorker' in navigator) {
+    await navigator.serviceWorker.ready.catch(() => {});
+  }
+  const names = await caches.keys();
+  versionStatus.textContent = names.length
+    ? `Serving ${names.join(', ')}.`
+    : 'No offline cache yet — everything is coming straight from the server.';
+}
+
+document.getElementById('update-button').addEventListener('click', async (event) => {
+  const button = event.currentTarget;
+  button.disabled = true;
+  versionStatus.textContent = 'Fetching…';
+  // Unregister before clearing: a live worker can re-serve from a cache
+  // between the delete and the reload, which puts the stale shell straight
+  // back. Transactions live in IndexedDB and are untouched by any of this.
+  for (const registration of await navigator.serviceWorker.getRegistrations()) {
+    await registration.unregister();
+  }
+  for (const name of await caches.keys()) await caches.delete(name);
+  location.reload();
+});
+
+showVersion();
 
 const themeSelect = document.getElementById('theme-select');
 themeSelect.value = document.documentElement.dataset.theme === 'peach' ? 'peach' : 'graphite';
