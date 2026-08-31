@@ -1,7 +1,7 @@
-import { DEFAULT_CATEGORIES, DEFAULT_SPLIT } from './budget.js';
+import { DEFAULT_CATEGORIES, DEFAULT_SPLIT, DEFAULT_FUNDS } from './budget.js';
 
 const DB_NAME = 'moneytrack';
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 
 let dbPromise = null;
 
@@ -30,6 +30,14 @@ export function openDb(name = DB_NAME) {
         for (const category of DEFAULT_CATEGORIES) categories.add(category);
         const settings = database.createObjectStore('settings', { keyPath: 'key' });
         settings.add({ key: 'split', value: DEFAULT_SPLIT });
+      }
+      if (event.oldVersion < 3) {
+        // keyPath is the name, so getAll returns funds alphabetically and the
+        // seed order below is not preserved. That is fine for a list of six,
+        // and cheaper than an order field that has to stay in sync. A rename
+        // is a delete plus an add, same as categories.
+        const funds = database.createObjectStore('funds', { keyPath: 'name' });
+        for (const fund of DEFAULT_FUNDS) funds.add(fund);
       }
     };
     request.onsuccess = () => resolve(request.result);
@@ -60,6 +68,21 @@ function readAll(store) {
 export const allTransactions = () => readAll('transactions');
 export const allAccounts = () => readAll('accounts');
 export const allCategories = () => readAll('categories');
+export const allFunds = () => readAll('funds');
+
+export function putFund(name, percent) {
+  return run('funds', 'readwrite', (store) => {
+    store.put({ name, percent });
+    return { value: undefined };
+  });
+}
+
+export function deleteFund(name) {
+  return run('funds', 'readwrite', (store) => {
+    store.delete(name);
+    return { value: undefined };
+  });
+}
 
 export function putCategory(name, bucket) {
   return run('categories', 'readwrite', (store) => {

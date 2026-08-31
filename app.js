@@ -1,9 +1,9 @@
 import * as db from './db.js';
 import { toCents, fromCents, formatAmount } from './money.js';
 import {
-  filterMonth, monthlyTotals, categoryBreakdown, accountBalances, netTrend, bucketTotals,
+  filterMonth, monthlyTotals, categoryBreakdown, accountBalances, netTrend, bucketTotals, fundsByYear,
 } from './rollup.js';
-import { BUCKETS, DEFAULT_SPLIT, validateSplit } from './budget.js';
+import { BUCKETS, DEFAULT_SPLIT, validateSplit, allocateFunds } from './budget.js';
 import { exportXlsx, importXlsx, importPlanner } from './xlsx-io.js';
 
 function showView(name) {
@@ -131,7 +131,7 @@ form.addEventListener('submit', async (event) => {
   }
 });
 
-const state = { month: new Date().toISOString().slice(0, 7), categories: [], split: DEFAULT_SPLIT };
+const state = { month: new Date().toISOString().slice(0, 7), categories: [], funds: [], split: DEFAULT_SPLIT };
 
 const monthInput = document.getElementById('list-month');
 monthInput.value = state.month;
@@ -315,6 +315,66 @@ function renderBudget(txns) {
   document.getElementById('budget-note').replaceChildren(...children);
 }
 
+// Funds are edited one at a time, so the set is routinely mid-edit and not
+// totalling 100. That is a state to report, not to throw on: allocateFunds
+// would reject it and take the whole dashboard render down with it.
+function renderFunds(txns) {
+  const note = document.getElementById('funds-note');
+  const body = document.querySelector('#funds tbody');
+  const total = state.funds.reduce((sum, f) => sum + f.percent, 0);
+
+  if (state.funds.length === 0 || Math.round(total) !== 100) {
+    body.replaceChildren();
+    note.className = 'budget-note__warning';
+    note.textContent = state.funds.length === 0
+      ? 'No savings funds defined. Add some in Settings to divide savings up.'
+      : `Fund shares total ${total}%, not 100%. Fix them in Settings to see the split.`;
+    return;
+  }
+
+  const month = bucketTotals(txns, state.categories, state.month, state.split).savings.projected;
+  const year = fundsByYear(txns, state.categories, state.split, state.funds, Number(state.month.slice(0, 4)));
+  const monthly = new Map(allocateFunds(month, state.funds).map((f) => [f.name, f.amount]));
+  const yearly = new Map(year.funds.map((f) => [f.name, f.amount]));
+
+  const cell = (text, className) => {
+    const td = document.createElement('td');
+    if (className) td.className = className;
+    td.textContent = text;
+    return td;
+  };
+
+  const rows = state.funds.map((fund) => {
+    const amount = monthly.get(fund.name);
+    const row = document.createElement('tr');
+    row.style.setProperty('--bar', `${fund.percent}%`);
+    row.append(
+      cell(fund.name),
+      cell(`${fund.percent}%`),
+      cell(fromCents(amount), `amount ${amount < 0 ? 'amount--out' : ''}`),
+      cell(fromCents(yearly.get(fund.name)), `amount ${yearly.get(fund.name) < 0 ? 'amount--out' : ''}`),
+    );
+    return row;
+  });
+
+  const totalRow = document.createElement('tr');
+  totalRow.className = 'budget__savings';
+  totalRow.append(
+    cell('Total'),
+    cell(''),
+    cell(fromCents(month), `amount ${month < 0 ? 'amount--out' : 'amount--in'}`),
+    cell(fromCents(year.total), `amount ${year.total < 0 ? 'amount--out' : 'amount--in'}`),
+  );
+  rows.push(totalRow);
+  body.replaceChildren(...rows);
+
+  note.className = '';
+  const counted = year.months.length;
+  note.textContent = counted === 0
+    ? `No income recorded in ${year.year} yet.`
+    : `Year column covers ${counted} month${counted === 1 ? '' : 's'} of ${year.year} with income recorded.`;
+}
+
 // txns here is already filtered to rows with an integer amount (see refresh()),
 // so none of the calls below can coerce a bad value into a string/NaN and no
 // try/catch is needed: every section renders fully from clean data. Rows that
@@ -322,6 +382,7 @@ function renderBudget(txns) {
 function renderSummary(txns, accounts, invalidTxns) {
   const totals = monthlyTotals(txns, state.month);
   renderBudget(txns);
+  renderFunds(txns);
   document.getElementById('stat-income').textContent = fromCents(totals.income);
   document.getElementById('stat-spent').textContent = fromCents(-totals.spending);
   const net = document.getElementById('stat-net');
@@ -421,10 +482,12 @@ function renderTrend(points) {
 }
 
 async function refresh() {
-  const [txns, accounts, categories, split] = await Promise.all([
-    db.allTransactions(), db.allAccounts(), db.allCategories(), db.getSetting('split', DEFAULT_SPLIT),
+  const [txns, accounts, categories, funds, split] = await Promise.all([
+    db.allTransactions(), db.allAccounts(), db.allCategories(), db.allFunds(),
+    db.getSetting('split', DEFAULT_SPLIT),
   ]);
   state.categories = categories;
+  state.funds = funds;
   state.split = split;
   await fillDatalists();
   renderList(txns);
@@ -441,6 +504,7 @@ async function refresh() {
     renderSummary(validTxns, accounts, invalidTxns);
     await renderAccounts(accounts);
     renderCategories(categories);
+    renderFundList(funds);
     renderSplit(split);
   } catch (error) {
     // A render failure used to fail silently (an unhandled rejection with
@@ -581,6 +645,61 @@ splitForm.addEventListener('submit', async (event) => {
   splitStatus.textContent = 'Saved.';
   await refresh();
 });
+
+const fundStatus = document.getElementById('fund-status');
+
+document.getElementById('fund-form').addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const name = document.getElementById('fund-name').value.trim();
+  const percent = Number(document.getElementById('fund-percent').value);
+  if (!name) return;
+  if (!Number.isFinite(percent) || percent < 0) {
+    fundStatus.className = 'budget-note__warning';
+    fundStatus.textContent = 'Share must be a non-negative number.';
+    return;
+  }
+  await db.putFund(name, percent);
+  event.target.reset();
+  await refresh();
+});
+
+// The running total is the whole point of this list: a fund set only pays
+// out at exactly 100%, and the user gets there by editing one row at a time.
+// Showing the total after every edit is what makes that reachable without
+// the app refusing the intermediate states.
+function renderFundList(funds) {
+  const total = funds.reduce((sum, f) => sum + f.percent, 0);
+  document.getElementById('fund-list').replaceChildren(...funds.map(({ name, percent }) => {
+    const item = document.createElement('li');
+    item.className = 'row';
+    const main = document.createElement('div');
+    main.className = 'row__main';
+    main.textContent = name;
+    const value = document.createElement('span');
+    value.className = 'amount';
+    value.textContent = `${percent}%`;
+
+    const remove = document.createElement('button');
+    remove.className = 'row__delete';
+    remove.type = 'button';
+    remove.innerHTML = TRASH_ICON;
+    remove.setAttribute('aria-label', `Delete fund ${name}`);
+    remove.addEventListener('click', async () => {
+      if (!confirm(`Remove ${name}? The remaining funds will need to total 100% again.`)) return;
+      await db.deleteFund(name);
+      await refresh();
+    });
+
+    item.append(main, value, remove);
+    return item;
+  }));
+
+  const balanced = Math.round(total) === 100;
+  fundStatus.className = balanced ? '' : 'budget-note__warning';
+  fundStatus.textContent = balanced
+    ? 'Shares total 100%.'
+    : `Shares total ${total}%. Savings will not divide until this is 100%.`;
+}
 
 const categoryStatus = document.getElementById('category-status');
 

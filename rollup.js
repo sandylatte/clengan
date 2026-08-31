@@ -1,4 +1,4 @@
-import { splitBudget, bucketOf } from './budget.js';
+import { splitBudget, bucketOf, allocateFunds } from './budget.js';
 
 // A transfer moves money between the user's own accounts. It is neither
 // income nor spending, and both of its rows must be excluded from every
@@ -66,6 +66,36 @@ export function bucketTotals(txns, categories, month, split) {
     // it becomes savings. `projected` is the target plus whatever the two
     // spending buckets left on the table.
     savings: { budget: budget.savings, unspent, projected: budget.savings + unspent },
+  };
+}
+
+export function monthsOfYear(year) {
+  return Array.from({ length: 12 }, (_, i) => `${year}-${String(i + 1).padStart(2, '0')}`);
+}
+
+// The source spreadsheet writes this as SUM('2026_SEPT'!R14,'2026_OCT'!R14),
+// which silently stops counting the moment a month is added. Computing it
+// from the transactions means a new month needs no edit anywhere.
+//
+// Each month allocates that month's own projected savings, so a month that
+// overspent contributes negative shares and pulls the year total down. That
+// is the honest reading: the year is what actually accumulated.
+export function fundsByYear(txns, categories, split, funds, year) {
+  const totals = new Map(funds.map((f) => [f.name, 0]));
+  const months = [];
+  for (const month of monthsOfYear(year)) {
+    const { savings, income } = bucketTotals(txns, categories, month, split);
+    if (income === 0) continue;
+    months.push({ month, projected: savings.projected });
+    for (const { name, amount } of allocateFunds(savings.projected, funds)) {
+      totals.set(name, totals.get(name) + amount);
+    }
+  }
+  return {
+    year,
+    months,
+    funds: funds.map(({ name, percent }) => ({ name, percent, amount: totals.get(name) })),
+    total: months.reduce((sum, m) => sum + m.projected, 0),
   };
 }
 

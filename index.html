@@ -88,6 +88,16 @@
   </div>
 
   <div class="card">
+    <h2>Savings by fund</h2>
+    <table class="budget" id="funds">
+      <caption class="visually-hidden">How this month's savings divides across funds</caption>
+      <thead><tr><th scope="col">Fund</th><th scope="col">Share</th><th scope="col">This month</th><th scope="col">Year</th></tr></thead>
+      <tbody></tbody>
+    </table>
+    <p id="funds-note"></p>
+  </div>
+
+  <div class="card">
     <h2>Spending by category</h2>
     <table class="bars" id="bars">
       <caption class="visually-hidden">Spending by category for the selected month</caption>
@@ -135,6 +145,20 @@
       <button type="submit" class="primary">Save split</button>
     </form>
     <p id="split-status" role="status"></p>
+  </div>
+
+  <div class="card">
+    <h2>Savings funds</h2>
+    <p class="hint">Shares of whatever savings a month actually produces, including budget you did not spend. Must total 100%.</p>
+    <form id="fund-form">
+      <label for="fund-name">Name</label>
+      <input type="text" id="fund-name" required>
+      <label for="fund-percent">Share %</label>
+      <input type="number" id="fund-percent" min="0" max="100" step="1" required>
+      <button type="submit" class="primary">Save fund</button>
+    </form>
+    <p id="fund-status" role="status"></p>
+    <ul id="fund-list" class="rows"></ul>
   </div>
 
   <div class="card">

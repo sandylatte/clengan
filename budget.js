@@ -24,26 +24,57 @@ export const DEFAULT_CATEGORIES = [
 // whatever fixed and flexible leave unspent lands on top of it.
 export const DEFAULT_SPLIT = { fixed: 50, flexible: 20, savings: 30 };
 
-export function validateSplit(split) {
-  const values = [split.fixed, split.flexible, split.savings];
-  if (!values.every((v) => Number.isFinite(v) && v >= 0)) {
+// Savings is one number until it is named. The planner's own funds are the
+// seed because a fund only changes behaviour once it has a purpose on it.
+export const DEFAULT_FUNDS = [
+  { name: 'Emergency Fund', percent: 35 },
+  { name: 'Home Fund', percent: 30 },
+  { name: 'Vehicle Fund', percent: 15 },
+  { name: 'Travel Fund', percent: 10 },
+  { name: 'Gift Fund', percent: 5 },
+  { name: 'Others', percent: 5 },
+];
+
+// The budget split and the savings funds are one operation: name a set of
+// percentages, check they total 100, divide a pool by them. Both go through
+// the pair below rather than each growing its own copy of the rounding rule.
+export function validatePercentages(percents) {
+  if (!percents.every((p) => Number.isFinite(p) && p >= 0)) {
     throw new RangeError('each share must be a non-negative number');
   }
-  const total = values.reduce((sum, v) => sum + v, 0);
+  const total = percents.reduce((sum, p) => sum + p, 0);
   if (Math.round(total) !== 100) {
     throw new RangeError(`shares must total 100, got ${total}`);
   }
-  return split;
+  return percents;
 }
 
 // Integer cents in, integer cents out. Rounding each share independently
-// would leave the three budgets summing to a cent more or less than income,
-// so the last share absorbs the remainder instead of being rounded.
+// leaves the parts summing to a cent more or less than the pool, so the last
+// share takes the remainder instead of being rounded like the others.
+export function allocate(poolCents, percents) {
+  validatePercentages(percents);
+  const parts = percents.slice(0, -1).map((p) => Math.round(poolCents * p / 100));
+  return [...parts, poolCents - parts.reduce((sum, p) => sum + p, 0)];
+}
+
+export function validateSplit(split) {
+  validatePercentages([split.fixed, split.flexible, split.savings]);
+  return split;
+}
+
 export function splitBudget(incomeCents, split) {
-  validateSplit(split);
-  const fixed = Math.round(incomeCents * split.fixed / 100);
-  const flexible = Math.round(incomeCents * split.flexible / 100);
-  return { fixed, flexible, savings: incomeCents - fixed - flexible };
+  const [fixed, flexible, savings] = allocate(incomeCents, [split.fixed, split.flexible, split.savings]);
+  return { fixed, flexible, savings };
+}
+
+// Funds divide whatever savings actually lands, not the 30% target — the
+// point of the rollover is that underspending reaches the funds. A negative
+// pool (overspending ate the savings) allocates negative shares rather than
+// clamping, so the shortfall is visible against the funds it came out of.
+export function allocateFunds(poolCents, funds) {
+  const amounts = allocate(poolCents, funds.map((f) => f.percent));
+  return funds.map((fund, i) => ({ ...fund, amount: amounts[i] }));
 }
 
 export function bucketOf(categories, name) {
