@@ -496,6 +496,15 @@ async function renderAccounts(accounts) {
   }));
 }
 
+const themeSelect = document.getElementById('theme-select');
+themeSelect.value = document.documentElement.dataset.theme === 'peach' ? 'peach' : 'graphite';
+themeSelect.addEventListener('change', () => {
+  const peach = themeSelect.value === 'peach';
+  document.documentElement.dataset.theme = peach ? 'peach' : '';
+  document.querySelector('meta[name="theme-color"]').content = peach ? '#F3CEC2' : '#0D0E10';
+  localStorage.setItem('moneytrack-theme', peach ? 'peach' : 'graphite');
+});
+
 document.getElementById('add-date').value = new Date().toISOString().slice(0, 10);
 syncKind();
 await refresh();

@@ -6,6 +6,19 @@
 <title>MoneyTrack</title>
 <link rel="manifest" href="./manifest.json">
 <link rel="stylesheet" href="./styles.css">
+<meta name="theme-color" content="#0D0E10">
+<script>
+/* Inline and before the stylesheet's first paint on purpose: app.js is a
+   deferred module, so applying the tone there flashes graphite at a peach
+   user on every launch. */
+(function () {
+  var t = localStorage.getItem('moneytrack-theme');
+  if (t === 'peach') {
+    document.documentElement.dataset.theme = 'peach';
+    document.querySelector('meta[name="theme-color"]').content = '#F3CEC2';
+  }
+})();
+</script>
 </head>
 <body>
 
@@ -90,6 +103,15 @@
 </section>
 <section class="view" id="view-settings" hidden>
   <h1>Settings</h1>
+
+  <div class="card">
+    <h2>Appearance</h2>
+    <label for="theme-select">Colour tone</label>
+    <select id="theme-select">
+      <option value="graphite">Graphite &amp; brass</option>
+      <option value="peach">Peach room</option>
+    </select>
+  </div>
 
   <div class="card">
     <h2>Backup</h2>

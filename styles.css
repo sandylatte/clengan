@@ -12,19 +12,28 @@
   font-display: swap;
 }
 
-/* Palette from DESIGN.md (Linear). Keep changes there, not inline. */
+/* Two tones, same token names. Nothing below this block knows which is active.
+   --color-active is separate from --color-primary because a fill dark enough
+   for white text is too dark to read as a label on the tab bar, and vice
+   versa. Ratios are measured against the surface each token actually sits on. */
+
+/* Tone A — graphite & brass (default) */
 :root {
-  --color-primary: #5E6AD2;
-  --color-primary-hover: #828FFF;
-  --color-accent: #27A644;
-  --color-destructive: #E5484D; /* DESIGN.md defines no red; money in/out needs one */
-  --color-background: #010102;
-  --color-foreground: #F7F8F8;
-  --color-muted: #0F1011;
-  --color-input: #141516;
-  --color-subtle: #8A8F98;
-  --color-border: #23252A;
-  --color-border-strong: #34343A;
+  --color-primary: #C8A15A;        /* 7.4:1 on card */
+  --color-primary-hover: #D9B978;
+  --color-on-primary: #1A1408;     /* 7.7:1 on primary */
+  --color-active: #D9B978;         /* tab label + focus ring */
+  --color-bar: color-mix(in srgb, #C8A15A 22%, transparent);
+  --color-accent: #4FA96B;         /* income, 6.1:1 */
+  --color-destructive: #DF6B60;    /* spending, 5.4:1 */
+  --color-background: #0D0E10;
+  --color-foreground: #EDEEF0;     /* 15:1 */
+  --color-muted: #17191C;
+  --color-input: #1E2125;
+  --color-subtle: #8B9099;         /* 6.1:1 */
+  --color-border: #232629;
+  --color-border-strong: #3A3E44;
+  color-scheme: dark;
 
   --space-0: 4px;
   --space-1: 8px;
@@ -41,6 +50,29 @@
   --font-ui: "Fira Sans", system-ui, -apple-system, sans-serif;
   --font-num: "Fira Code", ui-monospace, "SF Mono", Menlo, monospace;
 }
+
+/* Tone B — peach room. Cards sit lighter than the canvas, matching the
+   reference where the frame interior reads brighter than the wall. */
+:root[data-theme="peach"] {
+  --color-primary: #B2503A;        /* salmon, darkened until white reads 5.1:1 */
+  --color-primary-hover: #C4634A;
+  --color-on-primary: #FFFFFF;
+  --color-active: #8E3A26;         /* 4.8:1 on the tab strip */
+  --color-bar: #F0C0B0;
+  --color-accent: #2F6B4F;         /* income, 5.6:1 */
+  --color-destructive: #A63E2B;    /* spending, 5.9:1 */
+  --color-background: #F3CEC2;
+  --color-foreground: #4A2A22;     /* 13:1 */
+  --color-muted: #FAE2DA;
+  --color-input: #FFF1EB;
+  --color-subtle: #8A5A4B;         /* 5.4:1 */
+  --color-border: #E9C2B5;
+  --color-border-strong: #D9A493;
+  color-scheme: light;
+}
+
+/* The tab strip is the room's floor, a step off the canvas in both tones. */
+:root[data-theme="peach"] .tabbar { background: #EFC5B7; }
 
 * { box-sizing: border-box; }
 
@@ -148,8 +180,8 @@ h2 {
 .tabbar button:hover { color: var(--color-foreground); }
 
 .tabbar button[aria-current="page"] {
-  /* primary is 4.44:1 on dark — below AA for small text; hover tint is 6.6:1 */
-  color: var(--color-primary-hover);
+  /* --color-active, not --color-primary: the fill tint fails AA at 11px */
+  color: var(--color-active);
   font-weight: 600;
 }
 
@@ -162,11 +194,11 @@ h2 {
   transform: translateX(-50%);
   width: 28px;
   height: 2px;
-  background: var(--color-primary-hover);
+  background: var(--color-active);
 }
 
 :focus-visible {
-  outline: 2px solid var(--color-primary-hover);
+  outline: 2px solid var(--color-active);
   outline-offset: 2px;
 }
 
@@ -227,6 +259,7 @@ input[type="file"]::file-selector-button:hover { background: var(--color-input);
 button.primary {
   margin-top: var(--space-1);
   background: var(--color-primary);
+  color: var(--color-on-primary);
   border: none;
   font-weight: 600;
   cursor: pointer;
@@ -234,7 +267,7 @@ button.primary {
 }
 
 button.primary:hover { background: var(--color-primary-hover); }
-button.primary:active { background: #5E69D1; }
+button.primary:active { filter: brightness(0.92); }
 
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; animation: none !important; }
@@ -268,7 +301,7 @@ button.primary:active { background: #5E69D1; }
 
 #add-kind label:has(input:checked) {
   background: var(--color-primary);
-  color: #fff;
+  color: var(--color-on-primary);
   font-weight: 600;
 }
 
@@ -376,7 +409,7 @@ button.primary:active { background: #5E69D1; }
   background-image:
     linear-gradient(to right, var(--color-primary) 2px, transparent 2px),
     linear-gradient(to right,
-      color-mix(in srgb, var(--color-primary) 22%, transparent) var(--bar, 0%),
+      var(--color-bar) var(--bar, 0%),
       transparent var(--bar, 0%));
   background-repeat: no-repeat;
 }

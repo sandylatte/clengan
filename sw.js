@@ -5,7 +5,7 @@
 // NAME differs from CACHE — so an unbumped CACHE means every user with the
 // worker already installed keeps being served the OLD shell forever, silently,
 // including any money bug that edit was meant to fix.
-const CACHE = 'moneytrack-v5';
+const CACHE = 'moneytrack-v6';
 
 const SHELL = [
   './',
