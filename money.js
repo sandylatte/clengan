@@ -87,7 +87,26 @@ export function fromCents(cents) {
   return `${sign}${whole}.${fraction}`;
 }
 
+// fromCents above is the machine format: it feeds the Excel export and must
+// stay a plain parseable decimal, because importXlsx reads its own output
+// back. Everything below is for the screen only. Keeping the two apart is
+// what lets the display carry a currency symbol and grouping dots without
+// making a backup file unreadable.
+
+// Rupiah has no circulating subunit — sen was withdrawn in 2002 — so amounts
+// display as whole rupiah with dots for thousands: Rp 300.000. Storage stays
+// integer cents so the arithmetic and the round-trip are unchanged; only the
+// last step before a screen rounds away the hundredths.
+export function formatIDR(cents) {
+  if (!Number.isInteger(cents)) {
+    throw new TypeError(`not an integer cent value: ${JSON.stringify(cents)}`);
+  }
+  const rupiah = Math.round(Math.abs(cents) / 100);
+  const grouped = String(rupiah).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  return `${cents < 0 ? '-' : ''}Rp ${grouped}`;
+}
+
 export function formatAmount(cents) {
-  const text = fromCents(cents);
+  const text = formatIDR(cents);
   return cents > 0 ? `+${text}` : text;
 }

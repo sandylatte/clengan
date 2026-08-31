@@ -26,7 +26,7 @@
   <h1>Add <span class="h1-meta amount" id="head-balance"></span></h1>
   <form id="add-form">
     <label for="add-amount">Amount</label>
-    <input type="number" id="add-amount" step="0.01" min="0" inputmode="decimal" required>
+    <input type="number" id="add-amount" step="1" min="0" inputmode="numeric" required>
 
     <div id="add-kind" role="group" aria-label="Kind">
       <label><input type="radio" name="kind" value="expense" checked> Expense</label>
@@ -99,6 +99,8 @@
 
   <div class="card">
     <h2>Spending by category</h2>
+    <svg id="pie" viewBox="0 0 100 100" role="img" aria-labelledby="pie-desc"></svg>
+    <p id="pie-desc" class="visually-hidden"></p>
     <table class="bars" id="bars">
       <caption class="visually-hidden">Spending by category for the selected month</caption>
       <thead><tr><th scope="col">Category</th><th scope="col">Amount</th></tr></thead>
@@ -202,7 +204,7 @@
       <label for="account-name">Name</label>
       <input type="text" id="account-name" required>
       <label for="account-opening">Opening balance</label>
-      <input type="number" id="account-opening" step="0.01" value="0" inputmode="decimal">
+      <input type="number" id="account-opening" step="1" value="0" inputmode="numeric">
       <button type="submit" class="primary">Save account</button>
     </form>
     <p id="account-status" role="status"></p>

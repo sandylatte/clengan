@@ -1,5 +1,5 @@
 import * as db from './db.js';
-import { toCents, fromCents, formatAmount } from './money.js';
+import { toCents, formatIDR, formatAmount } from './money.js';
 import {
   filterMonth, monthlyTotals, categoryBreakdown, accountBalances, netTrend, bucketTotals, fundsByYear,
 } from './rollup.js';
@@ -297,9 +297,9 @@ function renderBudget(txns) {
     row.style.setProperty('--bar', `${used}%`);
     row.append(
       cell(BUCKET_LABELS[bucket]),
-      cell(fromCents(budget), 'amount'),
-      cell(fromCents(spent), 'amount'),
-      cell(fromCents(remaining), `amount ${remaining < 0 ? 'amount--out' : ''}`),
+      cell(formatIDR(budget), 'amount'),
+      cell(formatIDR(spent), 'amount'),
+      cell(formatIDR(remaining), `amount ${remaining < 0 ? 'amount--out' : ''}`),
     );
     return row;
   });
@@ -312,9 +312,9 @@ function renderBudget(txns) {
   savings.className = 'budget__savings';
   savings.append(
     cell('Savings'),
-    cell(fromCents(t.savings.budget), 'amount'),
+    cell(formatIDR(t.savings.budget), 'amount'),
     cell('—'),
-    cell(fromCents(t.savings.projected), `amount ${t.savings.projected < 0 ? 'amount--out' : 'amount--in'}`),
+    cell(formatIDR(t.savings.projected), `amount ${t.savings.projected < 0 ? 'amount--out' : 'amount--in'}`),
   );
   rows.push(savings);
   document.querySelector('#budget tbody').replaceChildren(...rows);
@@ -323,9 +323,9 @@ function renderBudget(txns) {
   if (t.income === 0) {
     parts.push('No income recorded this month, so every budget is zero.');
   } else {
-    parts.push(`Split from ${fromCents(t.income)} income.`);
-    if (t.savings.unspent > 0) parts.push(`Savings includes ${fromCents(t.savings.unspent)} rolled over from budget you did not spend.`);
-    else if (t.savings.unspent < 0) parts.push(`Overspending of ${fromCents(-t.savings.unspent)} comes out of savings.`);
+    parts.push(`Split from ${formatIDR(t.income)} income.`);
+    if (t.savings.unspent > 0) parts.push(`Savings includes ${formatIDR(t.savings.unspent)} rolled over from budget you did not spend.`);
+    else if (t.savings.unspent < 0) parts.push(`Overspending of ${formatIDR(-t.savings.unspent)} comes out of savings.`);
   }
 
   // Only the unbucketed sentence is a warning. Colouring the whole note red
@@ -336,7 +336,7 @@ function renderBudget(txns) {
   if (t.unbucketed > 0) {
     const warning = document.createElement('span');
     warning.className = 'budget-note__warning';
-    warning.textContent = ` ${fromCents(t.unbucketed)} was spent in categories with no bucket and is not charged to either budget.`;
+    warning.textContent = ` ${formatIDR(t.unbucketed)} was spent in categories with no bucket and is not charged to either budget.`;
     children.push(warning);
   }
   document.getElementById('budget-note').replaceChildren(...children);
@@ -378,8 +378,8 @@ function renderFunds(txns) {
     row.append(
       cell(fund.name),
       cell(`${fund.percent}%`),
-      cell(fromCents(amount), `amount ${amount < 0 ? 'amount--out' : ''}`),
-      cell(fromCents(yearly.get(fund.name)), `amount ${yearly.get(fund.name) < 0 ? 'amount--out' : ''}`),
+      cell(formatIDR(amount), `amount ${amount < 0 ? 'amount--out' : ''}`),
+      cell(formatIDR(yearly.get(fund.name)), `amount ${yearly.get(fund.name) < 0 ? 'amount--out' : ''}`),
     );
     return row;
   });
@@ -389,8 +389,8 @@ function renderFunds(txns) {
   totalRow.append(
     cell('Total'),
     cell(''),
-    cell(fromCents(month), `amount ${month < 0 ? 'amount--out' : 'amount--in'}`),
-    cell(fromCents(year.total), `amount ${year.total < 0 ? 'amount--out' : 'amount--in'}`),
+    cell(formatIDR(month), `amount ${month < 0 ? 'amount--out' : 'amount--in'}`),
+    cell(formatIDR(year.total), `amount ${year.total < 0 ? 'amount--out' : 'amount--in'}`),
   );
   rows.push(totalRow);
   body.replaceChildren(...rows);
@@ -402,6 +402,73 @@ function renderFunds(txns) {
     : `Year column covers ${counted} month${counted === 1 ? '' : 's'} of ${year.year} with income recorded.`;
 }
 
+// DESIGN.md forbids a second chromatic accent, so slices are one hue: the
+// largest takes the accent at full strength and each smaller one steps toward
+// the card behind it. Receding toward the card reads as "less" on a dark tone
+// and a light one alike, which a lightness ramp does not — on graphite the
+// pale end advances, on peach it recedes.
+//
+// color-mix resolves the tokens at paint time, so this follows a tone switch
+// with no JavaScript involved and no colour conversion here.
+function sliceColours(count) {
+  if (count === 0) return [];
+  const FAINTEST = 35;
+  return Array.from({ length: count }, (_, i) => {
+    const strength = count === 1 ? 100 : 100 - ((100 - FAINTEST) * i) / (count - 1);
+    return `color-mix(in srgb, var(--color-primary) ${strength.toFixed(1)}%, var(--color-muted))`;
+  });
+}
+
+function renderPie(breakdown, colours) {
+  const pie = document.getElementById('pie');
+  const total = breakdown.reduce((sum, b) => sum + b.total, 0);
+  pie.hidden = total === 0;
+  if (total === 0) {
+    pie.replaceChildren();
+    document.getElementById('pie-desc').textContent = '';
+    return;
+  }
+
+  const R = 42;
+  const point = (fraction) => {
+    // Start at twelve o'clock and run clockwise, which is how a reader
+    // expects to pick up the largest slice first.
+    const angle = (fraction * 2 * Math.PI) - Math.PI / 2;
+    return [50 + R * Math.cos(angle), 50 + R * Math.sin(angle)];
+  };
+
+  let cursor = 0;
+  const shapes = breakdown.map(({ total: value }, i) => {
+    const share = value / total;
+    const node = document.createElementNS('http://www.w3.org/2000/svg',
+      share >= 0.999 ? 'circle' : 'path');
+    node.setAttribute('fill', colours[i]);
+    // A hairline in the card colour keeps neighbouring slices of a
+    // single-hue ramp from bleeding into one another.
+    node.setAttribute('stroke', 'var(--color-muted)');
+    node.setAttribute('stroke-width', '1');
+    if (share >= 0.999) {
+      // One category owning everything: an arc from 0 to 360 degrees is
+      // degenerate and renders as nothing at all.
+      node.setAttribute('cx', '50');
+      node.setAttribute('cy', '50');
+      node.setAttribute('r', String(R));
+    } else {
+      const [x0, y0] = point(cursor);
+      const [x1, y1] = point(cursor + share);
+      node.setAttribute('d',
+        `M 50 50 L ${x0.toFixed(2)} ${y0.toFixed(2)} `
+        + `A ${R} ${R} 0 ${share > 0.5 ? 1 : 0} 1 ${x1.toFixed(2)} ${y1.toFixed(2)} Z`);
+    }
+    cursor += share;
+    return node;
+  });
+  pie.replaceChildren(...shapes);
+
+  document.getElementById('pie-desc').textContent = 'Spending share: '
+    + breakdown.map((b) => `${b.category} ${Math.round((b.total / total) * 100)}%`).join(', ') + '.';
+}
+
 // txns here is already filtered to rows with an integer amount (see refresh()),
 // so none of the calls below can coerce a bad value into a string/NaN and no
 // try/catch is needed: every section renders fully from clean data. Rows that
@@ -410,24 +477,31 @@ function renderSummary(txns, accounts, invalidTxns) {
   const totals = monthlyTotals(txns, state.month);
   renderBudget(txns);
   renderFunds(txns);
-  document.getElementById('stat-income').textContent = fromCents(totals.income);
-  document.getElementById('stat-spent').textContent = fromCents(-totals.spending);
+  document.getElementById('stat-income').textContent = formatIDR(totals.income);
+  document.getElementById('stat-spent').textContent = formatIDR(-totals.spending);
   const net = document.getElementById('stat-net');
   net.textContent = formatAmount(totals.net);
   net.className = `amount ${totals.net >= 0 ? 'amount--in' : 'amount--out'}`;
 
   const breakdown = categoryBreakdown(txns, state.month);
   const largest = breakdown.length ? breakdown[0].total : 0;
+  const slices = sliceColours(breakdown.length);
   document.getElementById('bars-empty').hidden = breakdown.length > 0;
-  document.querySelector('#bars tbody').replaceChildren(...breakdown.map(({ category, total }) => {
+  renderPie(breakdown, slices);
+  document.querySelector('#bars tbody').replaceChildren(...breakdown.map(({ category, total }, i) => {
     const row = document.createElement('tr');
     // largest is 0 only when breakdown is empty, so this never divides by zero
     row.style.setProperty('--bar', `${Math.round((total / largest) * 100)}%`);
     const name = document.createElement('td');
-    name.textContent = category;
+    // The swatch makes this table the pie's legend, so the chart needs no
+    // labels of its own and stays readable when a slice is a sliver.
+    const swatch = document.createElement('span');
+    swatch.className = 'swatch';
+    swatch.style.background = slices[i];
+    name.append(swatch, document.createTextNode(category));
     const value = document.createElement('td');
     value.className = 'amount';
-    value.textContent = fromCents(total);
+    value.textContent = formatIDR(total);
     row.append(name, value);
     return row;
   }));
@@ -438,7 +512,7 @@ function renderSummary(txns, accounts, invalidTxns) {
   // Same figure as the Balances "Total" row, shown in the Add header so the
   // running total is visible on the view you open the app to.
   const headBalance = document.getElementById('head-balance');
-  headBalance.textContent = accounts.length ? fromCents(total) : '';
+  headBalance.textContent = accounts.length ? formatIDR(total) : '';
   headBalance.classList.toggle('amount--out', total < 0);
 
   document.querySelector('#balances tbody').replaceChildren(
@@ -448,7 +522,7 @@ function renderSummary(txns, accounts, invalidTxns) {
       name.textContent = account;
       const value = document.createElement('td');
       value.className = `amount ${balance < 0 ? 'amount--out' : ''}`;
-      value.textContent = fromCents(balance);
+      value.textContent = formatIDR(balance);
       row.append(name, value);
       return row;
     }),
@@ -460,7 +534,7 @@ function renderSummary(txns, accounts, invalidTxns) {
       name.append(strong);
       const value = document.createElement('td');
       value.className = `amount ${total < 0 ? 'amount--out' : ''}`;
-      value.textContent = fromCents(total);
+      value.textContent = formatIDR(total);
       row.append(name, value);
       return row;
     })(),
@@ -505,7 +579,7 @@ function renderTrend(points) {
   `;
 
   document.getElementById('trend-desc').textContent =
-    'Net by month: ' + points.map((p) => `${p.month} ${fromCents(p.net)}`).join(', ') + '.';
+    'Net by month: ' + points.map((p) => `${p.month} ${formatIDR(p.net)}`).join(', ') + '.';
 }
 
 async function refresh() {
@@ -833,7 +907,7 @@ async function renderAccounts(accounts) {
     main.textContent = name;
     const value = document.createElement('span');
     value.className = 'amount';
-    value.textContent = fromCents(opening_balance);
+    value.textContent = formatIDR(opening_balance);
 
     const remove = document.createElement('button');
     remove.className = 'row__delete';

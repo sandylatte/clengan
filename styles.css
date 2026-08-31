@@ -524,5 +524,25 @@ button.primary:active { filter: brightness(0.92); }
   margin: calc(var(--space-2) * -1) 0 var(--space-3);
 }
 
+/* Capped because a pie gains nothing from being wider than it is tall, and a
+   full-width one on a laptop would dwarf the table that labels it. */
+#pie {
+  display: block;
+  width: 100%;
+  max-width: 240px;
+  height: auto;
+  margin: 0 auto var(--space-4);
+}
+#pie[hidden] { display: none; }
+
+.swatch {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  margin-right: var(--space-1);
+  vertical-align: baseline;
+}
+
 #trend { width: 100%; height: auto; overflow: visible; }
 #summary-status, #list-status { min-height: 20px; font-size: 14px; color: var(--color-subtle); }

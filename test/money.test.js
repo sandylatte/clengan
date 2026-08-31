@@ -48,10 +48,12 @@ test('round trip preserves the value exactly', () => {
   }
 });
 
+// formatAmount is a screen format and follows the display currency. The
+// machine format lives in fromCents and is asserted separately above.
 test('formatAmount marks positives with a plus', () => {
-  assert.equal(formatAmount(4500), '+45.00');
-  assert.equal(formatAmount(-4500), '-45.00');
-  assert.equal(formatAmount(0), '0.00');
+  assert.equal(formatAmount(4500), '+Rp 45');
+  assert.equal(formatAmount(-4500), '-Rp 45');
+  assert.equal(formatAmount(0), 'Rp 0');
 });
 
 test('toCents handles exponential notation', () => {
