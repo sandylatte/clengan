@@ -245,9 +245,37 @@ input, select, button.primary {
   transition: border-color 150ms ease;
 }
 
-input:hover { border-color: var(--color-border-strong); }
-input:focus { border-color: var(--color-border-strong); }
+input:hover, select:hover { border-color: var(--color-border-strong); }
+input:focus, select:focus { border-color: var(--color-border-strong); }
 input[type="number"], input[type="date"], input[type="month"] { font-family: var(--font-num); }
+
+/* The native calendar popup sizes itself to its own content and ignores the
+   field's width, so a wide date input leaves the popup floating under a line
+   twice as wide. The popup is browser chrome and cannot be styled, so the
+   field comes down to meet it instead.
+   Only above phone width: a phone opens a full-screen date picker that has no
+   relationship to the field at all, and there a short field is just a short
+   field sitting out of line with its siblings. */
+@media (min-width: 520px) {
+  input[type="date"], input[type="month"] {
+    width: auto;
+    min-width: 280px;
+    max-width: 100%;
+    display: block;
+  }
+}
+
+/* Without this the arrow renders in the platform's own colour, which is black
+   on the graphite tone and invisible. */
+select {
+  appearance: none;
+  background-image: linear-gradient(45deg, transparent 50%, currentColor 50%),
+                    linear-gradient(135deg, currentColor 50%, transparent 50%);
+  background-position: right var(--space-2) center, calc(100% - var(--space-2) + 5px) center;
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+  padding-right: var(--space-5);
+}
 
 /* The amount is what the user opened the app to type. Size says so. */
 #add-amount {

@@ -35,19 +35,19 @@
     </div>
 
     <label for="add-account" id="add-account-label">Account</label>
-    <input list="accounts" id="add-account" required>
-    <datalist id="accounts"></datalist>
+    <select id="add-account" required></select>
 
     <div id="add-to-wrap" hidden>
       <label for="add-to">To account</label>
-      <input list="accounts" id="add-to">
+      <select id="add-to"></select>
     </div>
 
     <div id="add-category-wrap">
       <label for="add-category">Category</label>
-      <input list="categories" id="add-category" required>
-      <datalist id="categories"></datalist>
+      <select id="add-category" required></select>
     </div>
+
+    <p id="add-setup" class="hint" hidden></p>
 
     <label for="add-note">Note</label>
     <input type="text" id="add-note">
@@ -168,8 +168,9 @@
       <input type="text" id="category-name" required>
       <label for="category-bucket">Bucket</label>
       <select id="category-bucket">
-        <option value="fixed">Fixed</option>
-        <option value="flexible">Flexible</option>
+        <option value="fixed">Fixed expense</option>
+        <option value="flexible">Flexible expense</option>
+        <option value="income">Income</option>
       </select>
       <button type="submit" class="primary">Save category</button>
     </form>

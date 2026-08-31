@@ -40,29 +40,63 @@ function syncKind() {
   document.getElementById('add-category').required = !transfer;
   document.getElementById('add-to').required = transfer;
   accountLabel.textContent = transfer ? 'From account' : 'Account';
+  if (state.categories.length) syncCategoryOptions();
 }
 
 for (const input of kindInputs) input.addEventListener('change', syncKind);
 
-function buildOptions(datalistId, names) {
-  const datalist = document.getElementById(datalistId);
-  datalist.innerHTML = '';
+// A select rather than a datalist, because a datalist offers no visible
+// affordance that a list exists and silently accepts anything typed. That is
+// what let one real account become two ("bank" and "Bank") and what made the
+// category list look broken. Anything offered here is now something that
+// exists; new names are created in Settings, deliberately.
+function fillSelect(select, names, placeholder) {
+  const previous = select.value;
+  const options = [document.createElement('option')];
+  options[0].value = '';
+  options[0].textContent = placeholder;
+  options[0].disabled = true;
   for (const name of names) {
     const option = document.createElement('option');
     option.value = name;
-    datalist.appendChild(option);
+    option.textContent = name;
+    options.push(option);
   }
+  select.replaceChildren(...options);
+  // Keep the selection across a refresh when it still exists, so saving a row
+  // does not silently reset the account you are working through.
+  select.value = names.includes(previous) ? previous : '';
 }
 
-// Names already used on a row stay offered even after their category is
-// deleted, so re-filing an old row does not require re-creating the category.
-async function fillDatalists() {
-  const [accounts, txns, categories] = await Promise.all([
-    db.allAccounts(), db.allTransactions(), db.allCategories(),
-  ]);
-  buildOptions('accounts', accounts.map((a) => a.name));
-  const used = txns.map((t) => t.category).filter(Boolean);
-  buildOptions('categories', [...new Set([...categories.map((c) => c.name), ...used])].sort());
+function syncCategoryOptions() {
+  const income = selectedKind() === 'income';
+  const names = state.categories
+    .filter((c) => (income ? c.bucket === 'income' : c.bucket !== 'income'))
+    .map((c) => c.name)
+    .sort();
+  // Names on existing rows stay selectable even after their category is
+  // deleted, so an old row can still be re-filed under what it already says.
+  const used = state.usedCategories.filter((name) => !names.includes(name));
+  fillSelect(
+    document.getElementById('add-category'),
+    [...names, ...used.sort()],
+    income ? 'Choose an income category' : 'Choose a category',
+  );
+}
+
+async function fillPickers() {
+  const [accounts, txns] = await Promise.all([db.allAccounts(), db.allTransactions()]);
+  const names = accounts.map((a) => a.name).sort();
+  state.usedCategories = [...new Set(txns.map((t) => t.category).filter(Boolean))];
+  fillSelect(document.getElementById('add-account'), names, 'Choose an account');
+  fillSelect(document.getElementById('add-to'), names, 'Choose an account');
+  syncCategoryOptions();
+
+  // Without an account nothing can be saved at all, and an empty select with
+  // no explanation is a dead end. Name the way out.
+  const setup = document.getElementById('add-setup');
+  setup.hidden = names.length > 0;
+  setup.textContent = 'Add an account in Settings before recording anything.';
 }
 
 const saveButton = form.querySelector('button[type="submit"]');
@@ -112,13 +146,6 @@ form.addEventListener('submit', async (event) => {
       return;
     }
 
-    // Ensure any account name typed for the first time exists with a zero
-    // opening balance, so it appears in balances and in the datalist.
-    const accounts = new Set((await db.allAccounts()).map((a) => a.name));
-    for (const name of [account, document.getElementById('add-to').value.trim()]) {
-      if (name && !accounts.has(name)) await db.putAccount(name, 0);
-    }
-
     form.reset();
     document.getElementById('add-date').value = new Date().toISOString().slice(0, 10);
     syncKind();
@@ -131,7 +158,7 @@ form.addEventListener('submit', async (event) => {
   }
 });
 
-const state = { month: new Date().toISOString().slice(0, 7), categories: [], funds: [], split: DEFAULT_SPLIT };
+const state = { month: new Date().toISOString().slice(0, 7), categories: [], usedCategories: [], funds: [], split: DEFAULT_SPLIT };
 
 const monthInput = document.getElementById('list-month');
 monthInput.value = state.month;
@@ -249,7 +276,7 @@ function lastSixMonths(endMonth) {
   return months;
 }
 
-const BUCKET_LABELS = { fixed: 'Fixed', flexible: 'Flexible' };
+const BUCKET_LABELS = { fixed: 'Fixed', flexible: 'Flexible', income: 'Income' };
 
 function renderBudget(txns) {
   const t = bucketTotals(txns, state.categories, state.month, state.split);
@@ -489,7 +516,7 @@ async function refresh() {
   state.categories = categories;
   state.funds = funds;
   state.split = split;
-  await fillDatalists();
+  await fillPickers();
   renderList(txns);
 
   // The List view (renderList above) needs every row, including corrupt ones,
@@ -715,8 +742,11 @@ document.getElementById('category-form').addEventListener('submit', async (event
 });
 
 function renderCategories(categories) {
+  // Group by bucket in the order the form offers them, not alphabetically,
+  // so income does not sort itself in between fixed and flexible.
+  const order = { fixed: 0, flexible: 1, income: 2 };
   const sorted = [...categories].sort(
-    (a, b) => a.bucket.localeCompare(b.bucket) || a.name.localeCompare(b.name),
+    (a, b) => order[a.bucket] - order[b.bucket] || a.name.localeCompare(b.name),
   );
   document.getElementById('category-list').replaceChildren(...sorted.map(({ name, bucket }) => {
     const item = document.createElement('li');

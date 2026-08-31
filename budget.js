@@ -3,9 +3,21 @@
 // lets "Groceries" be fixed on one row and flexible on the next, which no
 // reader can reconcile. Here the category owns the bucket, so a category has
 // exactly one answer and the add form needs no extra field.
+// The two buckets a spend is charged against. Income categories exist too and
+// carry bucket 'income', but they are not budget buckets — nothing is
+// budgeted against income, income is what the budget is divided from. Keep
+// BUCKETS meaning "spending buckets" and every consumer stays correct.
 export const BUCKETS = ['fixed', 'flexible'];
+export const CATEGORY_BUCKETS = ['fixed', 'flexible', 'income'];
+
+export const DEFAULT_INCOME_CATEGORIES = [
+  { name: 'Salary', bucket: 'income' },
+  { name: 'Bonus', bucket: 'income' },
+  { name: 'Other income', bucket: 'income' },
+];
 
 export const DEFAULT_CATEGORIES = [
+  ...DEFAULT_INCOME_CATEGORIES,
   { name: 'Housing & Bills', bucket: 'fixed' },
   { name: 'Insurance', bucket: 'fixed' },
   { name: 'Internet', bucket: 'fixed' },

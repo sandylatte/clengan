@@ -1,7 +1,9 @@
-import { DEFAULT_CATEGORIES, DEFAULT_SPLIT, DEFAULT_FUNDS } from './budget.js';
+import {
+  DEFAULT_CATEGORIES, DEFAULT_INCOME_CATEGORIES, DEFAULT_SPLIT, DEFAULT_FUNDS,
+} from './budget.js';
 
 const DB_NAME = 'moneytrack';
-const DB_VERSION = 3;
+const DB_VERSION = 4;
 
 let dbPromise = null;
 
@@ -38,6 +40,14 @@ export function openDb(name = DB_NAME) {
         // is a delete plus an add, same as categories.
         const funds = database.createObjectStore('funds', { keyPath: 'name' });
         for (const fund of DEFAULT_FUNDS) funds.add(fund);
+      }
+      if (event.oldVersion < 4) {
+        // Income categories were free text until the Add form became a
+        // select, at which point an unlisted category is unenterable. `put`
+        // rather than `add` so a name the user already created by typing it
+        // is adopted into the income bucket instead of colliding.
+        const categories = request.transaction.objectStore('categories');
+        for (const category of DEFAULT_INCOME_CATEGORIES) categories.put(category);
       }
     };
     request.onsuccess = () => resolve(request.result);
