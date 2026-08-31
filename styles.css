@@ -70,8 +70,10 @@
   --color-destructive: #A63E2B;    /* spending, 5.9:1 */
   --color-background: #F3CEC2;
   --color-foreground: #4A2A22;     /* 13:1 */
-  --color-muted: #FAE2DA;
-  --color-input: #FFF1EB;
+  /* The ladder steps up from the canvas without reaching white — a near-white
+     input inside a peach room reads as a hole punched in the wall. */
+  --color-muted: #F7DCD3;
+  --color-input: #FBE8E1;
   --color-subtle: #8A5A4B;         /* 5.4:1 */
   --color-border: #E9C2B5;
   --color-border-strong: #D9A493;
@@ -95,8 +97,14 @@ body {
 }
 
 /* App title bar, not a display heading: the tab bar already names the view,
-   so this stays out of the way and lets content own the fold. */
+   so this stays out of the way and lets content own the fold. The right slot
+   makes the strip earn its space — it carries the running total, the one
+   figure worth seeing before you have typed anything. */
 h1 {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
   position: sticky;
   top: 0;
   z-index: 5;
@@ -110,6 +118,14 @@ h1 {
   line-height: 1.4;
   letter-spacing: -0.01em;
 }
+
+.h1-meta {
+  font-size: 13px;
+  font-weight: 400;
+  letter-spacing: 0;
+  color: var(--color-subtle);
+}
+.h1-meta:empty { display: none; }
 
 h2 {
   font-size: 13px;

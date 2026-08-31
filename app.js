@@ -276,6 +276,14 @@ function renderSummary(txns, accounts, invalidTxns) {
   }));
 
   const balances = accountBalances(txns, accounts);
+  const total = balances.reduce((sum, b) => sum + b.balance, 0);
+
+  // Same figure as the Balances "Total" row, shown in the Add header so the
+  // running total is visible on the view you open the app to.
+  const headBalance = document.getElementById('head-balance');
+  headBalance.textContent = accounts.length ? fromCents(total) : '';
+  headBalance.classList.toggle('amount--out', total < 0);
+
   document.querySelector('#balances tbody').replaceChildren(
     ...balances.map(({ account, balance }) => {
       const row = document.createElement('tr');
@@ -294,7 +302,6 @@ function renderSummary(txns, accounts, invalidTxns) {
       strong.textContent = 'Total';
       name.append(strong);
       const value = document.createElement('td');
-      const total = balances.reduce((sum, b) => sum + b.balance, 0);
       value.className = `amount ${total < 0 ? 'amount--out' : ''}`;
       value.textContent = fromCents(total);
       row.append(name, value);
