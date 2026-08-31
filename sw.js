@@ -5,7 +5,7 @@
 // NAME differs from CACHE — so an unbumped CACHE means every user with the
 // worker already installed keeps being served the OLD shell forever, silently,
 // including any money bug that edit was meant to fix.
-const CACHE = 'moneytrack-v25';
+const CACHE = 'moneytrack-v27';
 
 const SHELL = [
   './',
@@ -44,11 +44,20 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// Cache-first. Every entry is a versioned part of the shell, and the app has
-// no server to be stale against — bump CACHE to ship an update.
+// Cache-first, and deliberately scoped to CACHE.
+//
+// The bare caches.match(request) this replaced searches EVERY cache in this
+// origin, in creation order, and returns the first hit. An older cache that
+// activate() failed to remove therefore shadows the current one for as long
+// as it exists: every reload serves the old shell, the version bump changes
+// nothing, and the app shows weeks-old styling and formatting while looking
+// perfectly up to date. Reading only the current cache makes a leftover inert
+// rather than authoritative.
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
   event.respondWith(
-    caches.match(event.request).then((hit) => hit || fetch(event.request)),
+    caches.open(CACHE)
+      .then((cache) => cache.match(event.request))
+      .then((hit) => hit || fetch(event.request)),
   );
 });

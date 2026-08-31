@@ -987,7 +987,17 @@ syncKind();
 await refresh();
 
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('./sw.js').catch(() => {
+  // updateViaCache: 'none' stops the browser answering the sw.js update check
+  // out of its own HTTP cache. Without it a worker can keep serving a shell
+  // from many versions ago while every reload looks like it checked, which is
+  // how a peach tone from before the button was retuned came back red weeks
+  // later alongside pre-rupiah formatting.
+  navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' }).then((registration) => {
+    // Ask on every launch rather than waiting for the browser's own schedule.
+    // The worker calls skipWaiting, so a newer one takes over on the next
+    // load instead of sitting behind the current one indefinitely.
+    registration.update().catch(() => {});
+  }).catch(() => {
     // Registration fails on file:// and on some private-mode profiles. The
     // app works without it; only offline caching is lost.
   });
