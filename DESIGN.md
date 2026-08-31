@@ -1,548 +1,376 @@
 ---
 version: alpha
-name: Linear-design-analysis
-description: "A near-black product-focused marketing canvas built around #010102 (the deepest dark surface of any tool in this collection), light gray text (#f7f8f8), and the signature Linear lavender-blue (#5e6ad2) used as the single chromatic accent. The system reads as software-craft documentation: dense, technical, and quietly luxurious. Display type is set in the Linear custom sans (SF Pro Display fallback) at 500–700 with measured negative tracking. Cards live as charcoal panels (#0f1011) with hairline borders. The accent lavender appears on the brand mark, focus rings, and a few intentional CTAs — never decoratively. Page rhythm leans on product UI screenshots framed in dark panels rather than atmospheric color."
+name: MoneyTrack
+description: "A phone-first local-only money tracker, shipped as an installable PWA with no build step. Two user-switchable tones share one token vocabulary: Tone A is graphite and brass, a near-black canvas (#0D0E10) carrying a warm metallic accent (#C8A15A); Tone B is peach room, a warm light canvas (#F3CEC2) built from a photographic reference where the frame interior reads brighter than the wall. Type is Fira Sans for UI and Fira Code for every figure, so digits stay in tabular columns. The system is an app UI, not a marketing canvas: the tallest step in the ramp is the amount field at 34px, headings sit at 17px and below, and depth comes from a three-step surface ladder plus hairline borders. Colour carries meaning only — green for income, red for spending, the accent for the primary action and the active tab. Nothing is decorative."
 
 colors:
-  primary: "#5e6ad2"
-  on-primary: "#ffffff"
-  primary-hover: "#828fff"
-  primary-focus: "#5e69d1"
-  ink: "#f7f8f8"
-  ink-muted: "#d0d6e0"
-  ink-subtle: "#8a8f98"
-  ink-tertiary: "#62666d"
-  canvas: "#010102"
-  surface-1: "#0f1011"
-  surface-2: "#141516"
-  surface-3: "#18191a"
-  surface-4: "#191a1b"
-  hairline: "#23252a"
-  hairline-strong: "#34343a"
-  hairline-tertiary: "#3e3e44"
-  inverse-canvas: "#ffffff"
-  inverse-surface-1: "#f5f6f6"
-  inverse-surface-2: "#f6f7f7"
-  inverse-ink: "#000000"
-  brand-secure: "#7a7fad"
-  semantic-success: "#27a644"
-  semantic-overlay: "#000000"
+  primary: "#C8A15A"
+  primary-hover: "#D9B978"
+  on-primary: "#1A1408"
+  active: "#D9B978"
+  accent: "#4FA96B"
+  destructive: "#DF6B60"
+  background: "#0D0E10"
+  foreground: "#EDEEF0"
+  muted: "#17191C"
+  input: "#1E2125"
+  subtle: "#8B9099"
+  border: "#232629"
+  border-strong: "#3A3E44"
+  peach-primary: "#D7B4AD"
+  peach-primary-hover: "#E0C2BC"
+  peach-on-primary: "#4A2A22"
+  peach-active: "#8E3A26"
+  peach-accent: "#2F6B4F"
+  peach-destructive: "#A63E2B"
+  peach-background: "#F3CEC2"
+  peach-foreground: "#4A2A22"
+  peach-muted: "#F7DCD3"
+  peach-input: "#FBE8E1"
+  peach-subtle: "#8A5A4B"
+  peach-border: "#E9C2B5"
+  peach-border-strong: "#D9A493"
+  peach-tabbar: "#EFC5B7"
+  peach-bar: "#F0C0B0"
 
 typography:
-  display-xl:
-    fontFamily: Linear Display
-    fontSize: 80px
-    fontWeight: 600
-    lineHeight: 1.05
-    letterSpacing: -3.0px
-  display-lg:
-    fontFamily: Linear Display
-    fontSize: 56px
-    fontWeight: 600
-    lineHeight: 1.10
-    letterSpacing: -1.8px
-  display-md:
-    fontFamily: Linear Display
-    fontSize: 40px
-    fontWeight: 600
-    lineHeight: 1.15
-    letterSpacing: -1.0px
-  headline:
-    fontFamily: Linear Display
-    fontSize: 28px
-    fontWeight: 600
-    lineHeight: 1.20
-    letterSpacing: -0.6px
-  card-title:
-    fontFamily: Linear Display
-    fontSize: 22px
+  amount-hero:
+    fontFamily: Fira Code
+    fontSize: 34px
     fontWeight: 500
-    lineHeight: 1.25
-    letterSpacing: -0.4px
-  subhead:
-    fontFamily: Linear Display
+    lineHeight: 1.2
+    letterSpacing: -0.02em
+  stat-net:
+    fontFamily: Fira Code
+    fontSize: 40px
+    fontWeight: 700
+    lineHeight: 1.1
+    letterSpacing: -1.5px
+  stat-value:
+    fontFamily: Fira Code
     fontSize: 20px
-    fontWeight: 400
-    lineHeight: 1.40
-    letterSpacing: -0.2px
-  body-lg:
-    fontFamily: Linear Text
-    fontSize: 18px
-    fontWeight: 400
-    lineHeight: 1.50
-    letterSpacing: -0.1px
+    fontWeight: 500
+    lineHeight: 1.2
+    letterSpacing: 0
+  title-bar:
+    fontFamily: Fira Sans
+    fontSize: 17px
+    fontWeight: 600
+    lineHeight: 1.4
+    letterSpacing: -0.01em
   body:
-    fontFamily: Linear Text
+    fontFamily: Fira Sans
     fontSize: 16px
     fontWeight: 400
-    lineHeight: 1.50
-    letterSpacing: -0.05px
-  body-sm:
-    fontFamily: Linear Text
+    lineHeight: 1.5
+    letterSpacing: 0
+  row-amount:
+    fontFamily: Fira Code
+    fontSize: 15px
+    fontWeight: 500
+    lineHeight: 1.4
+    letterSpacing: 0
+  control:
+    fontFamily: Fira Sans
     fontSize: 14px
     fontWeight: 400
-    lineHeight: 1.50
+    lineHeight: 1.4
     letterSpacing: 0
-  caption:
-    fontFamily: Linear Text
+  section-heading:
+    fontFamily: Fira Sans
+    fontSize: 13px
+    fontWeight: 500
+    lineHeight: 1.4
+    letterSpacing: 0.06em
+  supporting:
+    fontFamily: Fira Sans
+    fontSize: 13px
+    fontWeight: 400
+    lineHeight: 1.5
+    letterSpacing: 0
+  row-meta:
+    fontFamily: Fira Sans
     fontSize: 12px
     fontWeight: 400
-    lineHeight: 1.40
+    lineHeight: 1.4
     letterSpacing: 0
-  button:
-    fontFamily: Linear Text
-    fontSize: 14px
+  stat-label:
+    fontFamily: Fira Sans
+    fontSize: 12px
     fontWeight: 500
-    lineHeight: 1.20
-    letterSpacing: 0
-  eyebrow:
-    fontFamily: Linear Text
-    fontSize: 13px
-    fontWeight: 500
-    lineHeight: 1.30
-    letterSpacing: 0.4px
-  mono:
-    fontFamily: Linear Mono
-    fontSize: 13px
+    lineHeight: 1.3
+    letterSpacing: 0.08em
+  tab-label:
+    fontFamily: Fira Sans
+    fontSize: 11px
     fontWeight: 400
-    lineHeight: 1.50
-    letterSpacing: 0
+    lineHeight: 1.2
+    letterSpacing: 0.01em
+  column-heading:
+    fontFamily: Fira Sans
+    fontSize: 11px
+    fontWeight: 500
+    lineHeight: 1.3
+    letterSpacing: 0.04em
 
 rounded:
-  xs: 4px
   sm: 6px
   md: 8px
   lg: 12px
-  xl: 16px
-  xxl: 24px
-  pill: 9999px
-  full: 9999px
 
 spacing:
-  xxs: 4px
-  xs: 8px
-  sm: 12px
-  md: 16px
-  lg: 24px
-  xl: 32px
-  xxl: 48px
-  section: 96px
+  space-0: 4px
+  space-1: 8px
+  space-2: 12px
+  space-3: 16px
+  space-4: 24px
+  space-5: 32px
+  space-6: 48px
 
 components:
+  title-bar:
+    backgroundColor: "{colors.background}"
+    textColor: "{colors.foreground}"
+    typography: "{typography.title-bar}"
+    padding: 12px 16px
   button-primary:
     backgroundColor: "{colors.primary}"
     textColor: "{colors.on-primary}"
-    typography: "{typography.button}"
+    typography: "{typography.control}"
     rounded: "{rounded.md}"
-    padding: 8px 14px
-  button-primary-pressed:
-    backgroundColor: "{colors.primary-focus}"
-    textColor: "{colors.on-primary}"
-    typography: "{typography.button}"
-    rounded: "{rounded.md}"
-  button-primary-hover:
-    backgroundColor: "{colors.primary-hover}"
-    textColor: "{colors.on-primary}"
-    typography: "{typography.button}"
-    rounded: "{rounded.md}"
-  button-secondary:
-    backgroundColor: "{colors.surface-1}"
-    textColor: "{colors.ink}"
-    typography: "{typography.button}"
-    rounded: "{rounded.md}"
-    padding: 8px 14px
-  button-tertiary:
-    backgroundColor: "{colors.canvas}"
-    textColor: "{colors.ink}"
-    typography: "{typography.button}"
-    rounded: "{rounded.md}"
-    padding: 8px 14px
-  button-inverse:
-    backgroundColor: "{colors.inverse-canvas}"
-    textColor: "{colors.inverse-ink}"
-    typography: "{typography.button}"
-    rounded: "{rounded.md}"
-    padding: 8px 14px
-  pricing-card:
-    backgroundColor: "{colors.surface-1}"
-    textColor: "{colors.ink}"
+    minHeight: 44px
+  card:
+    backgroundColor: "{colors.muted}"
+    textColor: "{colors.foreground}"
     typography: "{typography.body}"
     rounded: "{rounded.lg}"
     padding: 24px
-  pricing-card-featured:
-    backgroundColor: "{colors.surface-2}"
-    textColor: "{colors.ink}"
-    typography: "{typography.body}"
-    rounded: "{rounded.lg}"
-    padding: 24px
-  feature-card:
-    backgroundColor: "{colors.surface-1}"
-    textColor: "{colors.ink}"
-    typography: "{typography.body}"
-    rounded: "{rounded.lg}"
-    padding: 24px
-  product-screenshot-card:
-    backgroundColor: "{colors.surface-1}"
-    textColor: "{colors.ink}"
-    typography: "{typography.body}"
-    rounded: "{rounded.xl}"
-    padding: 24px
-  testimonial-card:
-    backgroundColor: "{colors.surface-1}"
-    textColor: "{colors.ink}"
-    typography: "{typography.body-lg}"
-    rounded: "{rounded.lg}"
-    padding: 32px
-  customer-logo-tile:
-    backgroundColor: "{colors.canvas}"
-    textColor: "{colors.ink-subtle}"
-    typography: "{typography.caption}"
-    rounded: "{rounded.xs}"
-    padding: 16px
   text-input:
-    backgroundColor: "{colors.surface-1}"
-    textColor: "{colors.ink}"
+    backgroundColor: "{colors.input}"
+    textColor: "{colors.foreground}"
+    typography: "{typography.control}"
+    rounded: "{rounded.md}"
+    minHeight: 44px
+  amount-input:
+    backgroundColor: "{colors.input}"
+    textColor: "{colors.foreground}"
+    typography: "{typography.amount-hero}"
+    rounded: "{rounded.md}"
+    minHeight: 64px
+  segmented-option:
+    backgroundColor: "{colors.input}"
+    textColor: "{colors.foreground}"
+    typography: "{typography.control}"
+    rounded: "{rounded.sm}"
+    minHeight: 38px
+  segmented-option-selected:
+    backgroundColor: "{colors.primary}"
+    textColor: "{colors.on-primary}"
+    typography: "{typography.control}"
+    rounded: "{rounded.sm}"
+    minHeight: 38px
+  tab-item:
+    backgroundColor: "{colors.background}"
+    textColor: "{colors.subtle}"
+    typography: "{typography.tab-label}"
+    minHeight: 56px
+  tab-item-active:
+    backgroundColor: "{colors.background}"
+    textColor: "{colors.active}"
+    typography: "{typography.tab-label}"
+    minHeight: 56px
+  ledger-row:
+    backgroundColor: "{colors.background}"
+    textColor: "{colors.foreground}"
     typography: "{typography.body}"
     rounded: "{rounded.md}"
-    padding: 8px 12px
-  text-input-focused:
-    backgroundColor: "{colors.surface-1}"
-    textColor: "{colors.ink}"
+    minHeight: 44px
+  budget-table:
+    backgroundColor: "{colors.muted}"
+    textColor: "{colors.foreground}"
+    typography: "{typography.supporting}"
+    padding: 12px 4px
+  bar-row:
+    backgroundColor: "{colors.bar}"
+    textColor: "{colors.foreground}"
     typography: "{typography.body}"
-    rounded: "{rounded.md}"
-    padding: 8px 12px
-  pricing-tab-default:
-    backgroundColor: "{colors.canvas}"
-    textColor: "{colors.ink-subtle}"
-    typography: "{typography.button}"
-    rounded: "{rounded.pill}"
-    padding: 6px 14px
-  pricing-tab-selected:
-    backgroundColor: "{colors.surface-2}"
-    textColor: "{colors.ink}"
-    typography: "{typography.button}"
-    rounded: "{rounded.pill}"
-    padding: 6px 14px
-  cta-banner:
-    backgroundColor: "{colors.surface-1}"
-    textColor: "{colors.ink}"
-    typography: "{typography.headline}"
-    rounded: "{rounded.lg}"
-    padding: 48px
-  changelog-row:
-    backgroundColor: "{colors.canvas}"
-    textColor: "{colors.ink}"
-    typography: "{typography.body}"
-    rounded: "{rounded.xs}"
-    padding: 24px 0
-  status-badge:
-    backgroundColor: "{colors.surface-2}"
-    textColor: "{colors.ink-muted}"
-    typography: "{typography.caption}"
-    rounded: "{rounded.pill}"
-    padding: 2px 8px
-  top-nav:
-    backgroundColor: "{colors.canvas}"
-    textColor: "{colors.ink}"
-    typography: "{typography.body-sm}"
-    rounded: "{rounded.xs}"
-    height: 56px
-  footer:
-    backgroundColor: "{colors.canvas}"
-    textColor: "{colors.ink-subtle}"
-    typography: "{typography.caption}"
-    rounded: "{rounded.xs}"
-    padding: 64px 32px
+    padding: 12px
 ---
 
 ## Overview
 
-Linear's marketing canvas is the deepest dark surface in this collection — `{colors.canvas}` is #010102, essentially pure black with a faint blue tint. On top sits a four-step surface ladder (`{colors.surface-1}` through `{colors.surface-4}`) for cards, panels, and lifted tiles, with hairline borders running from `{colors.hairline}` (#23252a) up through `{colors.hairline-strong}` and `{colors.hairline-tertiary}`. Light gray text (`{colors.ink}` #f7f8f8) carries the body and headlines.
+MoneyTrack is a local-only money tracker installed to a phone home screen. It has no server, no accounts, and no build step: the shipped artifact is hand-written HTML, CSS, and ES modules served by a cache-first service worker. Every design decision below follows from that, and from one fact about the product: the user opens it to type a number and leave.
 
-The single chromatic accent is **Linear lavender-blue** `{colors.primary}` (#5e6ad2) — used on the brand mark, focus rings, and the primary CTA button. A lighter hover state (`{colors.primary-hover}` #828fff) and a focus-tinted variant (`{colors.primary-focus}` #5e69d1) extend the same hue. Linear avoids saturated greens, oranges, reds, etc. on the marketing canvas — the only semantic color is `{colors.semantic-success}` (#27a644) for status pills and the rare success indicator.
+The system ships **two tones the user switches in Settings**. They share one token vocabulary, so no rule outside the two `:root` blocks knows which tone is active. Tone A, graphite and brass, is the default. Tone B, peach room, was derived from a photographic reference the user supplied — a warm monochrome interior where the frame interior reads brighter than the wall, which is why cards in Tone B sit *lighter* than the canvas while cards in Tone A sit darker.
 
-Display type runs Linear's custom sans (with `SF Pro Display` fallback) at weight 500–700 with negative letter-spacing scaling from -3.0px at 80px down to 0 at body. The body family is Linear's text cut, and a Linear Mono is reserved for code snippets in product screenshots.
+**Key characteristics:**
+- **Two tones, one token set.** `--color-primary`, `--color-foreground`, and the rest resolve per tone. Consuming rules are token-only; there are no hardcoded colours below the palette blocks.
+- **`--color-active` is split from `--color-primary`.** A fill dark enough to carry white label text is too dark to read as an 11px tab label. One token cannot do both jobs.
+- **`--shadow-primary` is a token, not a constant.** Tone A's brass separates from graphite unaided and sets it to `none`; Tone B's pale fill on a pale card reaches only 1.5:1 and is lifted by a shadow instead.
+- **The amount field is the tallest thing in the app** at 34px and 64px tall. Headings are 17px and below. This is an app, not a page.
+- **Every figure is Fira Code with `tabular-nums`.** Columns of money must align.
+- **Colour means something or it is absent.** Green is income, red is spending or a warning, the accent is the primary action and the active tab. There is no decorative colour.
+- **Depth is a three-step surface ladder plus hairline borders.** Canvas → card → input, no shadows except the one Tone B needs.
 
-The page rhythm is **dense product screenshots** — Linear's marketing leads with high-fidelity captures of the product UI (issue list, project view, dashboard) framed in `{colors.surface-1}` panels with `{rounded.xl}` 16px corners. The chrome is intentionally minimal so the app screenshots can do the heavy lifting.
+## Colours
 
-**Key Characteristics:**
-- **Dark-canvas marketing system** — `{colors.canvas}` (#010102) is the deepest dark in this collection.
-- **Lavender-blue brand accent** (`{colors.primary}` #5e6ad2) — used scarcely on brand mark, focus, and the primary CTA.
-- Four-step surface ladder (canvas → surface-1 → surface-2 → surface-3 → surface-4) carries hierarchy without shadow.
-- Display tracking pulls aggressively negative (-3.0px at 80px); body holds at -0.05px.
-- Cards use `{rounded.lg}` 12px corners with 1px hairline borders — never pill, rarely 16px.
-- **Product UI screenshots** dominate the page. The marketing chrome is a dark frame for the app.
-- No second chromatic color. No atmospheric gradients. No spotlight cards.
+### Tone A — graphite and brass (default)
 
-## Colors
+The canvas is `#0D0E10`, a near-black with a slight cool cast. The accent is brass `#C8A15A`, chosen because a money app in a warm monochrome world cannot also use a bright red for "spent" without the two colliding — spending is desaturated to `#DF6B60` for the same reason.
 
-> Source pages: linear.app (home), /intake, /pricing, /contact/sales, /build.
+| Token | Value | Ratio | Use |
+|---|---|---|---|
+| `{colors.primary}` | #C8A15A | 7.4:1 on card | Primary button fill, bar leading edge, selected segment |
+| `{colors.primary-hover}` | #D9B978 | | Hovered primary button |
+| `{colors.on-primary}` | #1A1408 | 7.7:1 on primary | Label on the primary fill |
+| `{colors.active}` | #D9B978 | | Active tab label and icon, focus ring |
+| `{colors.accent}` | #4FA96B | 6.1:1 | Income figures, success status |
+| `{colors.destructive}` | #DF6B60 | 5.4:1 | Spending figures, errors, negative remaining |
+| `{colors.background}` | #0D0E10 | | Page canvas, tab bar |
+| `{colors.foreground}` | #EDEEF0 | 15:1 | Body and figures |
+| `{colors.muted}` | #17191C | | Card surface, file-button surface |
+| `{colors.input}` | #1E2125 | | Form field surface |
+| `{colors.subtle}` | #8B9099 | 6.1:1 | Section headings, row meta, inactive tabs, supporting copy |
+| `{colors.border}` | #232629 | | Card and row hairlines |
+| `{colors.border-strong}` | #3A3E44 | | Field borders, the rule above the savings row |
 
-### Brand & Accent
-- **Lavender-Blue** ({colors.primary}): The signature Linear accent — primary CTA, brand mark, link emphasis.
-- **Lavender Hover** ({colors.primary-hover}): Lighter lavender (#828fff) — hovered state of the primary CTA.
-- **Lavender Focus** ({colors.primary-focus}): Focus-ring tint (#5e69d1) — focused inputs, focused buttons.
-- **Brand Secure** ({colors.brand-secure}): Muted lavender-gray (#7a7fad) — used in "Linear Security" surfaces.
+### Tone B — peach room
 
-### Surface
-- **Canvas** ({colors.canvas}): Default page background — #010102, near-pure black with a faint blue tint.
-- **Surface 1** ({colors.surface-1}): One step above canvas — feature cards, pricing cards, product screenshot panels.
-- **Surface 2** ({colors.surface-2}): Two steps above — featured pricing card, hovered cards.
-- **Surface 3** ({colors.surface-3}): Three steps above — line-tertiary backgrounds, sub-nav.
-- **Surface 4** ({colors.surface-4}): Four steps above — bg-level-3, deepest lifted surface.
-- **Hairline** ({colors.hairline}): 1px borders on cards and dividers.
-- **Hairline Strong** ({colors.hairline-strong}): Stronger 1px borders — input focus rings.
-- **Hairline Tertiary** ({colors.hairline-tertiary}): Tertiary borders for nested surfaces.
-- **Inverse Canvas** ({colors.inverse-canvas}): Pure white — surface of the inverse pill CTA on a small set of section openers.
-- **Inverse Surface 1** ({colors.inverse-surface-1}): One step above inverse canvas.
-- **Inverse Surface 2** ({colors.inverse-surface-2}): Two steps above inverse canvas.
+The canvas is `#F3CEC2`. The palette holds one hue family throughout; income green and spending red are both pulled toward it rather than sitting on top of it as foreign accents.
 
-### Text
-- **Ink** ({colors.ink}): All headlines and emphasized body type — light gray #f7f8f8.
-- **Ink Muted** ({colors.ink-muted}): Secondary type at #d0d6e0 — meta info on hero panels.
-- **Ink Subtle** ({colors.ink-subtle}): Tertiary type at #8a8f98 — deselected pricing tabs, footer columns.
-- **Ink Tertiary** ({colors.ink-tertiary}): Quaternary at #62666d — disabled, footnotes.
+| Token | Value | Ratio | Use |
+|---|---|---|---|
+| `{colors.peach-primary}` | #D7B4AD | 1.5:1 on card | Primary button fill |
+| `{colors.peach-primary-hover}` | #E0C2BC | | Hovered primary button |
+| `{colors.peach-on-primary}` | #4A2A22 | 6.66:1 on primary | Label on the primary fill |
+| `{colors.peach-active}` | #8E3A26 | 4.8:1 on the tab strip | Active tab label and icon |
+| `{colors.peach-accent}` | #2F6B4F | 5.6:1 | Income figures |
+| `{colors.peach-destructive}` | #A63E2B | 5.9:1 | Spending figures, errors |
+| `{colors.peach-background}` | #F3CEC2 | | Page canvas |
+| `{colors.peach-foreground}` | #4A2A22 | 13:1 | Body and figures |
+| `{colors.peach-muted}` | #F7DCD3 | | Card surface |
+| `{colors.peach-input}` | #FBE8E1 | | Form field surface |
+| `{colors.peach-subtle}` | #8A5A4B | 5.4:1 | Section headings, row meta, supporting copy |
+| `{colors.peach-border}` | #E9C2B5 | | Card and row hairlines |
+| `{colors.peach-border-strong}` | #D9A493 | | Field borders |
+| `{colors.peach-tabbar}` | #EFC5B7 | | Tab strip, a step off the canvas |
 
-### Semantic
-- **Success Green** ({colors.semantic-success}): Status pills, success indicators. The only semantic color on marketing.
-- **Overlay** ({colors.semantic-overlay}): Pure black overlay scrim for modals.
+**The one accepted contrast shortfall.** Tone B's button fill is 1.5:1 against the card, below the 3:1 WCAG floor for a non-text UI boundary. The user asked repeatedly for a light pink button, and no pink light enough to read as pink reaches 3:1 on a pale card. The button is therefore bounded by `--shadow-primary` rather than an outline, and its label carries identification at 6.66:1. This is a documented, deliberate exception, not an oversight — it is the only one in the system.
 
 ## Typography
 
-### Font Family
+### Families
 
-- **Linear Display** — Linear's custom display sans; fallback `SF Pro Display, -apple-system, system-ui, Segoe UI, Roboto`. Carries display-xl through subhead.
-- **Linear Text** — Linear's custom text sans (a slightly different cut tuned for body sizes); same fallback stack. Carries body sizes, button labels, captions.
-- **Linear Mono** — Linear's custom mono; fallback `ui-monospace, SF Mono, Menlo`. Used for code snippets in product screenshots and for status / ID tokens.
+- **Fira Sans** — self-hosted variable WOFF2 at `vendor/fira-sans.woff2`, weight range 300–700. Every piece of UI text.
+- **Fira Code** — self-hosted variable WOFF2 at `vendor/fira-code.woff2`, weight range 400–700. Every figure, always with `font-variant-numeric: tabular-nums`.
 
-The marketing surface treats Display and Text as one continuous voice; the family change is silent.
+Both are in the service worker shell, so the app renders in its own type offline. Neither loads from a CDN.
 
-### Hierarchy
+### Ramp
 
-| Token | Size | Weight | Line Height | Letter Spacing | Use |
-|---|---|---|---|---|---|
-| `{typography.display-xl}` | 80px | 600 | 1.05 | -3.0px | Largest hero headline |
-| `{typography.display-lg}` | 56px | 600 | 1.10 | -1.8px | Section opener headlines |
-| `{typography.display-md}` | 40px | 600 | 1.15 | -1.0px | Sub-section headlines |
-| `{typography.headline}` | 28px | 600 | 1.20 | -0.6px | Pricing tier titles, CTA banner heading |
-| `{typography.card-title}` | 22px | 500 | 1.25 | -0.4px | Feature card title |
-| `{typography.subhead}` | 20px | 400 | 1.40 | -0.2px | Lead body, intro paragraphs |
-| `{typography.body-lg}` | 18px | 400 | 1.50 | -0.1px | Hero subhead, lead paragraphs |
-| `{typography.body}` | 16px | 400 | 1.50 | -0.05px | Default body |
-| `{typography.body-sm}` | 14px | 400 | 1.50 | 0 | Card body, footer columns |
-| `{typography.caption}` | 12px | 400 | 1.40 | 0 | Captions, meta, status |
-| `{typography.button}` | 14px | 500 | 1.20 | 0 | All button labels |
-| `{typography.eyebrow}` | 13px | 500 | 1.30 | 0.4px | Section eyebrow (slight positive tracking) |
-| `{typography.mono}` | 13px | 400 | 1.50 | 0 | Linear Mono for code in product screenshots |
+This is an app ramp, not a marketing ramp. The largest step belongs to a data figure, not a heading.
+
+| Token | Size | Weight | Tracking | Use |
+|---|---|---|---|---|
+| `{typography.stat-net}` | 40px | 700 | -1.5px | The month's net, the one number on the Summary fold |
+| `{typography.amount-hero}` | 34px | 500 | -0.02em | The Add form's amount field |
+| `{typography.stat-value}` | 20px | 500 | 0 | Income and spent totals |
+| `{typography.title-bar}` | 17px | 600 | -0.01em | Sticky view title |
+| `{typography.body}` | 16px | 400 | 0 | Body, row titles, form values |
+| `{typography.row-amount}` | 15px | 500 | 0 | Amount on a ledger row |
+| `{typography.control}` | 14px | 400 | 0 | Inputs, buttons, status lines |
+| `{typography.section-heading}` | 13px | 500 | 0.06em | Card headings, uppercase |
+| `{typography.supporting}` | 13px | 400 | 0 | Hints, budget note, budget figures |
+| `{typography.row-meta}` | 12px | 400 | 0 | Date, account and note beneath a row title |
+| `{typography.stat-label}` | 12px | 500 | 0.08em | Stat labels, uppercase |
+| `{typography.tab-label}` | 11px | 400 | 0.01em | Tab bar labels |
+| `{typography.column-heading}` | 11px | 500 | 0.04em | Budget table column headings, uppercase |
 
 ### Principles
 
-- **Aggressive negative tracking on display** (-3.0px at 80px ≈ 4% of size).
-- **Single voice from display to body.** Display-xl at 600 → body at 400 — same family, narrower weights.
-- **Eyebrow uses positive tracking** (+0.4px) — contrast against the negative-tracked display marks the eyebrow as taxonomy.
-- **Mono only in code contexts.** Linear Mono lives inside product screenshots — not on marketing chrome.
-
-### Note on Font Substitutes
-
-Linear's custom typeface isn't publicly distributed; the documented fallback `SF Pro Display, -apple-system, system-ui` is the recommended substitute on macOS. For cross-platform implementation, **Inter** at weight 500 / 600 / 700 is the closest free substitute. **Geist Sans** is also viable. For mono, **JetBrains Mono** or **Geist Mono** at weight 400 closely approximates Linear Mono.
+- **Figures never fall back to the UI face.** Any element showing money carries `.amount`, which sets Fira Code and tabular numerals.
+- **Positive tracking marks taxonomy.** The three uppercase steps — section heading, stat label, column heading — track positive. Everything else tracks zero or negative.
+- **17px is the ceiling for text.** Anything larger in this system is a number.
+- **Two steps at 13px and two at 11px** differ by weight and case, not size. Adding a size step to separate them would be the wrong fix.
 
 ## Layout
 
-### Spacing System
+### Spacing
 
-- **Base unit**: 4px.
-- **Tokens (front matter)**: `{spacing.xxs}` 4px · `{spacing.xs}` 8px · `{spacing.sm}` 12px · `{spacing.md}` 16px · `{spacing.lg}` 24px · `{spacing.xl}` 32px · `{spacing.xxl}` 48px · `{spacing.section}` 96px.
-- Card interior padding: `{spacing.lg}` 24px on feature/pricing cards; `{spacing.xl}` 32px on testimonial cards; `{spacing.xxl}` 48px on CTA banners.
-- Pill button padding: 8px vertical · 14px horizontal — Linear's compact button spec.
-- Form input padding: 8px vertical · 12px horizontal.
+Base unit 4px. Tokens run `{spacing.space-0}` 4px through `{spacing.space-6}` 48px.
 
-### Grid & Container
+Card interior padding is `{spacing.space-4}` 24px. View padding is `{spacing.space-4}` vertical and `{spacing.space-2}` 12px horizontal. The budget table tightens its column padding to 4px because four money columns have to clear 375px; anything roomier pushes the last column off the screen edge.
 
-- Max content width sits around 1280px.
-- Card grids are 3-up at desktop, 2-up at tablet, 1-up at mobile.
-- Pricing tier grid is 3-up; comparison strip below shows checkmarks per tier.
-- Product screenshot panels span full content width — they're the protagonist.
+### Container
 
-### Whitespace Philosophy
+`.view` is `max-width: 620px; margin: 0 auto`. The app is phone-first, but a laptop should not get 1400px-wide inputs.
 
-The dark canvas IS the whitespace. Sections separate by lift onto surface-1 panels, not by gaps in white. Within a panel, generous `{spacing.lg}` 24px gaps between content blocks; `{spacing.section}` 96px between sections.
+`body` carries `padding-bottom: 88px` to clear the fixed tab bar.
 
-## Elevation & Depth
+### Title bar
+
+The `h1` is a sticky bar, not a display heading. The tab bar already names the view, so the title stays out of the way and lets content own the fold. It is a flex row: the view name on the left, and a right slot that carries live context — the running account total on Add. A bar that only repeats the highlighted tab label has not earned its space.
+
+## Elevation and depth
 
 | Level | Treatment | Use |
 |---|---|---|
-| 0 (flat) | No shadow, no border | Default for body type, hero text, footer |
-| 1 (charcoal lift) | `{colors.surface-1}` background on canvas, 1px `{colors.hairline}` | Default cards, product panels |
-| 2 (surface-2 lift) | `{colors.surface-2}` background, 1px `{colors.hairline-strong}` | Featured pricing card, hovered cards |
-| 3 (surface-3 lift) | `{colors.surface-3}` background | Sub-nav, dropdown menus |
-| 4 (focus ring) | 2px `{colors.primary-focus}` outline at 50% opacity | Focused input, focused button |
+| 0 | `{colors.background}`, no border | Canvas, tab bar, ledger rows at rest |
+| 1 | `{colors.muted}` + 1px `{colors.border}` | Cards |
+| 2 | `{colors.input}` + 1px `{colors.border-strong}` | Form fields inside a card |
+| Focus | 2px `{colors.active}` outline, 2px offset | Any focused control |
 
-Linear's depth is carried by surface ladder + hairline borders. The brand resists drop shadows on dark almost entirely.
-
-### Decorative Depth
-
-- **Product UI screenshots** dominate as decorative depth.
-- **No atmospheric gradients, no spotlight cards.**
-- **Subtle white edge highlight** on the top edge of lifted panels — gives the dark surface a faint "pixel rendered" feel.
-
-## Shapes
-
-### Border Radius Scale
-
-| Token | Value | Use |
-|---|---|---|
-| `{rounded.xs}` | 4px | Small chips, status badges |
-| `{rounded.sm}` | 6px | Inline tags |
-| `{rounded.md}` | 8px | All buttons, form inputs |
-| `{rounded.lg}` | 12px | Pricing cards, feature cards, testimonial cards |
-| `{rounded.xl}` | 16px | Product screenshot panels |
-| `{rounded.xxl}` | 24px | Oversized CTA banners (rare) |
-| `{rounded.pill}` | 9999px | Pricing tab toggles, status pills |
-| `{rounded.full}` | 9999px | Avatar circles |
-
-### Photography & Illustration Geometry
-
-- Product UI screenshots dominate; they sit in `{rounded.xl}` 16px tiles with `{spacing.lg}` 24px outer padding.
-- Customer logo tiles render at small sizes (~24px logo height) on `{colors.canvas}` with no border.
-- Avatar circles in testimonial cards use `{rounded.full}` at 32–40px sizes.
+Depth is surface plus hairline. The single shadow in the system is `--shadow-primary`, which is `none` in Tone A and a two-layer contact-plus-diffusion shadow in Tone B, where it is the only thing marking the primary button's edge.
 
 ## Components
 
-### Buttons
+**`title-bar`** — Sticky, `backdrop-filter: blur(12px)` over an 88%-opaque canvas, 1px bottom border. Flex row, `justify-content: space-between`, baseline aligned. The right slot hides itself when empty via `:empty`.
 
-**`button-primary`** — Lavender CTA. The default primary CTA across all pages.
-- Background `{colors.primary}`, text `{colors.on-primary}`, type `{typography.button}`, padding 8px 14px, rounded `{rounded.md}`.
-- Pressed state lives in `button-primary-pressed` (background shifts to `{colors.primary-focus}`).
-- Hover state lives in `button-primary-hover` (background shifts to `{colors.primary-hover}` lighter lavender).
+**`button-primary`** — `{colors.primary}` fill, `{colors.on-primary}` label, no border, `{rounded.md}`, `min-height: 44px`, full width inside a form. Carries `--shadow-primary`. The pressed state is `filter: brightness(0.92)`, which works in both tones without a second token.
 
-**`button-secondary`** — Charcoal button. Used for secondary CTAs ("Sign in", "Read changelog").
-- Background `{colors.surface-1}`, text `{colors.ink}`, type `{typography.button}`, padding 8px 14px, rounded `{rounded.md}`. 1px `{colors.hairline}` border.
+**`card`** — `{colors.muted}` on canvas, 1px `{colors.border}`, `{rounded.lg}` 12px, 24px padding. Cards are never nested.
 
-**`button-tertiary`** — Plain text button.
-- Background `{colors.canvas}`, text `{colors.ink}`, type `{typography.button}`, rounded `{rounded.md}`, padding 8px 14px.
+**`amount-input`** — The Add form's first field and the tallest control in the app: `min-height: 64px`, 34px Fira Code. `inputmode="decimal"` so phones open the number pad.
 
-**`button-inverse`** — White-on-dark inverse CTA.
-- Background `{colors.inverse-canvas}`, text `{colors.inverse-ink}`, type `{typography.button}`, rounded `{rounded.md}`, padding 8px 14px.
+**`segmented-option`** — The expense / income / transfer radio group, rendered as three labels. The checked one uses `:has(input:checked)` to take the primary fill plus `--shadow-primary`.
 
-### Pricing Tabs
+**`tab-item`** — Four fixed items, flex column, icon over label, `min-height: 56px`, `max-width: 155px` each. Icons are inline Lucide SVG at 20px, stroke 1.75, one consistent weight. The active item is marked by `aria-current="page"` and takes `{colors.active}`.
 
-**`pricing-tab-default`** + **`pricing-tab-selected`** — Pill-toggle on `/pricing`.
-- Default: `{colors.canvas}` background, `{colors.ink-subtle}` text, rounded `{rounded.pill}`, padding 6px 14px.
-- Selected: `{colors.surface-2}` background, `{colors.ink}` text — selected = surface lift.
+**`ledger-row`** — `min-height: 44px`, `{rounded.md}`, title over meta on the left, amount right, delete button at the end. Hover lifts to `{colors.muted}`.
 
-### Cards & Containers
+**`bar-row`** — Category spending rows. Two stacked linear gradients: a 2px solid leading edge in `{colors.primary}`, and a translucent `{colors.bar}` fill to the row's `--bar` percentage. The translucent fill keeps the label legible instead of sitting on a flat block.
 
-**`pricing-card`** — Each tier on `/pricing`.
-- Background `{colors.surface-1}`, text `{colors.ink}`, type `{typography.body}`, rounded `{rounded.lg}`, padding 24px. 1px `{colors.hairline}` border.
+**`budget-table`** — Four columns: bucket, budget, spent, left. Unlike the category bars, its `thead` stays visible because four columns of numbers need their headings. Figures drop to 13px and column padding to 4px to clear 375px. The fill shows how much of a bucket is gone and saturates at full width rather than overflowing when a bucket is overspent. The savings row suppresses its bar and takes a `{colors.border-strong}` top rule, because nothing is charged against savings.
 
-**`pricing-card-featured`** — Recommended tier — surface lift to surface-2.
-- Background `{colors.surface-2}`, otherwise identical structure.
-
-**`feature-card`** — Generic feature highlight tile.
-- Background `{colors.surface-1}`, text `{colors.ink}`, type `{typography.body}`, rounded `{rounded.lg}`, padding 24px.
-
-**`product-screenshot-card`** — The dominant card type — frames a high-fidelity Linear app UI screenshot.
-- Background `{colors.surface-1}`, text `{colors.ink}`, type `{typography.body}`, rounded `{rounded.xl}`, padding 24px.
-
-**`testimonial-card`** — Customer quote with avatar + name + role.
-- Background `{colors.surface-1}`, text `{colors.ink}`, type `{typography.body-lg}`, rounded `{rounded.lg}`, padding 32px.
-
-**`customer-logo-tile`** — Small tile in the customer marquee.
-- Background `{colors.canvas}`, text `{colors.ink-subtle}`, type `{typography.caption}`, rounded `{rounded.xs}`, padding 16px.
-
-**`cta-banner`** — Closing CTA panel near page bottom.
-- Background `{colors.surface-1}`, text `{colors.ink}`, type `{typography.headline}`, rounded `{rounded.lg}`, padding 48px.
-
-### Inputs & Forms
-
-**`text-input`** + **`text-input-focused`** — Form fields on `/contact/sales` and signup overlays.
-- Background `{colors.surface-1}`, text `{colors.ink}`, type `{typography.body}`, rounded `{rounded.md}`, padding 8px 12px.
-- Focused state retains the same surface; the focus ring is a 2px `{colors.primary-focus}` outline at 50% opacity.
-
-### Status & Build Page
-
-**`changelog-row`** — Each row in `/build` (changelog page) listing version, date, and changes.
-- Background `{colors.canvas}`, text `{colors.ink}`, type `{typography.body}`, rounded `{rounded.xs}`, padding 24px 0. 1px `{colors.hairline}` bottom rule.
-
-**`status-badge`** — Small status pill.
-- Background `{colors.surface-2}`, text `{colors.ink-muted}`, type `{typography.caption}`, rounded `{rounded.pill}`, padding 2px 8px.
-
-### Navigation
-
-**`top-nav`** — Sticky dark bar with the Linear wordmark left, primary nav links centered, and a `button-secondary` ("Sign in") + `button-primary` ("Get started") pair right.
-- Background `{colors.canvas}`, text `{colors.ink}`, type `{typography.body-sm}`, height 56px.
-
-### Footer
-
-**`footer`** — Dense link grid on `{colors.canvas}` with the Linear wordmark left.
-- Background `{colors.canvas}`, text `{colors.ink-subtle}`, type `{typography.caption}`, padding 64px 32px.
-
-## Do's and Don'ts
+## Do's and don'ts
 
 ### Do
 
-- Reserve `{colors.canvas}` (#010102) as the system's anchor surface — the faint blue tint is intentional.
-- Use `{colors.primary}` lavender ONLY for: brand mark, primary CTA, focus ring, link emphasis.
-- Use the four-step surface ladder for hierarchy. Avoid skipping levels.
-- Pair display weight 600 with body weight 400 — Linear resists 700+ display weights.
-- Apply negative letter-spacing aggressively on display.
-- Use product UI screenshots as the protagonist of every section.
-- Compose CTAs as `{rounded.md}` 8px corners.
+- Add colours as tokens in **both** `:root` blocks. A rule that names a hex directly has broken the tone switch.
+- Give any element showing money the `.amount` class.
+- Measure a new colour against the surface it actually sits on, in the browser, not against an assumed one.
+- Keep tap targets at 44px or more.
+- Use inline Lucide SVG at one stroke weight for icons.
+- Bump `CACHE` in `sw.js` whenever a shell file changes, and add new shell files to `SHELL`.
 
 ### Don't
 
-- Don't ship a light-mode marketing page.
-- Don't use lavender as a section background or card fill.
-- Don't introduce a second chromatic accent (orange, pink, green for marketing).
-- Don't add atmospheric gradients or spotlight cards.
-- Don't pill-round CTAs.
-- Don't use `#000000` true black as the canvas.
-- Don't combine multiple bright accents in product screenshot mockups.
+- Don't use `--color-primary` as a small-text colour. That is what `--color-active` is for.
+- Don't reach for `--color-destructive` decoratively. Red means spending, an error, or a figure the user cannot reconcile.
+- Don't add a size step to separate two roles that differ by weight or case.
+- Don't nest cards.
+- Don't let a heading exceed 17px. Numbers may; text may not.
+- Don't add a shadow outside `--shadow-primary`. Depth here is surface and hairline.
 
-## Responsive Behavior
+## Responsive behaviour
 
-### Breakpoints
+The layout is a single column at every width; `.view` caps at 620px and centres. There are no breakpoints, because there is nothing that needs to reflow — the only width-sensitive component is the budget table, which is sized to clear 375px and simply gets roomier above it.
 
-| Name | Width | Key Changes |
-|---|---|---|
-| Desktop-XL | 1440px | Default desktop layout |
-| Desktop | 1280px | Card grid 3-up maintained |
-| Tablet | 1024px | Card grid 3-up → 2-up |
-| Mobile-Lg | 768px | Pricing comparison becomes accordion; nav hamburger |
-| Mobile | 480px | Single-column; display-xl scales 80px → ~36px |
+Tap targets: controls hold 44px, tab items 56px, the amount field 64px.
 
-### Touch Targets
+## Known gaps
 
-- CTAs hold ≥40px tap height across viewports.
-- Pricing tab pills hold ≥36px tap height; touch viewports grow to ≥44px.
-- Form inputs hold ≥44px tap target on touch.
-
-### Collapsing Strategy
-
-- **Top nav**: links collapse to hamburger below 768px.
-- **Card grids**: 3-up → 2-up at 1024px → 1-up below 768px.
-- **Pricing comparison**: per-tier accordion below 768px.
-- **Display type**: `{typography.display-xl}` 80px scales toward `{typography.display-md}` 40px on mobile.
-
-### Image Behavior
-
-- Product UI screenshots maintain aspect ratio and never crop.
-- Customer logos in the marquee may collapse from 6-up to 3-up below 768px.
-
-## Iteration Guide
-
-1. Focus on ONE component at a time and reference it by its `components:` token name.
-2. When introducing a section, decide first which surface lift it lives on.
-3. Default body to `{typography.body}` at weight 400.
-4. Run `npx @google/design.md lint DESIGN.md` after edits.
-5. Add new variants as separate component entries.
-6. Treat lavender as scarce: brand mark, primary CTA, focus, link emphasis.
-7. Lead every section with a product UI screenshot.
-
-## Known Gaps
-
-- The four-step surface ladder values are extracted directly from Linear's `--color-bg-level-3`, `--color-line-tint`, etc. CSS variables; they are Linear's canonical surface spec.
-- Form-field error and validation styling is not visible on the inspected pages.
-- Light mode is not documented because the marketing site does not ship a light theme.
-- Linear's actual product UI uses a richer color-tag palette (red, orange, yellow, green, blue, purple) for issue priorities and project labels — those colors live in the in-product surfaces shown in mockups.
-- The custom display, text, and mono families are proprietary; an open-source substitute is acceptable.
+- Tone B's primary button is 1.5:1 against its card, below the 3:1 non-text floor. Documented above as a deliberate, user-directed exception carried by a shadow and a 6.66:1 label.
+- Hover states are unverified on a real device. The agent browser pane runs hidden, so CSS transitions never complete and `getComputedStyle` returns the pre-transition value indefinitely. Tab and button states are worth a glance on a phone.
+- There is no loading state anywhere. Every read is IndexedDB on the local device and completes within a frame.
+- Motion is absent by choice. The app is opened to type a number and leave; an entrance animation would be in the way.
