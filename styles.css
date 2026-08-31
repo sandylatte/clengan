@@ -22,6 +22,7 @@
   --color-primary: #C8A15A;        /* 7.4:1 on card */
   --color-primary-hover: #D9B978;
   --color-on-primary: #1A1408;     /* 7.7:1 on primary */
+  --color-primary-edge: transparent;  /* brass on graphite needs no outline */
   --color-active: #D9B978;         /* tab label + focus ring */
   --color-bar: color-mix(in srgb, #C8A15A 22%, transparent);
   --color-accent: #4FA96B;         /* income, 6.1:1 */
@@ -54,9 +55,13 @@
 /* Tone B — peach room. Cards sit lighter than the canvas, matching the
    reference where the frame interior reads brighter than the wall. */
 :root[data-theme="peach"] {
-  --color-primary: #B2503A;        /* salmon, darkened until white reads 5.1:1 */
-  --color-primary-hover: #C4634A;
-  --color-on-primary: #FFFFFF;
+  /* Light pink fill, so the label goes dark rather than white. A pale fill
+     on a pale card is only 1.6:1 against it, well under the 3:1 a control
+     needs to read as a control, so the shape is carried by its edge. */
+  --color-primary: #F0A896;
+  --color-primary-hover: #F5BCAD;
+  --color-on-primary: #4A2A22;     /* 6.5:1 on primary */
+  --color-primary-edge: #B2503A;   /* 4.1:1 against the card */
   --color-active: #8E3A26;         /* 4.8:1 on the tab strip */
   --color-bar: #F0C0B0;
   --color-accent: #2F6B4F;         /* income, 5.6:1 */
@@ -260,7 +265,7 @@ button.primary {
   margin-top: var(--space-1);
   background: var(--color-primary);
   color: var(--color-on-primary);
-  border: none;
+  border: 1px solid var(--color-primary-edge);
   font-weight: 600;
   cursor: pointer;
   transition: background 150ms ease;
@@ -302,6 +307,7 @@ button.primary:active { filter: brightness(0.92); }
 #add-kind label:has(input:checked) {
   background: var(--color-primary);
   color: var(--color-on-primary);
+  box-shadow: inset 0 0 0 1px var(--color-primary-edge);
   font-weight: 600;
 }
 
