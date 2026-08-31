@@ -162,6 +162,16 @@
   </div>
 
   <div class="card">
+    <h2>Import a planner</h2>
+    <p class="hint">Reads a FINANCIAL PLANNER workbook once: its ledger rows, and the fixed or flexible bucket each category was filed under. Adds to what is already here rather than replacing it.</p>
+    <label for="planner-account">File rows under account</label>
+    <input type="text" id="planner-account" value="Imported" required>
+    <label for="planner-input">Planner workbook</label>
+    <input type="file" id="planner-input" accept=".xlsx,.xls">
+    <p id="planner-status" role="status"></p>
+  </div>
+
+  <div class="card">
     <h2>Accounts</h2>
     <form id="account-form">
       <label for="account-name">Name</label>

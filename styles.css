@@ -489,5 +489,12 @@ button.primary:active { filter: brightness(0.92); }
 }
 .budget-note__warning { color: var(--color-destructive); }
 
+.hint {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--color-subtle);
+  margin: calc(var(--space-2) * -1) 0 var(--space-3);
+}
+
 #trend { width: 100%; height: auto; overflow: visible; }
 #summary-status, #list-status { min-height: 20px; font-size: 14px; color: var(--color-subtle); }

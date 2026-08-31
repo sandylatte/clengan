@@ -1,4 +1,5 @@
 import { toCents, fromCents } from './money.js';
+import { parsePlannerGrid, monthFromSheetName } from './planner.js';
 
 export const COLUMNS = ['id', 'date', 'account', 'amount', 'category', 'transfer_id', 'note'];
 export const ACCOUNTS_COLUMNS = ['name', 'opening_balance'];
@@ -115,6 +116,42 @@ export function exportXlsx(txns, accounts) {
   XLSX.utils.book_append_sheet(book, accSheet, 'accounts');
   const stamp = new Date().toISOString().slice(0, 10);
   XLSX.writeFile(book, `moneytrack-${stamp}.xlsx`);
+}
+
+// A one-time migration off a FINANCIAL PLANNER workbook, kept apart from
+// importXlsx because the two are not the same operation: that one restores a
+// backup this app wrote, this one reads a foreign layout best-effort. Rows
+// are returned for the caller to confirm, never written here.
+export async function importPlanner(file, account) {
+  const book = XLSX.read(await file.arrayBuffer(), { type: 'array' });
+  const months = book.SheetNames.map((name) => [name, monthFromSheetName(name)]).filter(([, m]) => m);
+  if (months.length === 0) {
+    throw new Error('no month sheets found — expected tabs named like "2026_SEPT"');
+  }
+
+  const rows = [];
+  const categories = new Map();
+  const problems = [];
+  for (const [name, month] of months) {
+    const grid = XLSX.utils.sheet_to_json(book.Sheets[name], { header: 1, raw: false, defval: '' });
+    const parsed = parsePlannerGrid(grid, month);
+    problems.push(...parsed.problems);
+    for (const [category, bucket] of parsed.categories) {
+      if (bucket && !categories.has(category)) categories.set(category, bucket);
+    }
+    for (const row of parsed.rows) {
+      rows.push({
+        id: crypto.randomUUID(),
+        date: row.date,
+        account,
+        amount: row.amount,
+        category: row.category,
+        transfer_id: null,
+        note: row.note,
+      });
+    }
+  }
+  return { rows, categories, problems, months: months.map(([, m]) => m) };
 }
 
 export async function importXlsx(file) {

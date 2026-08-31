@@ -4,7 +4,7 @@ import {
   filterMonth, monthlyTotals, categoryBreakdown, accountBalances, netTrend, bucketTotals,
 } from './rollup.js';
 import { BUCKETS, DEFAULT_SPLIT, validateSplit } from './budget.js';
-import { exportXlsx, importXlsx } from './xlsx-io.js';
+import { exportXlsx, importXlsx, importPlanner } from './xlsx-io.js';
 
 function showView(name) {
   for (const section of document.querySelectorAll('.view')) {
@@ -504,6 +504,49 @@ document.getElementById('import-input').addEventListener('change', async (event)
   } catch (error) {
     ioStatus.style.color = 'var(--color-destructive)';
     ioStatus.textContent = `Import failed — no transactions were changed. ${error.message}`;
+  }
+  event.target.value = '';
+});
+
+const plannerStatus = document.getElementById('planner-status');
+
+document.getElementById('planner-input').addEventListener('change', async (event) => {
+  const [file] = event.target.files;
+  if (!file) return;
+  const account = document.getElementById('planner-account').value.trim();
+  if (!account) {
+    plannerStatus.style.color = 'var(--color-destructive)';
+    plannerStatus.textContent = 'Name the account these rows belong to first.';
+    event.target.value = '';
+    return;
+  }
+  try {
+    const { rows, categories, problems, months } = await importPlanner(file, account);
+    if (rows.length === 0) throw new Error('found month sheets but no ledger rows in them');
+
+    const summary = `Import ${rows.length} row${rows.length === 1 ? '' : 's'} from ${months.join(', ')} under "${account}"?`;
+    const detail = problems.length ? `\n\n${problems.length} row${problems.length === 1 ? '' : 's'} needed adjusting:\n${problems.slice(0, 8).join('\n')}` : '';
+    if (!confirm(summary + detail)) {
+      plannerStatus.style.color = '';
+      plannerStatus.textContent = 'Import cancelled. Nothing was changed.';
+      return;
+    }
+
+    const known = new Set((await db.allAccounts()).map((a) => a.name));
+    if (!known.has(account)) await db.putAccount(account, 0);
+    // The planner's own filing is the whole point of reading it, so its
+    // buckets are written before the rows that depend on them.
+    for (const [name, bucket] of categories) await db.putCategory(name, bucket);
+    await db.putTransactions(rows);
+
+    plannerStatus.style.color = 'var(--color-accent)';
+    plannerStatus.textContent = problems.length
+      ? `Imported ${rows.length} rows and ${categories.size} categories. ${problems.length} row${problems.length === 1 ? ' was' : 's were'} adjusted — check the List view.`
+      : `Imported ${rows.length} rows and ${categories.size} categories.`;
+    await refresh();
+  } catch (error) {
+    plannerStatus.style.color = 'var(--color-destructive)';
+    plannerStatus.textContent = `Import failed — nothing was changed. ${error.message}`;
   }
   event.target.value = '';
 });
