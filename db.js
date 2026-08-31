@@ -127,6 +127,32 @@ export function putSetting(key, value) {
   });
 }
 
+// "bank" and "Bank" are distinct keys to IndexedDB and the same account to a
+// reader, and one real account split across two of them is unrecoverable
+// without editing rows by hand. The check lives here rather than on the form
+// because accounts are also created by the Excel import and the planner
+// import, and guarding only the form left both of those able to mint a
+// casing variant.
+export async function findAccount(name) {
+  const wanted = String(name).trim().toLowerCase();
+  const accounts = await allAccounts();
+  return accounts.find((a) => a.name.toLowerCase() === wanted) ?? null;
+}
+
+// Refuses to create a second casing of an account that already exists.
+// Returns the name actually written, which is the existing spelling when one
+// was found, so callers file rows against a single account.
+export async function ensureAccount(name, openingBalance = 0) {
+  const existing = await findAccount(name);
+  if (existing) return existing.name;
+  await putAccount(name, openingBalance);
+  return name;
+}
+
+// The unguarded write. Replacing an account's opening balance is a real
+// operation, but it is destructive and silent, so every caller reaching for
+// it has to have decided that on purpose — the Settings form confirms with
+// the user first.
 export function putAccount(name, openingBalance) {
   return run('accounts', 'readwrite', (store) => {
     store.put({ name, opening_balance: openingBalance });

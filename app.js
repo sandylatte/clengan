@@ -671,18 +671,20 @@ document.getElementById('import-input').addEventListener('change', async (event)
     // no money by itself, so if it fails nothing about the ledger has
     // changed yet — the transaction write below is the only step that
     // commits money data, so it goes last.
-    const known = new Set((await db.allAccounts()).map((a) => a.name));
-    // ponytail: N separate putAccount calls, not one IndexedDB transaction —
-    // a mid-loop crash could leave some accounts written. Transactions are
-    // always written last and separately, which is what keeps the "no
-    // transactions were changed" message above truthful.
+    // ponytail: N separate writes, not one IndexedDB transaction — a mid-loop
+    // crash could leave some accounts written. Transactions are always written
+    // last and separately, which is what keeps the "no transactions were
+    // changed" message above truthful.
+    //
+    // A backup names its own accounts, so those are written as given. The
+    // zero-fill below goes through ensureAccount so a row referring to "bank"
+    // when "Bank" exists is filed against the one account rather than minting
+    // a second, and the row is rewritten to the surviving spelling.
     for (const account of accounts) {
       await db.putAccount(account.name, account.opening_balance);
-      known.add(account.name);
     }
-    // Zero-fill only ever creates accounts the file did not describe.
-    for (const name of new Set(rows.map((r) => r.account))) {
-      if (!known.has(name)) await db.putAccount(name, 0);
+    for (const row of rows) {
+      row.account = await db.ensureAccount(row.account, 0);
     }
     await db.putTransactions(rows);
     ioStatus.style.color = 'var(--color-accent)';
@@ -724,8 +726,10 @@ document.getElementById('planner-input').addEventListener('change', async (event
       return;
     }
 
-    const known = new Set((await db.allAccounts()).map((a) => a.name));
-    if (!known.has(account)) await db.putAccount(account, 0);
+    // Files rows against an existing account when one matches by name in any
+    // casing, rather than creating a near-duplicate of it.
+    const target = await db.ensureAccount(account, 0);
+    for (const row of rows) row.account = target;
     // The planner's own filing is the whole point of reading it, so its
     // buckets are written before the rows that depend on them.
     for (const [name, bucket] of categories) await db.putCategory(name, bucket);
@@ -946,21 +950,35 @@ document.getElementById('account-form').addEventListener('submit', async (event)
   const name = document.getElementById('account-name').value.trim();
   if (!name) return;
 
-  // putAccount is a plain put, so saving an existing name silently replaced
-  // its opening balance and looked like nothing happened. Names differing
-  // only by case are caught too: they are distinct keys in IndexedDB but the
-  // same account to a reader, and one real account split in two is the worst
-  // outcome this form can produce.
-  const existing = await db.allAccounts();
-  const clash = existing.find((a) => a.name.toLowerCase() === name.toLowerCase());
+  const opening = rupiahToCents(document.getElementById('account-opening').value) ?? 0;
+
+  // A plain put replaced the opening balance with no warning, which looked
+  // like nothing had happened while silently rewriting the starting point of
+  // every balance. Replacing is still allowed, but it is now a decision.
+  const clash = await db.findAccount(name);
   if (clash) {
-    showAccountStatus(clash.name === name
-      ? `${name} already exists. Delete it first if you need to change its initial balance.`
-      : `${clash.name} already exists, and ${name} differs only by capitalisation. Use the existing one.`);
+    const label = clash.name === name
+      ? `${name} already exists.`
+      : `${clash.name} already exists, and "${name}" differs only by capitalisation.`;
+    const confirmed = confirm(
+      `${label}\n\nReplace its initial balance with ${formatIDR(opening)}?`
+      + `\nIt is currently ${formatIDR(clash.opening_balance)}.`
+      + '\n\nEvery transaction already filed under it is kept, and its balance shifts by the difference.',
+    );
+    if (!confirmed) {
+      showAccountStatus(`Kept ${clash.name} at ${formatIDR(clash.opening_balance)}.`);
+      return;
+    }
+    // Written under the EXISTING spelling. Using what was typed would create
+    // the casing variant this whole path exists to prevent.
+    await db.putAccount(clash.name, opening);
+    event.target.reset();
+    document.getElementById('account-opening').value = '0';
+    showAccountStatus('');
+    await refresh();
     return;
   }
 
-  const opening = rupiahToCents(document.getElementById('account-opening').value) ?? 0;
   await db.putAccount(name, opening);
   event.target.reset();
   document.getElementById('account-opening').value = '0';
