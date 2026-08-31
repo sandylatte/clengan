@@ -26,7 +26,12 @@
   <h1>Add <span class="h1-meta amount" id="head-balance"></span></h1>
   <form id="add-form">
     <label for="add-amount">Amount</label>
-    <input type="number" id="add-amount" step="1000" min="0" inputmode="numeric" required>
+    <div class="stepper">
+      <button type="button" class="stepper__button" data-step="-1000" data-target="add-amount" aria-label="Decrease amount by 1.000">&minus;</button>
+      <span class="stepper__prefix" aria-hidden="true">Rp</span>
+      <input type="text" id="add-amount" inputmode="numeric" autocomplete="off" placeholder="0" required>
+      <button type="button" class="stepper__button" data-step="1000" data-target="add-amount" aria-label="Increase amount by 1.000">+</button>
+    </div>
 
     <div id="add-kind" role="group" aria-label="Kind">
       <label><input type="radio" name="kind" value="expense" checked> Expense</label>
@@ -53,7 +58,11 @@
     <input type="text" id="add-note">
 
     <label for="add-date">Date</label>
-    <input type="date" id="add-date" required>
+    <div class="datefield">
+      <button type="button" id="add-date-button" aria-haspopup="dialog" aria-expanded="false"></button>
+      <input type="hidden" id="add-date">
+      <div class="calendar" id="add-date-popup" role="dialog" aria-label="Choose a date" hidden></div>
+    </div>
 
     <button type="submit" class="primary">Save</button>
     <p id="add-status" role="status"></p>
@@ -133,7 +142,12 @@
       <label for="account-name">Name</label>
       <input type="text" id="account-name" required>
       <label for="account-opening">Initial balance</label>
-      <input type="number" id="account-opening" step="1000" value="0" inputmode="numeric">
+      <div class="stepper">
+        <button type="button" class="stepper__button" data-step="-1000" data-target="account-opening" aria-label="Decrease initial balance by 1.000">&minus;</button>
+        <span class="stepper__prefix" aria-hidden="true">Rp</span>
+        <input type="text" id="account-opening" inputmode="numeric" autocomplete="off" value="0">
+        <button type="button" class="stepper__button" data-step="1000" data-target="account-opening" aria-label="Increase initial balance by 1.000">+</button>
+      </div>
       <button type="submit" class="primary">Save account</button>
     </form>
     <p id="account-status" role="status"></p>

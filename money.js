@@ -106,6 +106,26 @@ export function formatIDR(cents) {
   return `${cents < 0 ? '-' : ''}Rp ${grouped}`;
 }
 
+// Digits as typed into a money field, grouped for reading: '5000000' becomes
+// '5.000.000'. Separate from formatIDR because a field is edited a character
+// at a time and must not gain a currency symbol the user then has to type
+// around.
+export function groupDigits(digits) {
+  const clean = String(digits).replace(/\D/g, '').replace(/^0+(?=\d)/, '');
+  return clean.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+}
+
+// A money field holds whole rupiah; storage is cents. Rupiah has no
+// circulating subunit, so the conversion is exact and never loses a fraction.
+export function rupiahToCents(text) {
+  const digits = String(text).replace(/\D/g, '');
+  return digits === '' ? null : Number(digits) * 100;
+}
+
+export function centsToRupiahDigits(cents) {
+  return String(Math.round(Math.abs(cents) / 100));
+}
+
 export function formatAmount(cents) {
   const text = formatIDR(cents);
   return cents > 0 ? `+${text}` : text;

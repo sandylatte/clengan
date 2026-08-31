@@ -1,10 +1,11 @@
 import * as db from './db.js';
-import { toCents, formatIDR, formatAmount } from './money.js';
+import { formatIDR, formatAmount, groupDigits, rupiahToCents, centsToRupiahDigits } from './money.js';
 import {
   filterMonth, monthlyTotals, categoryBreakdown, accountBalances, netTrend, bucketTotals, fundsByYear,
 } from './rollup.js';
 import { BUCKETS, DEFAULT_SPLIT, validateSplit, allocateFunds } from './budget.js';
 import { exportXlsx, importXlsx, importPlanner } from './xlsx-io.js';
+import { attachCalendar, toISO } from './calendar.js';
 
 function showView(name) {
   for (const section of document.querySelectorAll('.view')) {
@@ -99,6 +100,34 @@ async function fillPickers() {
   setup.textContent = 'Add an account in Settings before recording anything.';
 }
 
+// A money field is text, not a number input: type="number" cannot render
+// grouping dots, and without them a rupiah figure is a wall of zeros nobody
+// can read back. The stepper buttons replace the spinner that choice gives up.
+// The caret always lands at the end because reformatting on every keystroke
+// invalidates any earlier position, and money is typed left to right anyway.
+function attachMoneyInput(input) {
+  const reformat = () => {
+    const grouped = groupDigits(input.value);
+    if (input.value !== grouped) input.value = grouped;
+  };
+  input.addEventListener('input', reformat);
+  input.addEventListener('blur', reformat);
+  reformat();
+}
+
+for (const input of document.querySelectorAll('.stepper input')) attachMoneyInput(input);
+
+document.addEventListener('click', (event) => {
+  const button = event.target.closest('.stepper__button');
+  if (!button) return;
+  const input = document.getElementById(button.dataset.target);
+  const step = Number(button.dataset.step);
+  const current = Number(String(input.value).replace(/\D/g, '') || 0);
+  // Clamped at zero: the sign is chosen by the expense/income control, and a
+  // negative in the field would contradict whichever one is selected.
+  input.value = groupDigits(String(Math.max(0, current + step)));
+});
+
 const saveButton = form.querySelector('button[type="submit"]');
 let submitting = false;
 
@@ -113,12 +142,10 @@ form.addEventListener('submit', async (event) => {
     const note = document.getElementById('add-note').value;
     const account = document.getElementById('add-account').value.trim();
 
-    let magnitude;
-    try {
-      magnitude = toCents(document.getElementById('add-amount').value);
-    } catch {
+    const magnitude = rupiahToCents(document.getElementById('add-amount').value);
+    if (magnitude === null) {
       status.style.color = 'var(--color-destructive)';
-      status.textContent = 'Enter a valid amount.';
+      status.textContent = 'Enter an amount.';
       return;
     }
     if (magnitude <= 0) {
@@ -147,7 +174,7 @@ form.addEventListener('submit', async (event) => {
     }
 
     form.reset();
-    document.getElementById('add-date').value = new Date().toISOString().slice(0, 10);
+    addDate.set(toISO(new Date()));
     syncKind();
     status.style.color = 'var(--color-accent)';
     status.textContent = 'Saved.';
@@ -727,24 +754,62 @@ function renderSplit(split) {
   for (const [key, id] of Object.entries(splitFields)) {
     document.getElementById(id).value = split[key];
   }
+  showSplitBalance();
+}
+
+const readSplit = () => Object.fromEntries(
+  Object.entries(splitFields).map(([key, id]) => [key, Number(document.getElementById(id).value)]),
+);
+
+// The three shares are edited one at a time, so the set spends most of its
+// life not totalling 100. Reporting that only on submit means the user aims
+// blind and finds out afterwards; the running total names the gap and which
+// way to close it, and the save button says whether it will be accepted.
+function showSplitBalance() {
+  const split = readSplit();
+  const values = Object.values(split);
+  const saveButton = splitForm.querySelector('button[type="submit"]');
+
+  if (!values.every((v) => Number.isFinite(v) && v >= 0)) {
+    splitStatus.className = 'budget-note__warning';
+    splitStatus.textContent = 'Each share must be zero or more.';
+    saveButton.disabled = true;
+    return;
+  }
+  const total = values.reduce((sum, v) => sum + v, 0);
+  const gap = 100 - total;
+  saveButton.disabled = Math.round(total) !== 100;
+  if (gap === 0) {
+    splitStatus.className = '';
+    splitStatus.textContent = 'Shares total 100%.';
+  } else {
+    splitStatus.className = 'budget-note__warning';
+    splitStatus.textContent = gap > 0
+      ? `Shares total ${total}%. Add ${gap}% more.`
+      : `Shares total ${total}%. Remove ${-gap}%.`;
+  }
+}
+
+for (const id of Object.values(splitFields)) {
+  document.getElementById(id).addEventListener('input', showSplitBalance);
 }
 
 splitForm.addEventListener('submit', async (event) => {
   event.preventDefault();
-  const split = Object.fromEntries(
-    Object.entries(splitFields).map(([key, id]) => [key, Number(document.getElementById(id).value)]),
-  );
+  const split = readSplit();
   try {
     validateSplit(split);
   } catch (error) {
-    splitStatus.style.color = 'var(--color-destructive)';
+    splitStatus.className = 'budget-note__warning';
     splitStatus.textContent = error.message;
     return;
   }
   await db.putSetting('split', split);
-  splitStatus.style.color = 'var(--color-accent)';
-  splitStatus.textContent = 'Saved.';
+  // After the refresh, not before: renderSplit repaints the fields and calls
+  // showSplitBalance, which would overwrite this the moment it appeared.
   await refresh();
+  splitStatus.className = '';
+  splitStatus.textContent = `Saved. Fixed ${split.fixed}%, flexible ${split.flexible}%, savings ${split.savings}%.`;
 });
 
 const fundStatus = document.getElementById('fund-status');
@@ -830,10 +895,28 @@ function renderCategories(categories) {
     const title = document.createElement('span');
     title.className = 'row__title';
     title.textContent = name;
-    const meta = document.createElement('span');
-    meta.className = 'row__meta';
-    meta.textContent = BUCKET_LABELS[bucket];
-    main.append(title, meta);
+    main.append(title);
+
+    // Editable in place. Re-saving through the form above meant retyping the
+    // name exactly, and a typo there created a second category rather than
+    // moving this one. Changing the bucket re-files every transaction already
+    // under this name, because the category owns the bucket.
+    const bucketSelect = document.createElement('select');
+    bucketSelect.className = 'row__select';
+    bucketSelect.setAttribute('aria-label', `Bucket for ${name}`);
+    for (const value of ['fixed', 'flexible', 'income']) {
+      const option = document.createElement('option');
+      option.value = value;
+      option.textContent = BUCKET_LABELS[value];
+      option.selected = value === bucket;
+      bucketSelect.append(option);
+    }
+    bucketSelect.addEventListener('change', async () => {
+      await db.putCategory(name, bucketSelect.value);
+      categoryStatus.className = '';
+      categoryStatus.textContent = `${name} is now ${BUCKET_LABELS[bucketSelect.value].toLowerCase()}.`;
+      await refresh();
+    });
 
     const remove = document.createElement('button');
     remove.className = 'row__delete';
@@ -848,12 +931,12 @@ function renderCategories(categories) {
         : `Remove ${name}?`;
       if (!confirm(warning)) return;
       await db.deleteCategory(name);
-      categoryStatus.style.color = '';
+      categoryStatus.className = '';
       categoryStatus.textContent = '';
       await refresh();
     });
 
-    item.append(main, remove);
+    item.append(main, bucketSelect, remove);
     return item;
   }));
 }
@@ -862,9 +945,26 @@ document.getElementById('account-form').addEventListener('submit', async (event)
   event.preventDefault();
   const name = document.getElementById('account-name').value.trim();
   if (!name) return;
-  await db.putAccount(name, toCents(document.getElementById('account-opening').value || 0));
+
+  // putAccount is a plain put, so saving an existing name silently replaced
+  // its opening balance and looked like nothing happened. Names differing
+  // only by case are caught too: they are distinct keys in IndexedDB but the
+  // same account to a reader, and one real account split in two is the worst
+  // outcome this form can produce.
+  const existing = await db.allAccounts();
+  const clash = existing.find((a) => a.name.toLowerCase() === name.toLowerCase());
+  if (clash) {
+    showAccountStatus(clash.name === name
+      ? `${name} already exists. Delete it first if you need to change its initial balance.`
+      : `${clash.name} already exists, and ${name} differs only by capitalisation. Use the existing one.`);
+    return;
+  }
+
+  const opening = rupiahToCents(document.getElementById('account-opening').value) ?? 0;
+  await db.putAccount(name, opening);
   event.target.reset();
   document.getElementById('account-opening').value = '0';
+  showAccountStatus('');
   await refresh();
 });
 
@@ -982,7 +1082,12 @@ themeSelect.addEventListener('change', () => {
   localStorage.setItem('moneytrack-theme', peach ? 'peach' : 'graphite');
 });
 
-document.getElementById('add-date').value = new Date().toISOString().slice(0, 10);
+const addDate = attachCalendar({
+  button: document.getElementById('add-date-button'),
+  input: document.getElementById('add-date'),
+  popup: document.getElementById('add-date-popup'),
+});
+addDate.set(toISO(new Date()));
 syncKind();
 await refresh();
 
