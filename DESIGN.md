@@ -114,6 +114,7 @@ typography:
     letterSpacing: 0.04em
 
 rounded:
+  xs: 2px
   sm: 6px
   md: 8px
   lg: 12px
@@ -190,6 +191,10 @@ components:
     textColor: "{colors.foreground}"
     typography: "{typography.supporting}"
     padding: 12px 4px
+  legend-swatch:
+    backgroundColor: "{colors.primary}"
+    rounded: "{rounded.xs}"
+    size: 10px
   bar-row:
     backgroundColor: "{colors.bar}"
     textColor: "{colors.foreground}"
@@ -209,6 +214,7 @@ The system ships **two tones the user switches in Settings**. They share one tok
 - **`--shadow-primary` is a token, not a constant.** Tone A's brass separates from graphite unaided and sets it to `none`; Tone B's pale fill on a pale card reaches only 1.5:1 and is lifted by a shadow instead.
 - **The amount field is the tallest thing in the app** at 34px and 64px tall. Headings are 17px and below. This is an app, not a page.
 - **Every figure is Fira Code with `tabular-nums`.** Columns of money must align.
+- **Money displays as rupiah and stores as cents.** `formatIDR` renders `Rp 300.000` for the screen; `fromCents` renders `300000.00` for the Excel export, which the importer reads back. The two must never be swapped.
 - **Colour means something or it is absent.** Green is income, red is spending or a warning, the accent is the primary action and the active tab. There is no decorative colour.
 - **Depth is a three-step surface ladder plus hairline borders.** Canvas → card → input, no shadows except the one Tone B needs.
 
@@ -338,6 +344,29 @@ Depth is surface plus hairline. The single shadow in the system is `--shadow-pri
 
 **`ledger-row`** — `min-height: 44px`, `{rounded.md}`, title over meta on the left, amount right, delete button at the end. Hover lifts to `{colors.muted}`.
 
+**`pie`** — Spending share on Summary, capped at 240px because a pie gains
+nothing from being wider than it is tall. Slices are one hue: the largest takes
+`{colors.primary}` at full strength and each smaller one steps toward
+`{colors.muted}` behind it, expressed as `color-mix` over the tokens so the
+chart follows a tone switch at paint time with no JavaScript. Receding toward
+the card reads as "less" in both tones, which a lightness ramp cannot do — on
+graphite the pale end advances, on peach it recedes. Slices carry a 1px stroke
+in the card colour so neighbours in a single-hue ramp do not bleed together.
+The chart has no labels; the category table beneath it carries a
+`legend-swatch` per row and serves as the legend.
+
+**`select`** — Every picker in the app. Never a `datalist`-backed input: a
+datalist gives no visible sign a list exists and silently accepts anything
+typed, which is how one account became two. `appearance: none` plus a
+`currentColor` chevron, because the platform arrow renders black and vanishes
+on the graphite tone.
+
+**`date-field`** — Full width on a phone, capped near 280px above 520px. The
+native calendar popup sizes to its own content and cannot be styled, so above
+phone width the field comes down to meet the popup rather than floating twice
+as wide above it. A phone opens a full-screen picker with no relationship to
+the field, where a short field is just out of line with its siblings.
+
 **`bar-row`** — Category spending rows. Two stacked linear gradients: a 2px solid leading edge in `{colors.primary}`, and a translucent `{colors.bar}` fill to the row's `--bar` percentage. The translucent fill keeps the label legible instead of sitting on a flat block.
 
 **`budget-table`** — Four columns: bucket, budget, spent, left. Unlike the category bars, its `thead` stays visible because four columns of numbers need their headings. Figures drop to 13px and column padding to 4px to clear 375px. The fill shows how much of a bucket is gone and saturates at full width rather than overflowing when a bucket is overspent. The savings row suppresses its bar and takes a `{colors.border-strong}` top rule, because nothing is charged against savings.
@@ -361,6 +390,9 @@ Depth is surface plus hairline. The single shadow in the system is `--shadow-pri
 - Don't nest cards.
 - Don't let a heading exceed 17px. Numbers may; text may not.
 - Don't add a shadow outside `--shadow-primary`. Depth here is surface and hairline.
+- Don't put `formatIDR` output anywhere a machine reads it. The export column is `fromCents`, and the importer parses its own output.
+- Don't reach for a `datalist`. If a field offers a list, it is a `select`.
+- Don't give a chart a categorical palette. One hue, stepping toward the card.
 
 ## Responsive behaviour
 

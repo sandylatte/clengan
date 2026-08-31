@@ -44,6 +44,8 @@
   --space-5: 32px;
   --space-6: 48px;
 
+  /* For marks small enough that 6px would round them into circles. */
+  --radius-xs: 2px;
   --radius-sm: 6px;
   --radius-md: 8px;
   --radius-lg: 12px;
@@ -539,7 +541,7 @@ button.primary:active { filter: brightness(0.92); }
   display: inline-block;
   width: 10px;
   height: 10px;
-  border-radius: 2px;
+  border-radius: var(--radius-xs);
   margin-right: var(--space-1);
   vertical-align: baseline;
 }
