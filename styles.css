@@ -23,6 +23,8 @@
   --color-primary-hover: #D9B978;
   --color-on-primary: #1A1408;     /* 7.7:1 on primary */
   --shadow-primary: none;          /* brass on graphite separates unaided */
+  /* A floating layer needs a cast shadow even where a resting one does not. */
+  --shadow-popover: 0 8px 24px rgba(0, 0, 0, 0.45), 0 2px 6px rgba(0, 0, 0, 0.30);
   --color-active: #D9B978;         /* tab label + focus ring */
   --color-bar: color-mix(in srgb, #C8A15A 22%, transparent);
   --color-accent: #4FA96B;         /* income, 6.1:1 */
@@ -66,6 +68,7 @@
   --color-primary-hover: #E0C2BC;
   --color-on-primary: #4A2A22;     /* 6.66:1 on primary */
   --shadow-primary: 0 1px 3px rgba(74, 42, 34, 0.20), 0 1px 2px rgba(74, 42, 34, 0.12);
+  --shadow-popover: 0 8px 24px rgba(74, 42, 34, 0.20), 0 2px 6px rgba(74, 42, 34, 0.12);
   --color-active: #8E3A26;         /* 4.8:1 on the tab strip */
   --color-bar: #F0C0B0;
   --color-accent: #2F6B4F;         /* income, 5.6:1 */
@@ -613,7 +616,7 @@ button.primary:active { filter: brightness(0.92); }
   background: var(--color-muted);
   border: 1px solid var(--color-border-strong);
   border-radius: var(--radius-md);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
+  box-shadow: var(--shadow-popover);
 }
 .calendar[hidden] { display: none; }
 .calendar__head {
@@ -629,7 +632,7 @@ button.primary:active { filter: brightness(0.92); }
   background: none;
   border: none;
   color: var(--color-foreground);
-  font-size: 18px;
+  font-size: 20px;
   cursor: pointer;
   border-radius: var(--radius-sm);
 }

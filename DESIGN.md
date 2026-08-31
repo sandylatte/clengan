@@ -33,6 +33,12 @@ colors:
   peach-tabbar: "#EFC5B7"
   peach-bar: "#F0C0B0"
 
+shadows:
+  primary-graphite: "none"
+  primary-peach: "0 1px 3px rgba(74,42,34,0.20), 0 1px 2px rgba(74,42,34,0.12)"
+  popover-graphite: "0 8px 24px rgba(0,0,0,0.45), 0 2px 6px rgba(0,0,0,0.30)"
+  popover-peach: "0 8px 24px rgba(74,42,34,0.20), 0 2px 6px rgba(74,42,34,0.12)"
+
 typography:
   amount-hero:
     fontFamily: Fira Code
@@ -326,7 +332,18 @@ The `h1` is a sticky bar, not a display heading. The tab bar already names the v
 | 2 | `{colors.input}` + 1px `{colors.border-strong}` | Form fields inside a card |
 | Focus | 2px `{colors.active}` outline, 2px offset | Any focused control |
 
-Depth is surface plus hairline. The single shadow in the system is `--shadow-primary`, which is `none` in Tone A and a two-layer contact-plus-diffusion shadow in Tone B, where it is the only thing marking the primary button's edge.
+Depth is surface plus hairline. There are exactly two shadow tokens, and no
+rule may cast a shadow that is not one of them.
+
+`--shadow-primary` is `none` in Tone A and a two-layer contact-plus-diffusion
+shadow in Tone B, where it is the only thing marking the primary button's edge.
+
+`--shadow-popover` is for a layer that genuinely floats above the page — today
+only the calendar. It is defined in both tones because a resting surface and a
+floating one are different problems: Tone A needs a cast shadow here even
+though it needs none at rest. Both are tinted from the tone's own foreground,
+never black. A black cast on peach reads grey and drains the hue out of the
+surface beneath it.
 
 ## Components
 
@@ -389,7 +406,7 @@ the field, where a short field is just out of line with its siblings.
 - Don't add a size step to separate two roles that differ by weight or case.
 - Don't nest cards.
 - Don't let a heading exceed 17px. Numbers may; text may not.
-- Don't add a shadow outside `--shadow-primary`. Depth here is surface and hairline.
+- Don't cast a shadow that is not `--shadow-primary` or `--shadow-popover`. Depth here is surface and hairline; a literal rgba shadow will be the wrong colour in one of the two tones.
 - Don't put `formatIDR` output anywhere a machine reads it. The export column is `fromCents`, and the importer parses its own output.
 - Don't reach for a `datalist`. If a field offers a list, it is a `select`.
 - Don't give a chart a categorical palette. One hue, stepping toward the card.
