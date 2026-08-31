@@ -78,6 +78,16 @@
   </div>
 
   <div class="card">
+    <h2>Budget</h2>
+    <table class="budget" id="budget">
+      <caption class="visually-hidden">Budget, spent and remaining for each bucket this month</caption>
+      <thead><tr><th scope="col">Bucket</th><th scope="col">Budget</th><th scope="col">Spent</th><th scope="col">Left</th></tr></thead>
+      <tbody></tbody>
+    </table>
+    <p id="budget-note"></p>
+  </div>
+
+  <div class="card">
     <h2>Spending by category</h2>
     <table class="bars" id="bars">
       <caption class="visually-hidden">Spending by category for the selected month</caption>
@@ -111,6 +121,36 @@
       <option value="graphite">Graphite &amp; brass</option>
       <option value="peach">Peach room</option>
     </select>
+  </div>
+
+  <div class="card">
+    <h2>Budget split</h2>
+    <form id="split-form">
+      <label for="split-fixed">Fixed %</label>
+      <input type="number" id="split-fixed" min="0" max="100" step="1" required>
+      <label for="split-flexible">Flexible %</label>
+      <input type="number" id="split-flexible" min="0" max="100" step="1" required>
+      <label for="split-savings">Savings %</label>
+      <input type="number" id="split-savings" min="0" max="100" step="1" required>
+      <button type="submit" class="primary">Save split</button>
+    </form>
+    <p id="split-status" role="status"></p>
+  </div>
+
+  <div class="card">
+    <h2>Categories</h2>
+    <form id="category-form">
+      <label for="category-name">Name</label>
+      <input type="text" id="category-name" required>
+      <label for="category-bucket">Bucket</label>
+      <select id="category-bucket">
+        <option value="fixed">Fixed</option>
+        <option value="flexible">Flexible</option>
+      </select>
+      <button type="submit" class="primary">Save category</button>
+    </form>
+    <p id="category-status" role="status"></p>
+    <ul id="category-list" class="rows"></ul>
   </div>
 
   <div class="card">

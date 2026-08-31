@@ -1,8 +1,9 @@
 import * as db from './db.js';
 import { toCents, fromCents, formatAmount } from './money.js';
 import {
-  filterMonth, monthlyTotals, categoryBreakdown, accountBalances, netTrend,
+  filterMonth, monthlyTotals, categoryBreakdown, accountBalances, netTrend, bucketTotals,
 } from './rollup.js';
+import { BUCKETS, DEFAULT_SPLIT, validateSplit } from './budget.js';
 import { exportXlsx, importXlsx } from './xlsx-io.js';
 
 function showView(name) {
@@ -22,8 +23,6 @@ document.querySelector('.tabbar').addEventListener('click', (event) => {
   const button = event.target.closest('button[data-view]');
   if (button) showView(button.dataset.view);
 });
-
-const SEED_CATEGORIES = ['Food', 'Rent', 'Transport', 'Salary', 'Utilities', 'Fun'];
 
 const form = document.getElementById('add-form');
 const kindInputs = form.querySelectorAll('input[name="kind"]');
@@ -55,12 +54,15 @@ function buildOptions(datalistId, names) {
   }
 }
 
+// Names already used on a row stay offered even after their category is
+// deleted, so re-filing an old row does not require re-creating the category.
 async function fillDatalists() {
-  const [accounts, txns] = await Promise.all([db.allAccounts(), db.allTransactions()]);
+  const [accounts, txns, categories] = await Promise.all([
+    db.allAccounts(), db.allTransactions(), db.allCategories(),
+  ]);
   buildOptions('accounts', accounts.map((a) => a.name));
-  const used = new Set(txns.map((t) => t.category).filter(Boolean));
-  const categories = [...new Set([...SEED_CATEGORIES, ...used])].sort();
-  buildOptions('categories', categories);
+  const used = txns.map((t) => t.category).filter(Boolean);
+  buildOptions('categories', [...new Set([...categories.map((c) => c.name), ...used])].sort());
 }
 
 const saveButton = form.querySelector('button[type="submit"]');
@@ -129,7 +131,7 @@ form.addEventListener('submit', async (event) => {
   }
 });
 
-const state = { month: new Date().toISOString().slice(0, 7) };
+const state = { month: new Date().toISOString().slice(0, 7), categories: [], split: DEFAULT_SPLIT };
 
 const monthInput = document.getElementById('list-month');
 monthInput.value = state.month;
@@ -247,12 +249,79 @@ function lastSixMonths(endMonth) {
   return months;
 }
 
+const BUCKET_LABELS = { fixed: 'Fixed', flexible: 'Flexible' };
+
+function renderBudget(txns) {
+  const t = bucketTotals(txns, state.categories, state.month, state.split);
+
+  const cell = (text, className) => {
+    const td = document.createElement('td');
+    if (className) td.className = className;
+    td.textContent = text;
+    return td;
+  };
+
+  const rows = BUCKETS.map((bucket) => {
+    const { budget, spent, remaining } = t[bucket];
+    const row = document.createElement('tr');
+    // The bar reads as "how much of this bucket is gone", so it saturates at
+    // full width once spending passes the budget rather than overflowing.
+    const used = budget > 0 ? Math.min(100, Math.round((spent / budget) * 100)) : 0;
+    row.style.setProperty('--bar', `${used}%`);
+    row.append(
+      cell(BUCKET_LABELS[bucket]),
+      cell(fromCents(budget), 'amount'),
+      cell(fromCents(spent), 'amount'),
+      cell(fromCents(remaining), `amount ${remaining < 0 ? 'amount--out' : ''}`),
+    );
+    return row;
+  });
+
+  // Nothing is charged against savings, so its Spent cell stays empty rather
+  // than carrying the rollover as a negative. A gain under a column headed
+  // "Spent" reads as a mistake however the sign is arranged; the rollover is
+  // named in the note below, where it can be labelled for what it is.
+  const savings = document.createElement('tr');
+  savings.className = 'budget__savings';
+  savings.append(
+    cell('Savings'),
+    cell(fromCents(t.savings.budget), 'amount'),
+    cell('—'),
+    cell(fromCents(t.savings.projected), `amount ${t.savings.projected < 0 ? 'amount--out' : 'amount--in'}`),
+  );
+  rows.push(savings);
+  document.querySelector('#budget tbody').replaceChildren(...rows);
+
+  const parts = [];
+  if (t.income === 0) {
+    parts.push('No income recorded this month, so every budget is zero.');
+  } else {
+    parts.push(`Split from ${fromCents(t.income)} income.`);
+    if (t.savings.unspent > 0) parts.push(`Savings includes ${fromCents(t.savings.unspent)} rolled over from budget you did not spend.`);
+    else if (t.savings.unspent < 0) parts.push(`Overspending of ${fromCents(-t.savings.unspent)} comes out of savings.`);
+  }
+
+  // Only the unbucketed sentence is a warning. Colouring the whole note red
+  // because of it makes the ordinary explanation look like an error too.
+  const explanation = document.createElement('span');
+  explanation.textContent = parts.join(' ');
+  const children = [explanation];
+  if (t.unbucketed > 0) {
+    const warning = document.createElement('span');
+    warning.className = 'budget-note__warning';
+    warning.textContent = ` ${fromCents(t.unbucketed)} was spent in categories with no bucket and is not charged to either budget.`;
+    children.push(warning);
+  }
+  document.getElementById('budget-note').replaceChildren(...children);
+}
+
 // txns here is already filtered to rows with an integer amount (see refresh()),
 // so none of the calls below can coerce a bad value into a string/NaN and no
 // try/catch is needed: every section renders fully from clean data. Rows that
 // failed that filter are passed separately, only to name them in the banner.
 function renderSummary(txns, accounts, invalidTxns) {
   const totals = monthlyTotals(txns, state.month);
+  renderBudget(txns);
   document.getElementById('stat-income').textContent = fromCents(totals.income);
   document.getElementById('stat-spent').textContent = fromCents(-totals.spending);
   const net = document.getElementById('stat-net');
@@ -352,7 +421,11 @@ function renderTrend(points) {
 }
 
 async function refresh() {
-  const [txns, accounts] = await Promise.all([db.allTransactions(), db.allAccounts()]);
+  const [txns, accounts, categories, split] = await Promise.all([
+    db.allTransactions(), db.allAccounts(), db.allCategories(), db.getSetting('split', DEFAULT_SPLIT),
+  ]);
+  state.categories = categories;
+  state.split = split;
   await fillDatalists();
   renderList(txns);
 
@@ -367,6 +440,8 @@ async function refresh() {
     const invalidTxns = txns.filter((t) => !Number.isInteger(t.amount));
     renderSummary(validTxns, accounts, invalidTxns);
     await renderAccounts(accounts);
+    renderCategories(categories);
+    renderSplit(split);
   } catch (error) {
     // A render failure used to fail silently (an unhandled rejection with
     // nothing on screen). Surface it instead of leaving a half-painted or
@@ -432,6 +507,90 @@ document.getElementById('import-input').addEventListener('change', async (event)
   }
   event.target.value = '';
 });
+
+const splitForm = document.getElementById('split-form');
+const splitStatus = document.getElementById('split-status');
+const splitFields = { fixed: 'split-fixed', flexible: 'split-flexible', savings: 'split-savings' };
+
+// Refresh runs after every save, so writing the stored values back into the
+// inputs while one is focused would fight the user mid-keystroke.
+function renderSplit(split) {
+  if (splitForm.contains(document.activeElement)) return;
+  for (const [key, id] of Object.entries(splitFields)) {
+    document.getElementById(id).value = split[key];
+  }
+}
+
+splitForm.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const split = Object.fromEntries(
+    Object.entries(splitFields).map(([key, id]) => [key, Number(document.getElementById(id).value)]),
+  );
+  try {
+    validateSplit(split);
+  } catch (error) {
+    splitStatus.style.color = 'var(--color-destructive)';
+    splitStatus.textContent = error.message;
+    return;
+  }
+  await db.putSetting('split', split);
+  splitStatus.style.color = 'var(--color-accent)';
+  splitStatus.textContent = 'Saved.';
+  await refresh();
+});
+
+const categoryStatus = document.getElementById('category-status');
+
+document.getElementById('category-form').addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const name = document.getElementById('category-name').value.trim();
+  if (!name) return;
+  await db.putCategory(name, document.getElementById('category-bucket').value);
+  event.target.reset();
+  categoryStatus.style.color = 'var(--color-accent)';
+  categoryStatus.textContent = `Saved ${name}.`;
+  await refresh();
+});
+
+function renderCategories(categories) {
+  const sorted = [...categories].sort(
+    (a, b) => a.bucket.localeCompare(b.bucket) || a.name.localeCompare(b.name),
+  );
+  document.getElementById('category-list').replaceChildren(...sorted.map(({ name, bucket }) => {
+    const item = document.createElement('li');
+    item.className = 'row';
+    const main = document.createElement('div');
+    main.className = 'row__main';
+    const title = document.createElement('span');
+    title.className = 'row__title';
+    title.textContent = name;
+    const meta = document.createElement('span');
+    meta.className = 'row__meta';
+    meta.textContent = BUCKET_LABELS[bucket];
+    main.append(title, meta);
+
+    const remove = document.createElement('button');
+    remove.className = 'row__delete';
+    remove.type = 'button';
+    remove.innerHTML = TRASH_ICON;
+    remove.setAttribute('aria-label', `Delete category ${name}`);
+    remove.addEventListener('click', async () => {
+      const txns = await db.allTransactions();
+      const count = txns.filter((t) => t.category === name).length;
+      const warning = count
+        ? `Remove ${name}? ${count} transaction${count === 1 ? '' : 's'} keep${count === 1 ? 's' : ''} the name but stop counting against a budget.`
+        : `Remove ${name}?`;
+      if (!confirm(warning)) return;
+      await db.deleteCategory(name);
+      categoryStatus.style.color = '';
+      categoryStatus.textContent = '';
+      await refresh();
+    });
+
+    item.append(main, remove);
+    return item;
+  }));
+}
 
 document.getElementById('account-form').addEventListener('submit', async (event) => {
   event.preventDefault();

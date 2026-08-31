@@ -1,5 +1,7 @@
+import { DEFAULT_CATEGORIES, DEFAULT_SPLIT } from './budget.js';
+
 const DB_NAME = 'moneytrack';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
 let dbPromise = null;
 
@@ -10,13 +12,25 @@ export function openDb(name = DB_NAME) {
   if (dbPromise) return dbPromise;
   dbPromise = new Promise((resolve, reject) => {
     const request = indexedDB.open(name, DB_VERSION);
-    request.onupgradeneeded = () => {
+    // Each version's block falls through to the next, so a v1 database and a
+    // fresh one both arrive at the same schema by the same path. Seeding
+    // happens here because a versionchange transaction is the only point
+    // where "the store is new" is knowable without a separate read.
+    request.onupgradeneeded = (event) => {
       const database = request.result;
-      const txns = database.createObjectStore('transactions', { keyPath: 'id' });
-      txns.createIndex('date', 'date');
-      txns.createIndex('account', 'account');
-      txns.createIndex('transfer_id', 'transfer_id');
-      database.createObjectStore('accounts', { keyPath: 'name' });
+      if (event.oldVersion < 1) {
+        const txns = database.createObjectStore('transactions', { keyPath: 'id' });
+        txns.createIndex('date', 'date');
+        txns.createIndex('account', 'account');
+        txns.createIndex('transfer_id', 'transfer_id');
+        database.createObjectStore('accounts', { keyPath: 'name' });
+      }
+      if (event.oldVersion < 2) {
+        const categories = database.createObjectStore('categories', { keyPath: 'name' });
+        for (const category of DEFAULT_CATEGORIES) categories.add(category);
+        const settings = database.createObjectStore('settings', { keyPath: 'key' });
+        settings.add({ key: 'split', value: DEFAULT_SPLIT });
+      }
     };
     request.onsuccess = () => resolve(request.result);
     request.onerror = () => reject(request.error);
@@ -45,6 +59,40 @@ function readAll(store) {
 
 export const allTransactions = () => readAll('transactions');
 export const allAccounts = () => readAll('accounts');
+export const allCategories = () => readAll('categories');
+
+export function putCategory(name, bucket) {
+  return run('categories', 'readwrite', (store) => {
+    store.put({ name, bucket });
+    return { value: undefined };
+  });
+}
+
+// Deleting a category leaves its past rows alone. They keep the name they
+// were filed under and surface as `unbucketed` in the budget, which is the
+// honest reading: the money was spent, we just no longer classify it.
+export function deleteCategory(name) {
+  return run('categories', 'readwrite', (store) => {
+    store.delete(name);
+    return { value: undefined };
+  });
+}
+
+export function getSetting(key, fallback) {
+  return run('settings', 'readonly', (store) => {
+    const result = { value: fallback };
+    const request = store.get(key);
+    request.onsuccess = () => { if (request.result) result.value = request.result.value; };
+    return result;
+  });
+}
+
+export function putSetting(key, value) {
+  return run('settings', 'readwrite', (store) => {
+    store.put({ key, value });
+    return { value: undefined };
+  });
+}
 
 export function putAccount(name, openingBalance) {
   return run('accounts', 'readwrite', (store) => {
