@@ -193,7 +193,8 @@
     <p id="account-status" role="status"></p>
     <ul id="account-list" class="rows"></ul>
 
-    <label for="default-account">Default on the Add form</label>
+    <label for="default-account">Default account</label>
+    <p class="hint">Pre-selected on the Add form, so the account you use most is already chosen. You can still pick another on any transaction.</p>
     <select id="default-account"></select>
   </div>
 
@@ -266,6 +267,13 @@
     <label for="planner-input">Planner workbook</label>
     <input type="file" id="planner-input" accept=".xlsx,.xls">
     <p id="planner-status" role="status"></p>
+  </div>
+
+  <div class="card">
+    <h2>Sample data</h2>
+    <p class="hint">Fills the app with three months of made-up transactions so every screen has something to show. Added alongside anything already here, never in place of it — and every row is labelled in its note so you can find and delete them.</p>
+    <button type="button" class="primary" id="sample-button">Load sample data</button>
+    <p id="sample-status" role="status"></p>
   </div>
 
   <div class="card">

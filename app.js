@@ -10,6 +10,7 @@ import {
 import { exportXlsx, importXlsx, importPlanner } from './xlsx-io.js';
 import { attachCalendar, toISO } from './calendar.js';
 import { confirmDialog, alertDialog } from './dialog.js';
+import { SAMPLE_ACCOUNTS, SAMPLE_NOTE, sampleMonths, sampleTransactions } from './sample.js';
 
 function showView(name) {
   for (const section of document.querySelectorAll('.view')) {
@@ -1192,6 +1193,59 @@ async function renderAccounts(accounts) {
     return item;
   }));
 }
+
+const sampleStatus = document.getElementById('sample-status');
+
+// Additive, and says so before doing it. Replacing the ledger would be the
+// more impressive demo and a terrible default: the one person who presses
+// this by mistake is the one with real money already recorded.
+document.getElementById('sample-button').addEventListener('click', async () => {
+  const rows = sampleTransactions(state.month, () => crypto.randomUUID());
+  const months = sampleMonths(state.month);
+  const existing = await db.allAccounts();
+  const clashes = SAMPLE_ACCOUNTS
+    .filter((a) => db.matchAccountName(existing, a.name))
+    .map((a) => a.name);
+
+  const ok = await confirmDialog({
+    title: 'Load sample data',
+    body: `Adds ${rows.length} made-up transactions across ${months.join(', ')}, `
+      + `and the accounts ${SAMPLE_ACCOUNTS.map((a) => a.name).join(', ')}. `
+      + `Anything already recorded is kept exactly as it is.\n\nEvery row is noted "${SAMPLE_NOTE}", `
+      + 'so you can find them on the List tab and delete them.'
+      + (clashes.length
+        ? `\n\nYou already have an account named ${clashes.join(' and ')}. `
+          + 'The sample will file its rows there rather than creating a second one, '
+          + 'and will not change the initial balance.'
+        : ''),
+    confirmLabel: 'Load it',
+  });
+  if (!ok) {
+    sampleStatus.className = '';
+    sampleStatus.textContent = 'Nothing was added.';
+    return;
+  }
+
+  try {
+    // Accounts first, and through ensureAccount so an account the user
+    // already has keeps its own spelling and its own opening balance.
+    for (const account of SAMPLE_ACCOUNTS) {
+      const name = await db.ensureAccount(account.name, account.opening_balance);
+      for (const row of rows) if (row.account === account.name) row.account = name;
+    }
+    await db.putTransactions(rows);
+    sampleStatus.className = 'is-ok';
+    sampleStatus.textContent = `Added ${rows.length} sample transactions. Open the Summary to see them.`;
+    await refresh();
+  } catch (error) {
+    sampleStatus.className = 'budget-note__warning';
+    sampleStatus.textContent = 'The sample was not loaded.';
+    await alertDialog({
+      title: 'Sample data not loaded',
+      body: `Nothing you had recorded was changed.\n\nThe reason given was: ${error.message}`,
+    });
+  }
+});
 
 // The cache name is the only honest version marker: it is what the fetch
 // handler is actually serving, not what the source on disk says. When those
