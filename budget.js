@@ -225,6 +225,48 @@ export function resolveBucket(txn) {
 
 export const UNCATEGORISED = 'Uncategorised';
 
+// The List shows a category as a short code in a coloured tag. A code is only
+// worth reading if it is UNIQUE — two categories sharing one would quietly
+// mislabel money, which is worse than no tag at all. So codes are derived for
+// the whole set at once and collisions are resolved, rather than each name
+// being abbreviated on its own.
+//
+// Candidates are tried in order of how well they read, and the first unused
+// one wins. Order of the input decides who gets the nicest code, so it is the
+// user's own category order — stable unless they rearrange it.
+function codeCandidates(name) {
+  const words = String(name).toUpperCase().split(/[^A-Z0-9]+/).filter(Boolean);
+  if (words.length === 0) return [];
+  const [first, second = ''] = words;
+  const squashed = words.join('');
+  return [
+    first.slice(0, 3),                                   // GROCERIES -> GRO
+    words.map((w) => w[0]).join('').slice(0, 3),         // HOUSING BILLS -> HB
+    first.replace(/[AEIOU]/g, '').slice(0, 3),           // TRANSFER -> TRN, once TRA is taken
+    (first.slice(0, 2) + (second[0] ?? '')).slice(0, 3), // TRANSPORTATION FEE -> TRF
+    squashed.slice(0, 3),
+    first.slice(0, 2) + first.slice(-1),
+  ].filter(Boolean);
+}
+
+export function categoryCodes(names) {
+  const taken = new Set();
+  const codes = new Map();
+  for (const name of names) {
+    const candidate = codeCandidates(name).find((c) => c.length >= 2 && !taken.has(c));
+    // Everything readable was taken, so fall back to a numbered code. Ugly on
+    // purpose: it should look like something to fix by renaming.
+    let code = candidate;
+    for (let n = 2; !code; n += 1) {
+      const numbered = `${String(name).toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 2)}${n}`;
+      if (!taken.has(numbered)) code = numbered;
+    }
+    taken.add(code);
+    codes.set(name, code);
+  }
+  return codes;
+}
+
 // Written onto both halves of a transfer by the data layer. It is not a
 // category anyone creates, so it must never be offered as one — a spend
 // filed under it would look like a transfer to every reader of the list.

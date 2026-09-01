@@ -1,8 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { SAMPLE_ACCOUNTS, SAMPLE_NOTE, sampleMonths, sampleTransactions } from '../sample.js';
+import {
+  SAMPLE_ACCOUNTS, SAMPLE_COLOURS, SAMPLE_NOTE, sampleMonths, sampleTransactions,
+} from '../sample.js';
 import { monthlyTotals, bucketTotals, accountBalances, selectSpending } from '../rollup.js';
-import { DEFAULT_CATEGORIES, DEFAULT_SPLIT, kindOf } from '../budget.js';
+import { CATEGORY_COLOURS, DEFAULT_CATEGORIES, DEFAULT_SPLIT, kindOf } from '../budget.js';
 
 // Sample data is shown to someone deciding whether the app works. If it is
 // itself malformed, every screen it fills is lying, and the reader cannot
@@ -150,4 +152,27 @@ test('every sample row is labelled so the user can find and delete them', () => 
   for (const row of build()) {
     assert.equal(row.note, SAMPLE_NOTE, `${row.name} is not labelled`);
   }
+});
+
+test('every colour the sample presets is one of the curated ten', () => {
+  // A colour outside the set would be normalised away to null on save, so
+  // the sample would silently colour nothing.
+  const allowed = new Set(CATEGORY_COLOURS.map((c) => c.value));
+  for (const [name, value] of SAMPLE_COLOURS) {
+    assert.ok(allowed.has(value), `${name} uses ${value}, which is not in CATEGORY_COLOURS`);
+  }
+});
+
+test('the sample presets a colour for every category it spends in', () => {
+  // Otherwise the chart arrives part coloured and part ramp, which reads as
+  // a bug rather than as a choice.
+  const spent = new Set(build().filter((r) => r.amount < 0 && !r.transfer_id).map((r) => r.category));
+  for (const category of spent) {
+    assert.ok(SAMPLE_COLOURS.has(category), `${category} is spent in but has no sample colour`);
+  }
+});
+
+test('no two sample categories share a colour', () => {
+  const values = [...SAMPLE_COLOURS.values()];
+  assert.equal(new Set(values).size, values.length);
 });

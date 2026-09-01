@@ -1,13 +1,13 @@
 ---
 version: alpha
 name: MoneyTrack
-description: "A phone-first local-only money tracker, shipped as an installable PWA with no build step. Two user-switchable tones share one token vocabulary: Tone A is carbon and signal green, a true-black AMOLED canvas (#000000) carrying a high-chroma green accent (#0EAC5D); Tone B is peach room, a warm light canvas (#F3CEC2) built from a photographic reference where the frame interior reads brighter than the wall. Type is Fira Sans for UI and Fira Code for every figure, so digits stay in tabular columns. The system is an app UI, not a marketing canvas: the tallest step in the ramp is the amount field at 34px, headings sit at 17px and below, and depth comes from a three-step surface ladder plus hairline borders. Colour carries meaning only — green for income, red for spending, the accent for the primary action and the active tab. Nothing is decorative."
+description: "A phone-first local-only money tracker, shipped as an installable PWA with no build step. Two user-switchable tones share one token vocabulary: Tone A is carbon and volt, a true-black AMOLED canvas (#000000) carrying a high-chroma green accent (#00EB62); Tone B is peach room, a warm light canvas (#F3CEC2) built from a photographic reference where the frame interior reads brighter than the wall. Type is Fira Sans for UI and Fira Code for every figure, so digits stay in tabular columns. The system is an app UI, not a marketing canvas: the tallest step in the ramp is the amount field at 34px, headings sit at 17px and below, and depth comes from a three-step surface ladder plus hairline borders. Colour carries meaning only — green for income, red for spending, the accent for the primary action and the active tab. Nothing is decorative."
 
 colors:
-  primary: "#0EAC5D"
-  primary-hover: "#22C46F"
-  on-primary: "#03150B"
-  active: "#2BD07F"
+  primary: "#00EB62"
+  primary-hover: "#3BFF87"
+  on-primary: "#04140A"
+  active: "#00EB62"
   accent: "#2ED08A"
   destructive: "#F2543D"
   background: "#000000"
@@ -246,7 +246,7 @@ The system ships **two tones the user switches in Settings**. They share one tok
 
 ## Colours
 
-### Tone A — carbon and signal green (default)
+### Tone A — carbon and volt (default)
 
 The canvas is `#000000`, chosen for AMOLED: on an OLED panel those pixels are
 switched off rather than lit dark grey, which is both the deepest black the
@@ -254,7 +254,7 @@ screen can make and the cheapest to display. Every surface above it is a
 near-black carrying a green cast rather than a neutral grey — a warm-neutral
 ladder underneath a green accent reads as two unrelated palettes stacked.
 
-The accent is signal green `#0EAC5D`. The sporty read comes from one colour
+The accent is volt green `#00EB62`, pinned near the top of its range: a mid-green on true black reads as muted, because there is no lit surface near it to measure against. The sporty read comes from one colour
 doing a single job loudly while everything else stays nearly invisible:
 high-chroma green on true black is the whole contrast story, so no other
 element needs to raise its voice. Spending stays a warm red `#F2543D`, which

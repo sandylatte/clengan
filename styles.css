@@ -17,18 +17,20 @@
    for white text is too dark to read as a label on the tab bar, and vice
    versa. Ratios are measured against the surface each token actually sits on. */
 
-/* Tone A — carbon & signal green. AMOLED first: the canvas is true #000,
+/* Tone A — carbon & volt. AMOLED first: the canvas is true #000,
    so on an OLED phone those pixels are switched off rather than lit dark
    grey. Every surface above it is a near-black with a green cast, never a
    neutral grey — a warm-neutral ladder next to a green accent reads as two
    unrelated palettes.
    Sporty comes from the accent doing one job loudly and the rest of the
    screen staying almost invisible: high-chroma green on black is the whole
-   contrast story, so nothing else needs to shout. */
+   contrast story, so nothing else needs to shout. The green is deliberately
+   at the top of its range — a mid-green on true black reads as muted, because
+   there is no lit surface anywhere near it to measure against. */
 :root {
-  --color-primary: #0EAC5D;        /* 7.08:1 on the page */
-  --color-primary-hover: #22C46F;
-  --color-on-primary: #03150B;     /* 6.34:1 on primary */
+  --color-primary: #00EB62;        /* 13.06:1 on the page */
+  --color-primary-hover: #3BFF87;
+  --color-on-primary: #04140A;     /* 11.77:1 on primary */
   --shadow-primary: none;          /* signal green on black separates unaided */
   /* Blacker and deeper than a grey-canvas shadow: over #000 a soft shadow is
      invisible, so the popover is separated by its own surface plus a hard
@@ -36,8 +38,8 @@
   --shadow-popover: 0 10px 30px rgba(0, 0, 0, 0.85), 0 0 0 1px rgba(20, 40, 30, 0.9);
   --color-scrim: rgb(0 0 0 / 0.72);
   --color-tabbar: color-mix(in srgb, var(--color-muted) 92%, transparent);
-  --color-active: #2BD07F;         /* tab label + focus ring, 10.4:1 */
-  --color-bar: color-mix(in srgb, #0EAC5D 26%, transparent);
+  --color-active: #00EB62;         /* tab label + focus ring, 13.1:1 */
+  --color-bar: color-mix(in srgb, #00EB62 24%, transparent);
   --color-accent: #2ED08A;         /* income, 10.5:1 */
   --color-destructive: #F2543D;    /* spending, 6.1:1 */
   --color-background: #000000;     /* AMOLED: the pixel is off */
@@ -123,7 +125,7 @@ body {
    figure worth seeing before you have typed anything. */
 h1 {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
   position: sticky;
@@ -139,6 +141,18 @@ h1 {
   line-height: 1.4;
   letter-spacing: -0.01em;
 }
+
+/* The sprite itself is never drawn; only its <use> references are. */
+.sprite { display: none; }
+
+.mark { width: 22px; height: 22px; flex: none; }
+.mark__bar { fill: var(--color-primary); }
+/* The two lower bars are the same hue receding, not separate colours — so the
+   mark follows a tone switch with no second palette to keep in step. */
+.mark__bar--1 { fill: color-mix(in srgb, var(--color-primary) 32%, transparent); }
+.mark__bar--2 { fill: color-mix(in srgb, var(--color-primary) 62%, transparent); }
+
+.h1-name { flex: 1; min-width: 0; }
 
 .h1-meta {
   font-size: 13px;
@@ -425,6 +439,74 @@ button.primary:active { filter: brightness(0.92); }
 .row:last-child { border-bottom: none; }
 
 .row__main { flex: 1; min-width: 0; }
+
+/* A transaction row: day, tag, name, amount over account, delete. Five things
+   on one line at 375px, so every fixed part is measured and only the name is
+   allowed to take what is left. */
+.row--txn { gap: var(--space-1); padding-inline: var(--space-0); }
+
+.row__day {
+  width: 26px;
+  flex: none;
+  text-align: center;
+  line-height: 1.05;
+}
+.row__day b { display: block; font-size: 15px; font-weight: 700; }
+.row__day u {
+  display: block;
+  text-decoration: none;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-subtle);
+}
+
+/* The category, as colour first and letters second. The tint is mixed from
+   the category's own colour so one stored value drives both the text and the
+   fill, and neither can drift from the other. */
+.tag {
+  flex: none;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 3px 7px;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-num);
+}
+.tag--plain { background: var(--color-input); color: var(--color-subtle); }
+
+.row--txn .row__title {
+  flex: 1;
+  min-width: 0;
+  font-size: 14px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.row__money { flex: none; text-align: right; line-height: 1.25; }
+.row__money .amount { display: block; font-size: 14px; white-space: nowrap; }
+.row__money small {
+  display: block;
+  font-size: 10px;
+  color: var(--color-subtle);
+  white-space: nowrap;
+}
+
+/* An empty screen is still a screen. The mark plus a sentence that says what
+   would fill it beats a bare line of grey text. */
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: var(--space-1);
+  padding: var(--space-6) var(--space-3);
+}
+.empty--inline { padding: var(--space-5) var(--space-3); }
+.empty__mark { width: 40px; height: 40px; opacity: 0.55; margin-bottom: var(--space-1); }
+.empty__title { margin: 0; font-size: 15px; font-weight: 600; }
+.empty__body { margin: 0; font-size: 13px; color: var(--color-subtle); max-width: 34ch; }
 .row__title { display: block; }
 .row > .amount { font-size: 15px; font-weight: 500; white-space: nowrap; }
 .row__meta {

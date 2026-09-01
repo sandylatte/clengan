@@ -7,12 +7,15 @@ import {
 import {
   BUCKETS, CATEGORY_KINDS, CATEGORY_COLOURS, DEFAULT_SPLIT, validateSplit, allocateFunds,
   splitBalance, categoryOptions, sortByPosition, normaliseColour, moveTo, UNCATEGORISED,
+  categoryCodes, TRANSFER_CATEGORY,
 } from './budget.js';
 import { reorderButtons, dragHandle, attachDragReorder } from './reorder.js';
 import { exportXlsx, importXlsx, importPlanner } from './xlsx-io.js';
 import { attachCalendar, toISO } from './calendar.js';
 import { confirmDialog, alertDialog, pickColour } from './dialog.js';
-import { SAMPLE_ACCOUNTS, SAMPLE_NOTE, sampleMonths, sampleTransactions } from './sample.js';
+import {
+  SAMPLE_ACCOUNTS, SAMPLE_COLOURS, SAMPLE_NOTE, sampleMonths, sampleTransactions,
+} from './sample.js';
 
 function showView(name) {
   for (const section of document.querySelectorAll('.view')) {
@@ -227,6 +230,7 @@ const state = {
   // Chart-only. The month above is global; these narrow the spending chart
   // without touching the budget, which is always the whole month's income.
   filter: { period: 'month', account: '', bucket: '' },
+  codes: new Map(),
 };
 
 // The same month drives the List and the Summary, so it has a control on
@@ -267,6 +271,8 @@ function renderPieScope(breakdown) {
   document.getElementById('pie-scope').textContent = `${parts.join(', ')}.`;
 }
 
+const MONTH_ABBR = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
 const TRASH_ICON = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>`;
 
 function showListStatus(message) {
@@ -280,6 +286,15 @@ function renderList(txns) {
     .sort((a, b) => b.date.localeCompare(a.date));
   const list = document.getElementById('list-rows');
   document.getElementById('list-empty').hidden = rows.length > 0;
+
+  // The header carried nothing on this tab. Net for the month is the one
+  // figure worth having while scrolling the rows it is made of — and it is
+  // computed from the same rows on screen, so it can be checked by eye.
+  const { net } = monthlyTotals(txns, state.month);
+  const total = document.getElementById('head-list-total');
+  total.textContent = rows.length ? formatAmount(net) : '';
+  total.classList.toggle('amount--in', net >= 0);
+  total.classList.toggle('amount--out', net < 0);
 
   function buildDeleteButton(txn, label) {
     const remove = document.createElement('button');
@@ -316,42 +331,55 @@ function renderList(txns) {
 
   function buildRow(txn) {
     const item = document.createElement('li');
-    item.className = 'row';
+    item.className = 'row row--txn';
 
-    const main = document.createElement('div');
-    main.className = 'row__main';
-    // The name is what the user actually recognises a row by, so it leads.
-    // The category is a filing decision, not an identity: it drops to the
-    // meta line beside the date and account. Rows written before the name
-    // existed fall back to the category so they never render blank.
+    // Day number and month, from the stored YYYY-MM-DD by slicing, never by
+    // constructing a Date: a local Date built from that string lands on the
+    // previous day west of Greenwich.
+    const when = document.createElement('div');
+    when.className = 'row__day';
+    const dayNumber = document.createElement('b');
+    dayNumber.className = 'amount';
+    dayNumber.textContent = txn.date.slice(8, 10);
+    const monthName = document.createElement('u');
+    monthName.textContent = MONTH_ABBR[Number(txn.date.slice(5, 7)) - 1] ?? '';
+    when.append(dayNumber, monthName);
+
+    // The tag carries the category by colour and code. Its accessible name is
+    // the full category, because a three-letter code is unreadable to anyone
+    // not looking at the colour beside it.
+    const tag = document.createElement('span');
+    tag.className = 'tag';
+    const category = txn.transfer_id ? TRANSFER_CATEGORY : txn.category;
+    const colour = state.categories.find((c) => c.name === category)?.colour;
+    if (colour) {
+      tag.style.color = colour;
+      tag.style.background = `color-mix(in srgb, ${colour} 26%, transparent)`;
+    } else {
+      tag.classList.add('tag--plain');
+    }
+    tag.textContent = state.codes.get(category) ?? '—';
+    tag.title = category || UNCATEGORISED;
+    tag.setAttribute('aria-label', category || UNCATEGORISED);
+
     const title = document.createElement('span');
     title.className = 'row__title';
-    const fallback = txn.transfer_id ? 'Transfer' : (txn.category || UNCATEGORISED);
-    // The category's colour, carried onto the row it files. This is what
-    // makes a long list scannable: the eye finds the colour before the word.
-    const colour = state.categories.find((c) => c.name === txn.category)?.colour;
-    if (colour && !txn.transfer_id) {
-      const dot = document.createElement('span');
-      dot.className = 'swatch';
-      dot.style.background = colour;
-      title.append(dot);
-    }
-    title.append(document.createTextNode(txn.name || fallback));
-    const meta = document.createElement('span');
-    meta.className = 'row__meta';
-    // Only name the category here when it is not already doing duty as the
-    // title, or a nameless row reads "Groceries · Groceries".
-    const category = txn.name && !txn.transfer_id ? txn.category : '';
-    meta.textContent = [txn.date, txn.account, category, txn.note].filter(Boolean).join(' · ');
-    main.append(title, meta);
+    title.textContent = txn.name || category || UNCATEGORISED;
 
+    // Amount with the account beneath it, on the side of the row where money
+    // already lives. Without it a mixed-account list cannot be read at all.
+    const money = document.createElement('span');
+    money.className = 'row__money';
     const amount = document.createElement('span');
     amount.className = `amount ${txn.amount > 0 ? 'amount--in' : 'amount--out'}`;
     amount.textContent = formatAmount(txn.amount);
+    const account = document.createElement('small');
+    account.textContent = txn.account;
+    money.append(amount, account);
 
     const remove = buildDeleteButton(txn, `Delete ${title.textContent} ${formatAmount(txn.amount)} on ${txn.date}`);
 
-    item.append(main, amount, remove);
+    item.append(when, tag, title, money, remove);
     return item;
   }
 
@@ -724,7 +752,17 @@ async function refresh() {
   ]);
   state.defaultAccount = defaultAccount;
   state.categories = categories;
-  state.funds = funds;
+  // Derived once per refresh, over the user's own category order plus the
+  // reserved Transfer name, so every row's tag comes from one shared set and
+  // two categories can never end up sharing a code.
+  state.codes = categoryCodes([...sortByPosition(categories).map((c) => c.name), TRANSFER_CATEGORY]);
+  // Biggest share first. The list is read to answer "where is most of my
+  // savings going", and alphabetical order buries the answer. Sorted once
+  // here so the Settings list, the Summary table and allocateFunds all agree
+  // — allocate hands the rounding remainder to the LAST share, so a display
+  // that sorted separately would move the odd cent to a different fund than
+  // the one shown holding it.
+  state.funds = [...funds].sort((a, b) => b.percent - a.percent || a.name.localeCompare(b.name));
   state.split = split;
   await fillPickers();
   renderList(txns);
@@ -1332,9 +1370,22 @@ document.getElementById('sample-button').addEventListener('click', async () => {
       const name = await db.ensureAccount(account.name, account.opening_balance);
       for (const row of rows) if (row.account === account.name) row.account = name;
     }
+    // Colours are part of the demonstration: an all-grey chart does not show
+    // that categories can be coloured at all. Only categories the sample
+    // actually uses are touched, and only ones that have no colour yet — a
+    // colour already chosen is the user's, not the sample's to overwrite.
+    let coloured = 0;
+    for (const category of state.categories) {
+      const wanted = SAMPLE_COLOURS.get(category.name);
+      if (!wanted || category.colour) continue;
+      await db.putCategory(category.name, { colour: wanted });
+      coloured += 1;
+    }
     await db.putTransactions(rows);
     sampleStatus.className = 'is-ok';
-    sampleStatus.textContent = `Added ${rows.length} sample transactions. Open the Summary to see them.`;
+    sampleStatus.textContent = `Added ${rows.length} sample transactions`
+      + (coloured ? ` and coloured ${coloured} categories.` : '.')
+      + ' Open the Summary to see them.';
     await refresh();
   } catch (error) {
     sampleStatus.className = 'budget-note__warning';
@@ -1437,7 +1488,7 @@ themeSelect.value = document.documentElement.dataset.theme === 'peach' ? 'peach'
 themeSelect.addEventListener('change', () => {
   const peach = themeSelect.value === 'peach';
   document.documentElement.dataset.theme = peach ? 'peach' : '';
-  document.querySelector('meta[name="theme-color"]').content = peach ? '#F3CEC2' : '#0D0E10';
+  document.querySelector('meta[name="theme-color"]').content = peach ? '#F3CEC2' : '#000000';
   localStorage.setItem('moneytrack-theme', peach ? 'peach' : 'graphite');
 });
 

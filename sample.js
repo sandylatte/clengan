@@ -7,7 +7,29 @@
 // writes nothing itself, so it can be tested without a database and the
 // caller stays in charge of whether any of it is kept.
 
+import { CATEGORY_COLOURS } from './budget.js';
+
 const rupiah = (whole) => whole * 100;
+
+// Colours for the categories the sample actually uses, so the chart, the
+// legend and the list rows arrive already telling the colour story rather
+// than as ten shades of one ramp. Picked by hue distance, not by list order:
+// the two largest slices are the ones a reader compares first, so they get
+// colours from opposite ends of the wheel.
+const colour = (name) => CATEGORY_COLOURS.find((c) => c.name === name).value;
+
+export const SAMPLE_COLOURS = new Map([
+  ['Housing & Bills', colour('Blue')],
+  ['Groceries', colour('Green')],
+  ['Food & Drinks', colour('Amber')],
+  ['Transportation', colour('Teal')],
+  ['Shopping', colour('Pink')],
+  ['Entertainment', colour('Violet')],
+  ['Subscription', colour('Indigo')],
+  ['Internet', colour('Stone')],
+  ['Insurance', colour('Olive')],
+  ['Health & Skincare', colour('Clay')],
+]);
 
 // Every sample row carries this in its note. Settings promises the user they
 // can find and delete them, and a promise made in the interface has to be

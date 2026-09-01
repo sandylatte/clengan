@@ -1,52 +1,64 @@
 #!/usr/bin/env python3
-"""Regenerate the app icons.
+"""Generate the app icons from the C2 mark: three rounded bars stepping up.
 
-The mark is the Budget card reduced to three bars: fixed, flexible, savings,
-descending. It is the one visual the app actually owns, and it survives being
-shrunk to 48px in a launcher.
-
-The icons are declared `purpose: any maskable`, so Android may crop them to an
-arbitrary shape. Everything is drawn inside the maskable safe zone — the
-centred circle of 80% diameter — which is why the bars occupy a good deal less
-of the canvas than they otherwise would.
-
-Run after changing the palette:  python3 make-icons.py
+Drawn here rather than exported from the SVG sprite because the icon is a
+different object: it needs the maskable safe zone, a real background (a
+transparent icon renders as a black square on some launchers), and fixed
+colours, since a PNG cannot follow the app's tone tokens.
 """
-from PIL import Image, ImageDraw
+from pathlib import Path
+import struct
+import zlib
 
-BACKGROUND = '#0D0E10'   # Tone A canvas
-BAR = '#C8A15A'          # Tone A brass
-SUPERSAMPLE = 4          # draw large, downscale once, get free antialiasing
+BG = (0x00, 0x00, 0x00)
+# Top to bottom, brightest first: the newest step is the lit one. Reversing
+# these silently makes the stack read as draining rather than growing.
+BARS = [(0x00, 0xEB, 0x62), (0x2E, 0x9E, 0x5E), (0x1C, 0x7A, 0x48)]
 
-
-def render(size):
-    s = size * SUPERSAMPLE
-    image = Image.new('RGB', (s, s), BACKGROUND)
-    draw = ImageDraw.Draw(image)
-
-    # Safe zone: the maskable circle has radius 0.4*s, so the largest square
-    # that always survives a crop is its inscribed one, 0.4*s*sqrt(2) across.
-    span = 0.566 * s
-    left = (s - span) / 2
-
-    thickness = span * 0.193
-    gap = span * 0.138
-    block = thickness * 3 + gap * 2
-    top = (s - block) / 2
-
-    for i, fraction in enumerate((1.0, 0.70, 0.45)):
-        y = top + i * (thickness + gap)
-        draw.rounded_rectangle(
-            [left, y, left + span * fraction, y + thickness],
-            radius=thickness / 2,
-            fill=BAR,
-        )
-
-    return image.resize((size, size), Image.LANCZOS)
+# Maskable icons are cropped to a circle of 80% width on some launchers, so
+# everything meaningful stays inside the middle 80%.
+SAFE = 0.80
 
 
-if __name__ == '__main__':
+def rounded_bar(px, size, x0, y0, x1, y1, radius, colour):
+    for y in range(max(0, int(y0)), min(size, int(y1) + 1)):
+        for x in range(max(0, int(x0)), min(size, int(x1) + 1)):
+            cx = min(max(x, x0 + radius), x1 - radius)
+            cy = min(max(y, y0 + radius), y1 - radius)
+            if (x - cx) ** 2 + (y - cy) ** 2 <= radius ** 2 + radius:
+                px[y][x] = colour
+
+
+def build(size):
+    px = [[BG for _ in range(size)] for _ in range(size)]
+    safe = size * SAFE
+    left = (size - safe) / 2
+    bar_h = safe * 0.185
+    gap = (safe - 3 * bar_h) / 2
+    radius = bar_h / 2
+    for i, colour in enumerate(BARS):
+        top = left + i * (bar_h + gap)
+        rounded_bar(px, size, left, top, left + safe, top + bar_h, radius, colour)
+    return px
+
+
+def write_png(path, px, size):
+    raw = b"".join(b"\x00" + b"".join(bytes(p) for p in row) for row in px)
+
+    def chunk(tag, data):
+        body = tag + data
+        return struct.pack(">I", len(data)) + body + struct.pack(">I", zlib.crc32(body))
+
+    png = (b"\x89PNG\r\n\x1a\n"
+           + chunk(b"IHDR", struct.pack(">IIBBBBB", size, size, 8, 2, 0, 0, 0))
+           + chunk(b"IDAT", zlib.compress(raw, 9))
+           + chunk(b"IEND", b""))
+    path.write_bytes(png)
+
+
+if __name__ == "__main__":
+    out = Path(__file__).parent / "icons"
+    out.mkdir(exist_ok=True)
     for size in (192, 512):
-        path = f'icons/icon-{size}.png'
-        render(size).save(path, optimize=True)
-        print(f'wrote {path}')
+        write_png(out / f"icon-{size}.png", build(size), size)
+        print(f"wrote icons/icon-{size}.png")

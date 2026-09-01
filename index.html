@@ -6,7 +6,7 @@
 <title>MoneyTrack</title>
 <link rel="manifest" href="./manifest.json">
 <link rel="stylesheet" href="./styles.css">
-<meta name="theme-color" content="#0D0E10">
+<meta name="theme-color" content="#000000">
 <script>
 /* Inline and before the stylesheet's first paint on purpose: app.js is a
    deferred module, so applying the tone there flashes graphite at a peach
@@ -22,8 +22,17 @@
 </head>
 <body>
 
+<!-- The mark, defined once. Bars are token-driven: on carbon it is volt green
+     stepping up, on peach it is the rose primary doing the same. A fixed green
+     would sit on the peach canvas at barely 1.3:1. -->
+<svg class="sprite" aria-hidden="true"><symbol id="mark" viewBox="0 0 24 24">
+  <rect x="3.5" y="16.5" width="17" height="4" rx="2" class="mark__bar mark__bar--1"/>
+  <rect x="3.5" y="10" width="17" height="4" rx="2" class="mark__bar mark__bar--2"/>
+  <rect x="3.5" y="3.5" width="17" height="4" rx="2" class="mark__bar mark__bar--3"/>
+</symbol></svg>
+
 <section class="view" id="view-add">
-  <h1>Add <span class="h1-meta amount" id="head-balance"></span></h1>
+  <h1><svg class="mark" aria-hidden="true"><use href="#mark"/></svg><span class="h1-name">Add</span><span class="h1-meta amount" id="head-balance"></span></h1>
   <form id="add-form">
     <label for="add-amount">Amount (Rp)</label>
     <input type="text" id="add-amount" class="moneyfield" inputmode="numeric" autocomplete="off" placeholder="0" required>
@@ -82,15 +91,19 @@
   </form>
 </section>
 <section class="view" id="view-list" hidden>
-  <h1>List</h1>
+  <h1><svg class="mark" aria-hidden="true"><use href="#mark"/></svg><span class="h1-name">List</span><span class="h1-meta amount" id="head-list-total"></span></h1>
   <label for="list-month">Month</label>
   <input type="month" id="list-month">
   <p id="list-status" role="status"></p>
   <ul id="list-rows" class="rows"></ul>
-  <p id="list-empty" hidden>No transactions this month.</p>
+  <div id="list-empty" class="empty" hidden>
+    <svg class="empty__mark" aria-hidden="true"><use href="#mark"/></svg>
+    <p class="empty__title">Nothing recorded this month</p>
+    <p class="empty__body">Anything you add on the Add tab shows up here, newest first.</p>
+  </div>
 </section>
 <section class="view" id="view-summary" hidden>
-  <h1>Summary</h1>
+  <h1><svg class="mark" aria-hidden="true"><use href="#mark"/></svg><span class="h1-name">Summary</span></h1>
   <label for="summary-month">Month</label>
   <input type="month" id="summary-month">
   <p id="summary-status" role="status"></p>
@@ -154,7 +167,11 @@
       <thead><tr><th scope="col">Category</th><th scope="col">Amount</th></tr></thead>
       <tbody></tbody>
     </table>
-    <p id="bars-empty" hidden>No spending this month.</p>
+    <div id="bars-empty" class="empty empty--inline" hidden>
+      <svg class="empty__mark" aria-hidden="true"><use href="#mark"/></svg>
+      <p class="empty__title">No spending in this view</p>
+      <p class="empty__body">Widen the filters above, or record a transaction.</p>
+    </div>
   </div>
 
   <div class="card">
@@ -172,7 +189,7 @@
   </div>
 </section>
 <section class="view" id="view-settings" hidden>
-  <h1>Settings</h1>
+  <h1><svg class="mark" aria-hidden="true"><use href="#mark"/></svg><span class="h1-name">Settings</span></h1>
 
   <div class="card">
     <h2>Accounts</h2>
@@ -202,7 +219,7 @@
     <h2>Appearance</h2>
     <label for="theme-select">Colour tone</label>
     <select id="theme-select">
-      <option value="graphite">Graphite &amp; brass</option>
+      <option value="graphite">Carbon &amp; volt</option>
       <option value="peach">Peach room</option>
     </select>
   </div>
