@@ -79,15 +79,15 @@
   --color-tabbar: #EFC5B7;
   --color-active: #8E3A26;         /* 4.8:1 on the tab strip */
   --color-bar: #F0C0B0;
-  --color-accent: #2F6B4F;         /* income, 5.6:1 */
-  --color-destructive: #A63E2B;    /* spending, 5.9:1 */
+  --color-accent: #2D674C;         /* income, 4.57:1 on the page */
+  --color-destructive: #9F3B29;    /* spending, 4.60:1 on the page */
   --color-background: #F3CEC2;
   --color-foreground: #4A2A22;     /* 13:1 */
   /* The ladder steps up from the canvas without reaching white — a near-white
      input inside a peach room reads as a hole punched in the wall. */
   --color-muted: #F7DCD3;
   --color-input: #FBE8E1;
-  --color-subtle: #8A5A4B;         /* 5.4:1 */
+  --color-subtle: #7E5144;         /* 4.58:1 on the page, 5.63:1 on an input */
   --color-border: #E9C2B5;
   --color-border-strong: #D9A493;
   color-scheme: light;
@@ -137,10 +137,12 @@ h1 {
 }
 .h1-meta:empty { display: none; }
 
+/* A section marker, not a heading with presence. Small, wide-tracked and
+   quiet, so the figures below it are the only thing with weight. */
 h2 {
-  font-size: 13px;
-  font-weight: 500;
-  letter-spacing: 0.06em;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--color-subtle);
   margin: 0 0 var(--space-3);
@@ -154,18 +156,28 @@ h2 {
 .view {
   max-width: 620px;
   margin: 0 auto;
-  padding: var(--space-4) var(--space-3);
+  padding: var(--space-4) var(--space-3) var(--space-6);
 }
+/* Space between fields carries the structure a panel border used to. */
+.view input + label,
+.view select + label,
+.view .chips + label,
+.view .datefield + label { margin-top: var(--space-3); }
 .view[hidden] { display: none; }
 
-/* Surface ladder: canvas → card → input. Depth without shadows. */
+/* Ledger direction: the page is one continuous sheet, not a stack of boxes.
+   A card was a filled panel with a border and a radius; it is now a section
+   separated by a rule and by space, which is how a printed statement divides
+   itself. The surface ladder survives where it still does work — inputs keep
+   their fill, because a field has to look like somewhere you can type. */
 .card {
-  background: var(--color-muted);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  padding: var(--space-4);
-  margin-bottom: var(--space-3);
+  padding: var(--space-5) 0 0;
+  margin: 0;
+  border-top: 1px solid var(--color-border);
 }
+.card:first-of-type { border-top: none; padding-top: var(--space-2); }
+/* The last section needs room above the fixed tab bar. */
+.view > .card:last-of-type { padding-bottom: var(--space-5); }
 
 .tabbar {
   position: fixed;
@@ -235,13 +247,21 @@ h2 {
   outline-offset: 2px;
 }
 
+/* Field labels share the section marker's voice — small, tracked, quiet —
+   so the form reads as one ruled column rather than as boxes with captions. */
 label {
   display: block;
   margin-bottom: var(--space-0);
-  font-size: 13px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
   color: var(--color-subtle);
 }
 
+/* Flatter than before. Softly rounded boxes read as an app made of panels;
+   this direction is ruled paper, so the corners come in and the fill does the
+   work of saying "type here". */
 input, select, button.primary {
   width: 100%;
   min-height: 44px;
@@ -250,7 +270,7 @@ input, select, button.primary {
   background: var(--color-input);
   color: var(--color-foreground);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-sm);
   font: inherit;
   transition: border-color 150ms ease;
 }
@@ -335,7 +355,7 @@ button.primary:active { filter: brightness(0.92); }
   margin-bottom: var(--space-3);
   background: var(--color-input);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-sm);
 }
 
 #add-kind label {
@@ -413,38 +433,54 @@ button.primary:active { filter: brightness(0.92); }
   border: 0;
 }
 
-/* Net is the headline; income and spent are the supporting pair. */
+/* Balance is the headline — "what do I hold" is the question the screen is
+   opened to answer. Net, income and spent are the supporting line beneath it.
+   Only one figure per screen gets to be large; giving two that weight is what
+   made the old stats block read as four competing numbers. */
 .stats {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: var(--space-3);
+  gap: var(--space-3) var(--space-4);
 }
 
 .stat { display: flex; flex-direction: column; gap: var(--space-0); }
 
 .stat__label {
-  font-size: 12px;
-  font-weight: 500;
-  letter-spacing: 0.08em;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--color-subtle);
 }
 
-.stat .amount { font-size: 20px; font-weight: 500; }
+.stat .amount { font-size: 17px; font-weight: 500; }
 
+/* Explicit order rather than HTML order: balance leads, net follows full
+   width, and income and spent pair off beneath. Three items in a two-column
+   grid otherwise leaves one stranded on a row of its own. */
+.stat--balance {
+  grid-column: 1 / -1;
+  order: -2;
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.stat--balance .amount {
+  font-size: 34px;
+  font-weight: 600;
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+}
+
+/* Net keeps its sign colour but not its size: it is the change, read against
+   the balance above it. */
 .stat--net {
   grid-column: 1 / -1;
   order: -1;
   padding-bottom: var(--space-3);
   border-bottom: 1px solid var(--color-border);
 }
-
-.stat--net .amount {
-  font-size: 40px;
-  font-weight: 700;
-  line-height: 1.1;
-  letter-spacing: -1.5px;
-}
+.stat--net .amount { font-size: 20px; font-weight: 600; }
 
 .bars { width: 100%; border-collapse: collapse; }
 .bars thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
@@ -476,9 +512,9 @@ button.primary:active { filter: brightness(0.92); }
 .budget { width: 100%; border-collapse: collapse; }
 .budget th {
   padding: 0 var(--space-2) var(--space-2);
-  font-size: 11px;
-  font-weight: 500;
-  letter-spacing: 0.04em;
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--color-subtle);
   text-align: right;

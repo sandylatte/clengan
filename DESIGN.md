@@ -21,13 +21,13 @@ colors:
   peach-primary-hover: "#E0C2BC"
   peach-on-primary: "#4A2A22"
   peach-active: "#8E3A26"
-  peach-accent: "#2F6B4F"
-  peach-destructive: "#A63E2B"
+  peach-accent: "#2D674C"
+  peach-destructive: "#9F3B29"
   peach-background: "#F3CEC2"
   peach-foreground: "#4A2A22"
   peach-muted: "#F7DCD3"
   peach-input: "#FBE8E1"
-  peach-subtle: "#8A5A4B"
+  peach-subtle: "#7E5144"
   peach-border: "#E9C2B5"
   peach-border-strong: "#D9A493"
   tabbar: "color-mix(in srgb, var(--color-muted) 92%, transparent)"
@@ -259,13 +259,13 @@ The canvas is `#F3CEC2`. The palette holds one hue family throughout; income gre
 | `{colors.peach-primary-hover}` | #E0C2BC | | Hovered primary button |
 | `{colors.peach-on-primary}` | #4A2A22 | 6.66:1 on primary | Label on the primary fill |
 | `{colors.peach-active}` | #8E3A26 | 4.8:1 on the tab strip | Active tab label and icon |
-| `{colors.peach-accent}` | #2F6B4F | 5.6:1 | Income figures |
-| `{colors.peach-destructive}` | #A63E2B | 5.9:1 | Spending figures, errors |
+| `{colors.peach-accent}` | #2D674C | 4.57:1 | Income figures |
+| `{colors.peach-destructive}` | #9F3B29 | 4.60:1 | Spending figures, errors |
 | `{colors.peach-background}` | #F3CEC2 | | Page canvas |
 | `{colors.peach-foreground}` | #4A2A22 | 13:1 | Body and figures |
 | `{colors.peach-muted}` | #F7DCD3 | | Card surface |
 | `{colors.peach-input}` | #FBE8E1 | | Form field surface |
-| `{colors.peach-subtle}` | #8A5A4B | 5.4:1 | Section headings, row meta, supporting copy |
+| `{colors.peach-subtle}` | #7E5144 | 4.58:1 | Section headings, row meta, supporting copy. Darkened when the card fill was removed: on the page background the old value fell to 3.96:1 |
 | `{colors.peach-border}` | #E9C2B5 | | Card and row hairlines |
 | `{colors.peach-border-strong}` | #D9A493 | | Field borders |
 | `{colors.peach-tabbar}` | #EFC5B7 | | Tab strip, a step off the canvas |

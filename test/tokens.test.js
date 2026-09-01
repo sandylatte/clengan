@@ -75,3 +75,47 @@ test('no rule outside the palette blocks casts a literal shadow', () => {
     .filter((value) => !value.startsWith('var(') && !value.startsWith('inset') && value !== 'none');
   assert.deepEqual(literal, [], 'shadows must come from --shadow-primary or --shadow-popover');
 });
+
+// The Ledger direction removed the card fill, and every label that had been
+// sitting on it moved onto the page background. Peach's --color-subtle was
+// 5.4:1 on the card and 3.96:1 on the page — still readable-looking, and
+// below AA. Nothing in the stylesheet noticed, because the token had not
+// changed; the surface under it had.
+//
+// So the rule is checked against the surface text ACTUALLY sits on.
+const luminance = (hex) => {
+  const channel = (pair) => {
+    const c = parseInt(pair, 16) / 255;
+    return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  };
+  const [r, g, b] = [hex.slice(1, 3), hex.slice(3, 5), hex.slice(5, 7)].map(channel);
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+};
+const contrast = (a, b) => {
+  const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x);
+  return (hi + 0.05) / (lo + 0.05);
+};
+
+function tokensOf(selector) {
+  const start = css.indexOf(selector);
+  const block = css.slice(start, css.indexOf('}', start));
+  return Object.fromEntries(
+    [...block.matchAll(/(--[a-z-]+):\s*(#[0-9A-Fa-f]{6})\s*;/g)].map((m) => [m[1], m[2]]),
+  );
+}
+
+for (const [tone, selector] of [['graphite', ':root {'], ['peach', ':root[data-theme="peach"] {']]) {
+  test(`${tone} text tokens clear 4.5:1 on the page background`, () => {
+    const token = tokensOf(selector);
+    const page = token['--color-background'];
+    // Every one of these paints text directly on the page now that sections
+    // are separated by rules rather than by a fill.
+    for (const name of ['--color-foreground', '--color-subtle', '--color-accent', '--color-destructive']) {
+      const ratio = contrast(token[name], page);
+      assert.ok(
+        ratio >= 4.5,
+        `${tone} ${name} (${token[name]}) is ${ratio.toFixed(2)}:1 on ${page}, needs 4.5:1`,
+      );
+    }
+  });
+}
