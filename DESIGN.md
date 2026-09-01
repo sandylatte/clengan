@@ -1,22 +1,22 @@
 ---
 version: alpha
 name: MoneyTrack
-description: "A phone-first local-only money tracker, shipped as an installable PWA with no build step. Two user-switchable tones share one token vocabulary: Tone A is graphite and brass, a near-black canvas (#0D0E10) carrying a warm metallic accent (#C8A15A); Tone B is peach room, a warm light canvas (#F3CEC2) built from a photographic reference where the frame interior reads brighter than the wall. Type is Fira Sans for UI and Fira Code for every figure, so digits stay in tabular columns. The system is an app UI, not a marketing canvas: the tallest step in the ramp is the amount field at 34px, headings sit at 17px and below, and depth comes from a three-step surface ladder plus hairline borders. Colour carries meaning only — green for income, red for spending, the accent for the primary action and the active tab. Nothing is decorative."
+description: "A phone-first local-only money tracker, shipped as an installable PWA with no build step. Two user-switchable tones share one token vocabulary: Tone A is carbon and signal green, a true-black AMOLED canvas (#000000) carrying a high-chroma green accent (#0EAC5D); Tone B is peach room, a warm light canvas (#F3CEC2) built from a photographic reference where the frame interior reads brighter than the wall. Type is Fira Sans for UI and Fira Code for every figure, so digits stay in tabular columns. The system is an app UI, not a marketing canvas: the tallest step in the ramp is the amount field at 34px, headings sit at 17px and below, and depth comes from a three-step surface ladder plus hairline borders. Colour carries meaning only — green for income, red for spending, the accent for the primary action and the active tab. Nothing is decorative."
 
 colors:
-  primary: "#C8A15A"
-  primary-hover: "#D9B978"
-  on-primary: "#1A1408"
-  active: "#D9B978"
-  accent: "#4FA96B"
-  destructive: "#DF6B60"
-  background: "#0D0E10"
-  foreground: "#EDEEF0"
-  muted: "#17191C"
-  input: "#1E2125"
-  subtle: "#8B9099"
-  border: "#232629"
-  border-strong: "#3A3E44"
+  primary: "#0EAC5D"
+  primary-hover: "#22C46F"
+  on-primary: "#03150B"
+  active: "#2BD07F"
+  accent: "#2ED08A"
+  destructive: "#F2543D"
+  background: "#000000"
+  foreground: "#D2D8D5"
+  muted: "#0C100E"
+  input: "#131816"
+  subtle: "#7E938A"
+  border: "#1C2420"
+  border-strong: "#313D37"
   peach-primary: "#D7B4AD"
   peach-primary-hover: "#E0C2BC"
   peach-on-primary: "#4A2A22"
@@ -32,14 +32,14 @@ colors:
   peach-border-strong: "#D9A493"
   tabbar: "color-mix(in srgb, var(--color-muted) 92%, transparent)"
   peach-tabbar: "#EFC5B7"
-  scrim: "rgb(0 0 0 / 0.55)"
+  scrim: "rgb(0 0 0 / 0.72)"
   peach-scrim: "rgb(74 42 34 / 0.38)"
   peach-bar: "#F0C0B0"
 
 shadows:
   primary-graphite: "none"
   primary-peach: "0 1px 3px rgba(74,42,34,0.20), 0 1px 2px rgba(74,42,34,0.12)"
-  popover-graphite: "0 8px 24px rgba(0,0,0,0.45), 0 2px 6px rgba(0,0,0,0.30)"
+  popover-graphite: "0 10px 30px rgba(0,0,0,0.85), 0 0 0 1px rgba(20,40,30,0.9)"
   popover-peach: "0 8px 24px rgba(74,42,34,0.20), 0 2px 6px rgba(74,42,34,0.12)"
 
 typography:
@@ -246,9 +246,26 @@ The system ships **two tones the user switches in Settings**. They share one tok
 
 ## Colours
 
-### Tone A — graphite and brass (default)
+### Tone A — carbon and signal green (default)
 
-The canvas is `#0D0E10`, a near-black with a slight cool cast. The accent is brass `#C8A15A`, chosen because a money app in a warm monochrome world cannot also use a bright red for "spent" without the two colliding — spending is desaturated to `#DF6B60` for the same reason.
+The canvas is `#000000`, chosen for AMOLED: on an OLED panel those pixels are
+switched off rather than lit dark grey, which is both the deepest black the
+screen can make and the cheapest to display. Every surface above it is a
+near-black carrying a green cast rather than a neutral grey — a warm-neutral
+ladder underneath a green accent reads as two unrelated palettes stacked.
+
+The accent is signal green `#0EAC5D`. The sporty read comes from one colour
+doing a single job loudly while everything else stays nearly invisible:
+high-chroma green on true black is the whole contrast story, so no other
+element needs to raise its voice. Spending stays a warm red `#F2543D`, which
+does not collide with green the way it collided with the previous brass.
+
+Two consequences worth naming. `--shadow-popover` cannot rely on a soft
+shadow, because a gradient over `#000` is invisible; the popover is separated
+by its own surface plus a hard edge. And `accent-color` is set at `:root`, so
+native controls — radio bullets, checkboxes, spinners — paint in the tone
+instead of the browser's blue, which was the only colour on screen coming
+from outside the palette.
 
 | Token | Value | Ratio | Use |
 |---|---|---|---|

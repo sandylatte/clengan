@@ -191,24 +191,36 @@ export function deleteFund(name) {
 //
 // A category that does not exist yet is appended, so a new one lands at the
 // end of the list rather than jumping to wherever its name sorts.
+// ONE getAll, and the existing record is found in its result.
+//
+// This previously issued store.get(name) AND store.getAll(), then read the
+// getAll result inside the get callback. IndexedDB runs requests in the order
+// they are made, so at that moment the getAll had not finished and reading
+// .result threw InvalidStateError — which broke saving a category, saving an
+// account, and loading the sample data.
 export function putCategory(name, changes) {
   return run('categories', 'readwrite', (store) => {
-    const existing = store.get(name);
     const all = store.getAll();
-    existing.onsuccess = () => {
-      const current = existing.result;
+    all.onsuccess = () => {
+      const rows = all.result;
+      const current = rows.find((row) => row.name === name);
       if (current) {
         store.put({ ...current, ...changes, name });
         return;
       }
-      const highest = all.result.reduce(
-        (max, row) => (Number.isFinite(row.position) ? Math.max(max, row.position) : max),
-        -1,
-      );
-      store.put({ kind: 'expense', colour: null, ...changes, name, position: highest + 1 });
+      store.put({ kind: 'expense', colour: null, ...changes, name, position: nextPosition(rows) });
     };
     return { value: undefined };
   });
+}
+
+// A new record goes to the end of the list rather than sorting itself into
+// the middle by name.
+function nextPosition(rows) {
+  return rows.reduce(
+    (max, row) => (Number.isFinite(row.position) ? Math.max(max, row.position) : max),
+    -1,
+  ) + 1;
 }
 
 // Writes the given order onto the named records. Names not present are
@@ -290,21 +302,18 @@ export async function ensureAccount(name, openingBalance = 0) {
 // the user first.
 export function putAccount(name, openingBalance) {
   return run('accounts', 'readwrite', (store) => {
-    const existing = store.get(name);
     const all = store.getAll();
-    existing.onsuccess = () => {
+    all.onsuccess = () => {
+      const rows = all.result;
+      const current = rows.find((row) => row.name === name);
       // Keep the position an existing account already has. Replacing its
       // opening balance is a deliberate act; sending it to the bottom of the
       // list at the same time is not.
-      if (existing.result) {
-        store.put({ ...existing.result, name, opening_balance: openingBalance });
+      if (current) {
+        store.put({ ...current, name, opening_balance: openingBalance });
         return;
       }
-      const highest = all.result.reduce(
-        (max, row) => (Number.isFinite(row.position) ? Math.max(max, row.position) : max),
-        -1,
-      );
-      store.put({ name, opening_balance: openingBalance, position: highest + 1 });
+      store.put({ name, opening_balance: openingBalance, position: nextPosition(rows) });
     };
     return { value: undefined };
   });

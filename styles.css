@@ -17,27 +17,38 @@
    for white text is too dark to read as a label on the tab bar, and vice
    versa. Ratios are measured against the surface each token actually sits on. */
 
-/* Tone A — graphite & brass (default) */
+/* Tone A — carbon & signal green. AMOLED first: the canvas is true #000,
+   so on an OLED phone those pixels are switched off rather than lit dark
+   grey. Every surface above it is a near-black with a green cast, never a
+   neutral grey — a warm-neutral ladder next to a green accent reads as two
+   unrelated palettes.
+   Sporty comes from the accent doing one job loudly and the rest of the
+   screen staying almost invisible: high-chroma green on black is the whole
+   contrast story, so nothing else needs to shout. */
 :root {
-  --color-primary: #C8A15A;        /* 7.4:1 on card */
-  --color-primary-hover: #D9B978;
-  --color-on-primary: #1A1408;     /* 7.7:1 on primary */
-  --shadow-primary: none;          /* brass on graphite separates unaided */
-  /* A floating layer needs a cast shadow even where a resting one does not. */
-  --shadow-popover: 0 8px 24px rgba(0, 0, 0, 0.45), 0 2px 6px rgba(0, 0, 0, 0.30);
-  --color-scrim: rgb(0 0 0 / 0.55);
+  --color-primary: #0EAC5D;        /* 7.08:1 on the page */
+  --color-primary-hover: #22C46F;
+  --color-on-primary: #03150B;     /* 6.34:1 on primary */
+  --shadow-primary: none;          /* signal green on black separates unaided */
+  /* Blacker and deeper than a grey-canvas shadow: over #000 a soft shadow is
+     invisible, so the popover is separated by its own surface plus a hard
+     edge rather than by a gradient nobody can see. */
+  --shadow-popover: 0 10px 30px rgba(0, 0, 0, 0.85), 0 0 0 1px rgba(20, 40, 30, 0.9);
+  --color-scrim: rgb(0 0 0 / 0.72);
   --color-tabbar: color-mix(in srgb, var(--color-muted) 92%, transparent);
-  --color-active: #D9B978;         /* tab label + focus ring */
-  --color-bar: color-mix(in srgb, #C8A15A 22%, transparent);
-  --color-accent: #4FA96B;         /* income, 6.1:1 */
-  --color-destructive: #DF6B60;    /* spending, 5.4:1 */
-  --color-background: #0D0E10;
-  --color-foreground: #EDEEF0;     /* 15:1 */
-  --color-muted: #17191C;
-  --color-input: #1E2125;
-  --color-subtle: #8B9099;         /* 6.1:1 */
-  --color-border: #232629;
-  --color-border-strong: #3A3E44;
+  --color-active: #2BD07F;         /* tab label + focus ring, 10.4:1 */
+  --color-bar: color-mix(in srgb, #0EAC5D 26%, transparent);
+  --color-accent: #2ED08A;         /* income, 10.5:1 */
+  --color-destructive: #F2543D;    /* spending, 6.1:1 */
+  --color-background: #000000;     /* AMOLED: the pixel is off */
+  --color-foreground: #D2D8D5;     /* 14.5:1 */
+  /* The ladder climbs in near-blacks so a section still reads as raised on
+     an OLED panel without lighting a large area. */
+  --color-muted: #0C100E;
+  --color-input: #131816;
+  --color-subtle: #7E938A;         /* 6.4:1 on the page */
+  --color-border: #1C2420;
+  --color-border-strong: #313D37;
   color-scheme: dark;
 
   --space-0: 4px;
@@ -380,7 +391,21 @@ button.primary:active { filter: brightness(0.92); }
   font-weight: 600;
 }
 
-#add-kind input { width: auto; min-height: 0; margin: 0; }
+/* The bullet was painting in the browser's own blue, which belongs to
+   neither tone and was the only colour on screen from outside the palette.
+   accent-color hands the control's fill to the theme, and it follows a tone
+   switch because the token does. */
+#add-kind input {
+  width: auto;
+  min-height: 0;
+  margin: 0;
+  accent-color: var(--color-active);
+}
+
+/* Every other native control that paints itself: checkboxes, the month
+   picker's spinners, focus rings inside file inputs. Set once at the root so
+   a control added later cannot reintroduce the blue. */
+:root { accent-color: var(--color-active); }
 #add-status { min-height: 24px; font-size: 14px; color: var(--color-accent); }
 
 .rows { list-style: none; margin: 0; padding: 0; }

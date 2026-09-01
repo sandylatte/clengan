@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import {
   CATEGORY_COLOURS, normaliseColour, sortByPosition, moveByOne, moveTo, categoryOptions,
 } from '../budget.js';
@@ -131,14 +132,27 @@ const ratio = (a, b) => {
   return (hi + 0.05) / (lo + 0.05);
 };
 
-test('every curated colour reads on the graphite card and the peach card', () => {
-  const GRAPHITE_CARD = '#17191C';
-  const PEACH_CARD = '#F7DCD3';
+// Measured against each tone's PAGE background, read from the stylesheet
+// rather than pasted here. Sections stopped being filled panels, so the card
+// colour these were originally checked against is not what they sit on any
+// more — and graphite's canvas went to true black, which changes every ratio.
+const paletteValue = (selector, token) => {
+  const css = readFileSync(new URL('../styles.css', import.meta.url), 'utf8');
+  const start = css.indexOf(selector);
+  const block = css.slice(start, css.indexOf('}', start));
+  return block.match(new RegExp(`${token}:\\s*(#[0-9A-Fa-f]{6})`))[1];
+};
+
+test('every curated colour reads on both tones, on the surface it sits on', () => {
+  const surfaces = [
+    ['graphite', paletteValue(':root {', '--color-background')],
+    ['peach', paletteValue(':root[data-theme="peach"] {', '--color-background')],
+  ];
   for (const { name, value } of CATEGORY_COLOURS) {
-    const onDark = ratio(value, GRAPHITE_CARD);
-    const onLight = ratio(value, PEACH_CARD);
-    assert.ok(onDark >= 3, `${name} ${value} is ${onDark.toFixed(2)}:1 on graphite, needs 3:1`);
-    assert.ok(onLight >= 3, `${name} ${value} is ${onLight.toFixed(2)}:1 on peach, needs 3:1`);
+    for (const [tone, surface] of surfaces) {
+      const r = ratio(value, surface);
+      assert.ok(r >= 3, `${name} ${value} is ${r.toFixed(2)}:1 on ${tone} (${surface}), needs 3:1`);
+    }
   }
 });
 

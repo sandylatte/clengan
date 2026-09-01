@@ -12,7 +12,11 @@ import { readFileSync } from 'node:fs';
 // declarations themselves; anything below them is a rule consuming a value,
 // and a consuming rule that names a colour directly cannot follow a tone.
 
-const css = readFileSync(new URL('../styles.css', import.meta.url), 'utf8');
+// Comments are stripped first. A hex written in prose — "the canvas is true
+// #000" — is documentation, not a declaration, and matching it made the
+// palette look like it declared a value it never used.
+const stripComments = (text) => text.replace(/\/\*[\s\S]*?\*\//g, '');
+const css = stripComments(readFileSync(new URL('../styles.css', import.meta.url), 'utf8'));
 const design = readFileSync(new URL('../DESIGN.md', import.meta.url), 'utf8');
 const frontMatter = design.split('---')[1];
 
