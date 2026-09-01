@@ -5,7 +5,7 @@
 // NAME differs from CACHE — so an unbumped CACHE means every user with the
 // worker already installed keeps being served the OLD shell forever, silently,
 // including any money bug that edit was meant to fix.
-const CACHE = 'moneytrack-v37';
+const CACHE = 'moneytrack-v38';
 
 const SHELL = [
   './',
@@ -28,8 +28,26 @@ const SHELL = [
   './icons/icon-512.png',
 ];
 
+// `cache: 'reload'` on every shell request, and this is not a nicety.
+//
+// cache.addAll() fetches through the browser's ORDINARY HTTP cache. Bumping
+// CACHE therefore guarantees a new, empty cache — and guarantees nothing at
+// all about what goes into it. A server that does not send no-store (GitHub
+// Pages, any static host, `python3 -m http.server`) lets the browser answer
+// those fetches from its own heuristic cache, so a cache honestly named
+// moneytrack-v38 gets filled with weeks-old CSS and modules.
+//
+// That is how the peach tone kept coming back RED: styles.css from before
+// 932f081, when the peach button was salmon #B2503A, reinstalled into a
+// freshly named cache. The version marker said new, the bytes were old, and
+// every reload looked like it had checked.
+//
+// 'reload' bypasses the HTTP cache on the way out and updates it on the way
+// back, so the shell in this cache is what the server has right now.
 self.addEventListener('install', (event) => {
-  event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(SHELL)));
+  event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(
+    SHELL.map((url) => new Request(url, { cache: 'reload' })),
+  )));
   // skipWaiting + clients.claim (below) are safe here only because the
   // entire shell is fetched upfront in one addAll — a client that gets
   // claimed always has the full matching set of modules, never a mix of
