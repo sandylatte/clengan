@@ -3,16 +3,16 @@ import assert from 'node:assert/strict';
 import { rowsToSheetData, sheetDataToRows, accountsToSheetData, sheetDataToAccounts } from '../xlsx-io.js';
 
 const txns = [
-  { id: 'a', date: '2026-08-01', account: 'Bank', amount: 300000, category: 'Salary', transfer_id: null, note: 'pay' },
-  { id: 'e', date: '2026-08-06', account: 'Bank', amount: -20000, category: 'Transfer', transfer_id: 'f', note: '' },
-  { id: 'f', date: '2026-08-06', account: 'Savings', amount: 20000, category: 'Transfer', transfer_id: 'e', note: '' },
+  { id: 'a', date: '2026-08-01', account: 'Bank', amount: 300000, name: 'August pay', category: 'Salary', bucket: null, transfer_id: null, note: 'pay' },
+  { id: 'e', date: '2026-08-06', account: 'Bank', amount: -20000, name: '', category: 'Transfer', bucket: null, transfer_id: 'f', note: '' },
+  { id: 'f', date: '2026-08-06', account: 'Savings', amount: 20000, name: '', category: 'Transfer', bucket: null, transfer_id: 'e', note: '' },
 ];
 
 test('rowsToSheetData writes decimal amounts and readable headers', () => {
   const [first] = rowsToSheetData(txns);
   assert.deepEqual(first, {
-    id: 'a', date: '2026-08-01', account: 'Bank',
-    amount: '3000.00', category: 'Salary', transfer_id: '', note: 'pay',
+    id: 'a', date: '2026-08-01', account: 'Bank', amount: '3000.00',
+    name: 'August pay', category: 'Salary', bucket: '', transfer_id: '', note: 'pay',
   });
 });
 
@@ -21,7 +21,7 @@ test('round trip preserves every field exactly', () => {
 });
 
 test('round trip preserves sub-unit amounts', () => {
-  const odd = [{ id: 'x', date: '2026-08-01', account: 'Bank', amount: -7, category: 'Food', transfer_id: null, note: '' }];
+  const odd = [{ id: 'x', date: '2026-08-01', account: 'Bank', amount: -7, name: '', category: 'Food', bucket: null, transfer_id: null, note: '' }];
   assert.deepEqual(sheetDataToRows(rowsToSheetData(odd)), odd);
 });
 
@@ -123,4 +123,32 @@ test('sheetDataToAccounts treats differently-cased names as distinct accounts', 
       { name: 'Bank', opening_balance: 2000 },
     ],
   );
+});
+
+test('round trip preserves a row bucket that disagrees with its category', () => {
+  // The whole point of the field: Groceries charged to fixed on this one row.
+  // If the backup dropped it, a restore would silently re-file the money.
+  const rows = [{
+    id: 'z', date: '2026-08-01', account: 'Bank', amount: -5000,
+    name: 'Big shop', category: 'Groceries', bucket: 'fixed', transfer_id: null, note: '',
+  }];
+  assert.deepEqual(sheetDataToRows(rowsToSheetData(rows)), rows);
+});
+
+test('a bucket typed by hand that is not a spending bucket becomes null', () => {
+  // Restoring 'savings' or a typo as-is would carry a value the budget
+  // cannot charge; null sends the row back to its category instead.
+  const [row] = sheetDataToRows([{
+    id: 'z', date: '2026-08-01', account: 'Bank', amount: '-50.00',
+    name: '', category: 'Groceries', bucket: 'savings', transfer_id: '', note: '',
+  }]);
+  assert.equal(row.bucket, null);
+});
+
+test('a bucket is read case-insensitively, as a person would type it', () => {
+  const [row] = sheetDataToRows([{
+    id: 'z', date: '2026-08-01', account: 'Bank', amount: '-50.00',
+    name: '', category: 'Groceries', bucket: 'Fixed', transfer_id: '', note: '',
+  }]);
+  assert.equal(row.bucket, 'fixed');
 });

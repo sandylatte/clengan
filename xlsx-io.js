@@ -1,7 +1,10 @@
 import { toCents, fromCents } from './money.js';
 import { parsePlannerGrid, monthFromSheetName } from './planner.js';
 
-export const COLUMNS = ['id', 'date', 'account', 'amount', 'category', 'transfer_id', 'note'];
+// `name` and `bucket` sit beside category, not instead of it: the backup is
+// the only copy of this data that leaves the device, so a field missing here
+// is a field the user loses on the next restore.
+export const COLUMNS = ['id', 'date', 'account', 'amount', 'name', 'category', 'bucket', 'transfer_id', 'note'];
 export const ACCOUNTS_COLUMNS = ['name', 'opening_balance'];
 
 // A row whose amount is not a valid integer cent value (corrupt data that
@@ -21,7 +24,9 @@ export function rowsToSheetData(txns) {
       date: txn.date,
       account: txn.account,
       amount,
-      category: txn.category,
+      name: txn.name ?? '',
+      category: txn.category ?? '',
+      bucket: txn.bucket ?? '',
       transfer_id: txn.transfer_id ?? '',
       note: txn.note ?? '',
     };
@@ -46,12 +51,21 @@ export function sheetDataToRows(rows) {
     }
 
     const transferId = String(row.transfer_id ?? '').trim();
+
+    // Anything that is not one of the two spending buckets becomes null, so
+    // the row falls back to its category rather than carrying a value the
+    // budget cannot charge. A file typed by hand is the likely source.
+    const rawBucket = String(row.bucket ?? '').trim().toLowerCase();
+    const bucket = rawBucket === 'fixed' || rawBucket === 'flexible' ? rawBucket : null;
+
     return {
       id,
       date,
       account,
       amount,
+      name: String(row.name ?? '').trim(),
       category: String(row.category ?? '').trim(),
+      bucket,
       transfer_id: transferId === '' ? null : transferId,
       note: String(row.note ?? ''),
     };
@@ -145,7 +159,13 @@ export async function importPlanner(file, account) {
         date: row.date,
         account,
         amount: row.amount,
+        name: '',
         category: row.category,
+        // The ledger the row sat in IS its bucket, and now that a row carries
+        // its own, that survives the import. The planner's habit of listing
+        // one category under both ledgers used to have to be flattened to a
+        // single answer; here both rows keep the ledger they came from.
+        bucket: row.bucket,
         transfer_id: null,
         note: row.note,
       });

@@ -167,12 +167,18 @@ export function putAccount(name, openingBalance) {
   });
 }
 
-export function addFlow({ date, account, amount, category, note }) {
+// `bucket` is the row's own answer to fixed-or-flexible and overrides its
+// category's. Null means "no answer here", which sends the row back to the
+// category — the behaviour every row written before this field had.
+export function addFlow({ date, account, amount, name = '', category = '', bucket = null, note }) {
   if (!Number.isInteger(amount)) throw new TypeError('amount must be integer cents');
   if (amount === 0) throw new RangeError('amount must not be zero');
+  if (bucket !== null && bucket !== 'fixed' && bucket !== 'flexible') {
+    throw new RangeError('bucket must be fixed, flexible, or null');
+  }
   const id = crypto.randomUUID();
   return run('transactions', 'readwrite', (store) => {
-    store.add({ id, date, account, amount, category, transfer_id: null, note });
+    store.add({ id, date, account, amount, name, category, bucket, transfer_id: null, note });
     return { value: id };
   });
 }
@@ -180,15 +186,15 @@ export function addFlow({ date, account, amount, category, note }) {
 // Both rows are written inside one IndexedDB transaction. If either put
 // fails the transaction aborts and neither row lands, so a transfer can
 // never exist as a single orphaned half.
-export function addTransfer({ date, from, to, amount, note }) {
+export function addTransfer({ date, from, to, amount, name = '', note }) {
   if (!Number.isInteger(amount)) throw new TypeError('amount must be integer cents');
   if (amount <= 0) throw new RangeError('transfer amount must be positive');
   if (from === to) throw new RangeError('cannot transfer to the same account');
   const fromId = crypto.randomUUID();
   const toId = crypto.randomUUID();
   return run('transactions', 'readwrite', (store) => {
-    store.add({ id: fromId, date, account: from, amount: -amount, category: 'Transfer', transfer_id: toId, note });
-    store.add({ id: toId, date, account: to, amount, category: 'Transfer', transfer_id: fromId, note });
+    store.add({ id: fromId, date, account: from, amount: -amount, name, category: 'Transfer', bucket: null, transfer_id: toId, note });
+    store.add({ id: toId, date, account: to, amount, name, category: 'Transfer', bucket: null, transfer_id: fromId, note });
     return { value: [fromId, toId] };
   });
 }

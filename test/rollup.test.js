@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  monthOf, filterMonth, monthlyTotals, categoryBreakdown,
+  monthOf, filterMonth, monthlyTotals, spendingBreakdown,
   accountBalances, netTrend,
 } from '../rollup.js';
 
@@ -43,8 +43,8 @@ test('monthlyTotals of an empty month is all zeroes', () => {
   assert.deepEqual(monthlyTotals(txns, '2026-09'), { income: 0, spending: 0, net: 0 });
 });
 
-test('categoryBreakdown returns positive totals, largest first, spending only', () => {
-  assert.deepEqual(categoryBreakdown(txns, '2026-08'), [
+test('spendingBreakdown returns positive totals, largest first, spending only', () => {
+  assert.deepEqual(spendingBreakdown(txns, [], { month: '2026-08' }), [
     { category: 'Rent', total: 9000 },
     { category: 'Food', total: 6000 },
   ]);

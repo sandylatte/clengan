@@ -519,6 +519,36 @@ button.primary:active { filter: brightness(0.92); }
 }
 .budget-note__warning { color: var(--color-destructive); }
 
+/* Three controls that describe one chart, so they sit on one line and wrap
+   together rather than reading as three unrelated settings stacked above it.
+   The minimum keeps a select from collapsing narrower than its own label. */
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+
+.filters__field {
+  flex: 1 1 8rem;
+  min-width: 8rem;
+}
+
+.filters__field label {
+  margin-bottom: var(--space-0);
+}
+
+/* Says a field can be left alone without the label having to grow a sentence.
+   Quieter than the label it follows, because it is a permission, not a name. */
+.label-optional {
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-subtle);
+  opacity: 0.75;
+  margin-left: var(--space-1);
+}
+
 .hint {
   font-size: 13px;
   line-height: 1.5;

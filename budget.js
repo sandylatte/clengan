@@ -135,3 +135,19 @@ export function allocateFunds(poolCents, funds) {
 export function bucketOf(categories, name) {
   return categories.find((c) => c.name === name)?.bucket ?? null;
 }
+
+// The same category is genuinely fixed one month and flexible the next —
+// rent paid on a plan versus a one-off top-up, groceries versus a big shop.
+// So the row owns its bucket and the category only supplies the default the
+// form starts from. A row written before this existed has no bucket of its
+// own and falls back to its category, which is what it was always charged to.
+//
+// Returns null for "no answer", which bucketTotals reports as unbucketed
+// rather than guessing. An income category never yields a spending bucket.
+export function resolveBucket(txn, categories) {
+  if (txn.bucket === 'fixed' || txn.bucket === 'flexible') return txn.bucket;
+  const fromCategory = bucketOf(categories, txn.category);
+  return fromCategory === 'fixed' || fromCategory === 'flexible' ? fromCategory : null;
+}
+
+export const UNCATEGORISED = 'Uncategorised';

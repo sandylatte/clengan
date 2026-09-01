@@ -1,11 +1,11 @@
 import * as db from './db.js';
 import { formatIDR, formatAmount, groupDigits, rupiahToCents, centsToRupiahDigits } from './money.js';
 import {
-  filterMonth, monthlyTotals, categoryBreakdown, accountBalances, netTrend, bucketTotals, fundsByYear,
+  filterMonth, monthlyTotals, spendingBreakdown, accountBalances, netTrend, bucketTotals, fundsByYear,
   lastSixMonths,
 } from './rollup.js';
 import {
-  BUCKETS, DEFAULT_SPLIT, validateSplit, allocateFunds, splitBalance, categoryOptions,
+  BUCKETS, DEFAULT_SPLIT, validateSplit, allocateFunds, splitBalance, categoryOptions, bucketOf,
 } from './budget.js';
 import { exportXlsx, importXlsx, importPlanner } from './xlsx-io.js';
 import { attachCalendar, toISO } from './calendar.js';
@@ -38,15 +38,49 @@ const status = document.getElementById('add-status');
 
 const selectedKind = () => form.querySelector('input[name="kind"]:checked').value;
 
+const bucketWrap = document.getElementById('add-bucket-wrap');
+
 function syncKind() {
-  const transfer = selectedKind() === 'transfer';
+  const kind = selectedKind();
+  const transfer = kind === 'transfer';
   toWrap.hidden = !transfer;
   categoryWrap.hidden = transfer;
-  document.getElementById('add-category').required = !transfer;
+  // Only spending is charged to a bucket. Income is what the budget is
+  // divided FROM, and a transfer never leaves the user's own money.
+  bucketWrap.hidden = kind !== 'expense';
   document.getElementById('add-to').required = transfer;
   accountLabel.textContent = transfer ? 'From account' : 'Account';
   if (state.categories.length) syncCategoryOptions();
+  syncBucketHint();
 }
+
+// Naming the bucket the row will actually land in, rather than leaving
+// "Use the category's bucket" to be guessed at. A category with no bucket,
+// or no category at all, means the spend is not charged to a budget — say
+// so here rather than letting it turn up as unbucketed on the Summary.
+function syncBucketHint() {
+  const hint = document.getElementById('add-bucket-hint');
+  if (bucketWrap.hidden) return;
+  if (document.getElementById('add-bucket').value !== '') {
+    hint.textContent = 'This row only. The category keeps its own setting.';
+    hint.className = 'hint';
+    return;
+  }
+  const category = document.getElementById('add-category').value;
+  const bucket = bucketOf(state.categories, category);
+  if (bucket === 'fixed' || bucket === 'flexible') {
+    hint.textContent = `${category} is ${bucket}, so this goes to ${bucket}.`;
+    hint.className = 'hint';
+  } else {
+    hint.textContent = category
+      ? `${category} has no spending bucket, so this is not charged to a budget.`
+      : 'With no category and no bucket, this is not charged to a budget.';
+    hint.className = 'hint budget-note__warning';
+  }
+}
+
+document.getElementById('add-bucket').addEventListener('change', syncBucketHint);
+document.getElementById('add-category').addEventListener('change', syncBucketHint);
 
 for (const input of kindInputs) input.addEventListener('change', syncKind);
 
@@ -55,12 +89,15 @@ for (const input of kindInputs) input.addEventListener('change', syncKind);
 // what let one real account become two ("bank" and "Bank") and what made the
 // category list look broken. Anything offered here is now something that
 // exists; new names are created in Settings, deliberately.
-function fillSelect(select, names, placeholder) {
+function fillSelect(select, names, placeholder, { optional = false } = {}) {
   const previous = select.value;
   const options = [document.createElement('option')];
   options[0].value = '';
   options[0].textContent = placeholder;
-  options[0].disabled = true;
+  // A disabled placeholder is how a select says "you must choose". Where the
+  // empty choice is a real answer it has to stay selectable, or the only way
+  // back to "none" is to reload the form.
+  options[0].disabled = !optional;
   for (const name of names) {
     const option = document.createElement('option');
     option.value = name;
@@ -78,8 +115,10 @@ function syncCategoryOptions() {
   fillSelect(
     document.getElementById('add-category'),
     categoryOptions(state.categories, state.usedCategories, kind),
-    kind === 'income' ? 'Choose an income category' : 'Choose a category',
+    'No category',
+    { optional: true },
   );
+  syncBucketHint();
 }
 
 async function fillPickers() {
@@ -89,6 +128,13 @@ async function fillPickers() {
   const addAccount = document.getElementById('add-account');
   fillSelect(addAccount, names, 'Choose an account');
   fillSelect(document.getElementById('add-to'), names, 'Choose an account');
+  // "All accounts" is a real answer here, not a prompt to pick one. A deleted
+  // account must not leave the chart filtered to nothing, so a filter naming
+  // one that no longer exists falls back to all.
+  const pieAccount = document.getElementById('pie-account');
+  fillSelect(pieAccount, names, 'All accounts', { optional: true });
+  if (!names.includes(state.filter.account)) state.filter.account = '';
+  pieAccount.value = state.filter.account;
   // Only when nothing is chosen: overriding a selection mid-entry would undo
   // a deliberate choice every time the form refreshed.
   if (!addAccount.value && names.includes(state.defaultAccount)) {
@@ -150,6 +196,7 @@ form.addEventListener('submit', async (event) => {
     const kind = selectedKind();
     const date = document.getElementById('add-date').value;
     const note = document.getElementById('add-note').value;
+    const name = document.getElementById('add-name').value.trim();
     const account = document.getElementById('add-account').value.trim();
 
     const magnitude = rupiahToCents(document.getElementById('add-amount').value);
@@ -167,13 +214,18 @@ form.addEventListener('submit', async (event) => {
     try {
       if (kind === 'transfer') {
         const to = document.getElementById('add-to').value.trim();
-        await db.addTransfer({ date, from: account, to, amount: magnitude, note });
+        await db.addTransfer({ date, from: account, to, amount: magnitude, name, note });
       } else {
+        // Only an expense carries a row bucket. Sending one on an income row
+        // would put a spending bucket on money the budget divides FROM.
+        const chosen = document.getElementById('add-bucket').value;
         await db.addFlow({
           date,
           account,
           amount: kind === 'income' ? magnitude : -magnitude,
+          name,
           category: document.getElementById('add-category').value.trim(),
+          bucket: kind === 'expense' && chosen ? chosen : null,
           note,
         });
       }
@@ -195,17 +247,51 @@ form.addEventListener('submit', async (event) => {
   }
 });
 
-const state = { month: new Date().toISOString().slice(0, 7), categories: [], usedCategories: [], funds: [], split: DEFAULT_SPLIT, defaultAccount: '' };
+const state = {
+  month: new Date().toISOString().slice(0, 7),
+  categories: [], usedCategories: [], funds: [], split: DEFAULT_SPLIT, defaultAccount: '',
+  // Chart-only. The month above is global; these narrow the spending chart
+  // without touching the budget, which is always the whole month's income.
+  filter: { period: 'month', account: '', bucket: '' },
+};
 
-const monthInput = document.getElementById('list-month');
-monthInput.value = state.month;
-monthInput.addEventListener('change', () => {
-  // Clearable on Android Chrome. An empty value has no month to render —
-  // keep showing the last valid month rather than feeding '' downstream.
-  if (!monthInput.value) return;
-  state.month = monthInput.value;
-  refresh();
-});
+// The same month drives the List and the Summary, so it has a control on
+// both. One state field, two inputs kept in step — a second month variable
+// is how two tabs end up quietly describing different months.
+const monthInputs = [document.getElementById('list-month'), document.getElementById('summary-month')];
+for (const input of monthInputs) {
+  input.value = state.month;
+  input.addEventListener('change', () => {
+    // Clearable on Android Chrome. An empty value has no month to render —
+    // keep showing the last valid month rather than feeding '' downstream.
+    if (!input.value) return;
+    state.month = input.value;
+    for (const other of monthInputs) other.value = state.month;
+    refresh();
+  });
+}
+
+for (const [id, key] of [['pie-period', 'period'], ['pie-account', 'account'], ['pie-bucket', 'bucket']]) {
+  document.getElementById(id).addEventListener('change', (event) => {
+    state.filter[key] = event.target.value;
+    refresh();
+  });
+}
+
+const BUCKET_FILTER_LABELS = { fixed: 'fixed spending', flexible: 'flexible spending', none: 'spending with no bucket' };
+
+// A filtered chart that does not say it is filtered is a wrong chart. This
+// line names the exact scope, and the total, so the figure can be checked
+// against the ledger rather than taken on trust.
+function renderPieScope(breakdown) {
+  const total = breakdown.reduce((sum, b) => sum + b.total, 0);
+  const { period, account, bucket } = state.filter;
+  const where = period === 'year' ? `all of ${state.month.slice(0, 4)}` : state.month;
+  const parts = [`${formatIDR(total)} across ${where}`];
+  if (account) parts.push(`in ${account}`);
+  if (bucket) parts.push(BUCKET_FILTER_LABELS[bucket]);
+  document.getElementById('pie-scope').textContent = `${parts.join(', ')}.`;
+}
 
 const TRASH_ICON = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>`;
 
@@ -260,12 +346,20 @@ function renderList(txns) {
 
     const main = document.createElement('div');
     main.className = 'row__main';
+    // The name is what the user actually recognises a row by, so it leads.
+    // The category is a filing decision, not an identity: it drops to the
+    // meta line beside the date and account. Rows written before the name
+    // existed fall back to the category so they never render blank.
     const title = document.createElement('span');
     title.className = 'row__title';
-    title.textContent = txn.transfer_id ? 'Transfer' : (txn.category || '');
+    const fallback = txn.transfer_id ? 'Transfer' : (txn.category || 'Uncategorised');
+    title.textContent = txn.name || fallback;
     const meta = document.createElement('span');
     meta.className = 'row__meta';
-    meta.textContent = [txn.date, txn.account, txn.note].filter(Boolean).join(' · ');
+    // Only name the category here when it is not already doing duty as the
+    // title, or a nameless row reads "Groceries · Groceries".
+    const category = txn.name && !txn.transfer_id ? txn.category : '';
+    meta.textContent = [txn.date, txn.account, category, txn.note].filter(Boolean).join(' · ');
     main.append(title, meta);
 
     const amount = document.createElement('span');
@@ -515,7 +609,13 @@ function renderSummary(txns, accounts, invalidTxns) {
   net.textContent = formatAmount(totals.net);
   net.className = `amount ${totals.net >= 0 ? 'amount--in' : 'amount--out'}`;
 
-  const breakdown = categoryBreakdown(txns, state.month);
+  const breakdown = spendingBreakdown(txns, state.categories, {
+    period: state.filter.period,
+    month: state.month,
+    account: state.filter.account,
+    bucket: state.filter.bucket,
+  });
+  renderPieScope(breakdown);
   const largest = breakdown.length ? breakdown[0].total : 0;
   const slices = sliceColours(breakdown.length);
   document.getElementById('bars-empty').hidden = breakdown.length > 0;

@@ -1,4 +1,4 @@
-import { splitBudget, bucketOf, allocateFunds } from './budget.js';
+import { splitBudget, resolveBucket, allocateFunds, UNCATEGORISED } from './budget.js';
 
 // A transfer moves money between the user's own accounts. It is neither
 // income nor spending, and both of its rows must be excluded from every
@@ -24,11 +24,32 @@ export function monthlyTotals(txns, month) {
   return { income, spending, net: income + spending };
 }
 
-export function categoryBreakdown(txns, month) {
+// Every spending view runs through this one filter so the pie, the legend
+// and the caption can never disagree about which rows they describe.
+//
+// An empty account or bucket means "all", not "blank": a filter nobody set
+// must not silently exclude everything. `bucket: 'none'` is the deliberate
+// opposite — show only what has no bucket at all.
+export function selectSpending(txns, categories, { period = 'month', month, account = '', bucket = '' }) {
+  const inPeriod = period === 'year'
+    ? txns.filter((txn) => txn.date.slice(0, 4) === month.slice(0, 4))
+    : filterMonth(txns, month);
+  return inPeriod.filter((txn) => {
+    if (!isFlow(txn) || txn.amount >= 0) return false;
+    if (account && txn.account !== account) return false;
+    if (bucket && (resolveBucket(txn, categories) ?? 'none') !== bucket) return false;
+    return true;
+  });
+}
+
+// A row with no category is a real row with real money on it. It groups
+// under one visible label rather than an empty string, which would render as
+// a nameless slice the reader cannot account for.
+export function spendingBreakdown(txns, categories, filter) {
   const totals = new Map();
-  for (const txn of filterMonth(txns, month)) {
-    if (!isFlow(txn) || txn.amount >= 0) continue;
-    totals.set(txn.category, (totals.get(txn.category) ?? 0) - txn.amount);
+  for (const txn of selectSpending(txns, categories, filter)) {
+    const key = txn.category || UNCATEGORISED;
+    totals.set(key, (totals.get(key) ?? 0) - txn.amount);
   }
   return [...totals]
     .map(([category, total]) => ({ category, total }))
@@ -51,8 +72,8 @@ export function bucketTotals(txns, categories, month, split) {
   let unbucketed = 0;
   for (const txn of filterMonth(txns, month)) {
     if (!isFlow(txn) || txn.amount >= 0) continue;
-    const bucket = bucketOf(categories, txn.category);
-    if (bucket === 'fixed' || bucket === 'flexible') spent[bucket] -= txn.amount;
+    const bucket = resolveBucket(txn, categories);
+    if (bucket) spent[bucket] -= txn.amount;
     else unbucketed -= txn.amount;
   }
 

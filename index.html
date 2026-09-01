@@ -49,14 +49,27 @@
       <select id="add-to"></select>
     </div>
 
+    <label for="add-name">Name</label>
+    <input type="text" id="add-name" placeholder="What was it?">
+
     <div id="add-category-wrap">
-      <label for="add-category">Category</label>
-      <select id="add-category" required></select>
+      <label for="add-category">Category <span class="label-optional">optional</span></label>
+      <select id="add-category"></select>
+    </div>
+
+    <div id="add-bucket-wrap">
+      <label for="add-bucket">Charge to</label>
+      <select id="add-bucket">
+        <option value="">Use the category's bucket</option>
+        <option value="fixed">Fixed</option>
+        <option value="flexible">Flexible</option>
+      </select>
+      <p class="hint" id="add-bucket-hint"></p>
     </div>
 
     <p id="add-setup" class="hint" hidden></p>
 
-    <label for="add-note">Note</label>
+    <label for="add-note">Note <span class="label-optional">optional</span></label>
     <input type="text" id="add-note">
 
     <label for="add-date">Date</label>
@@ -80,6 +93,8 @@
 </section>
 <section class="view" id="view-summary" hidden>
   <h1>Summary</h1>
+  <label for="summary-month">Month</label>
+  <input type="month" id="summary-month">
   <p id="summary-status" role="status"></p>
 
   <div class="card stats">
@@ -111,6 +126,29 @@
 
   <div class="card">
     <h2>Spending by category</h2>
+    <div class="filters" role="group" aria-label="Filter this chart">
+      <div class="filters__field">
+        <label for="pie-period">Period</label>
+        <select id="pie-period">
+          <option value="month">This month</option>
+          <option value="year">Whole year</option>
+        </select>
+      </div>
+      <div class="filters__field">
+        <label for="pie-account">Account</label>
+        <select id="pie-account"></select>
+      </div>
+      <div class="filters__field">
+        <label for="pie-bucket">Bucket</label>
+        <select id="pie-bucket">
+          <option value="">All</option>
+          <option value="fixed">Fixed</option>
+          <option value="flexible">Flexible</option>
+          <option value="none">No bucket</option>
+        </select>
+      </div>
+    </div>
+    <p class="hint" id="pie-scope"></p>
     <svg id="pie" viewBox="0 0 100 100" role="img" aria-labelledby="pie-desc"></svg>
     <p id="pie-desc" class="visually-hidden"></p>
     <table class="bars" id="bars">
