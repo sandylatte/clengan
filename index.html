@@ -248,7 +248,13 @@
       <button type="submit" class="primary">Save category</button>
     </form>
     <p id="category-status" role="status"></p>
-    <ul id="category-list" class="rows"></ul>
+    <p class="hint">Drag a category between the two groups to change whether it is an expense or income.</p>
+    <h3 class="group__heading">Expense</h3>
+    <ul id="category-list-expense" class="rows rows--drop"></ul>
+    <p class="group__empty" id="category-empty-expense" hidden>No expense categories. Drag one here.</p>
+    <h3 class="group__heading">Income</h3>
+    <ul id="category-list-income" class="rows rows--drop"></ul>
+    <p class="group__empty" id="category-empty-income" hidden>No income categories. Drag one here.</p>
   </div>
 
   <div class="card">

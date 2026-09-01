@@ -549,6 +549,11 @@ button.primary:active { filter: brightness(0.92); }
   margin-left: var(--space-1);
 }
 
+/* The negative top margin below assumes a .hint follows an INPUT, pulling it
+   up under the field it explains. Following a label it climbs over the label
+   instead — which it did, under "Default account". */
+label + .hint { margin-top: 0; }
+
 .hint {
   font-size: 13px;
   line-height: 1.5;
@@ -585,18 +590,32 @@ button.primary:active { filter: brightness(0.92); }
 
 /* An ordered row wraps its controls under the name on a narrow screen rather
    than crushing four of them onto one line. */
-.row--ordered { flex-wrap: wrap; }
-.row--ordered .row__main { flex: 1 1 8rem; }
+/* Tuned so the longest default name ("Health & Skincare", 133px at 15px)
+   still shares a line with the controls at 375px. It wraps below that
+   rather than truncating: a category you cannot read the name of is worse
+   than a taller row. */
+.row--ordered {
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  /* Narrower side padding than a plain row: these carry a grip and three
+     controls, and the eight pixels reclaimed here are what let the longest
+     default name stay on one line at 375px. */
+  padding-left: var(--space-0);
+  padding-right: var(--space-0);
+}
+.row--ordered .row__main { flex: 1 1 7rem; min-width: 0; }
 
 .row__controls {
   display: flex;
   align-items: center;
-  gap: var(--space-1);
-  flex-wrap: wrap;
+  gap: var(--space-0);
+  flex: 0 0 auto;
 }
 
-.row__controls { margin-left: auto; }
-.row__controls .row__select { flex: 0 1 auto; min-width: 6.5rem; }
+/* The ordered rows carry three controls plus a name; the delete target
+   shrinks from 44 to 36 there so all three fit beside the name on a phone.
+   Still well above the 24px minimum, and it is not a primary action. */
+.row--ordered .row__delete { min-width: 36px; min-height: 36px; }
 
 .grip {
   display: flex;
@@ -613,22 +632,109 @@ button.primary:active { filter: brightness(0.92); }
 
 .reorder { display: flex; gap: 2px; flex: 0 0 auto; }
 
+/* Borderless. Two boxed buttons per row read as heavily as the name they sit
+   beside; a bare chevron is the smallest thing that still says "move". The
+   tap target stays 32px even though the mark inside it is 14px. */
 .reorder__button {
-  min-width: 36px;
-  min-height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 32px;
   padding: 0;
+  background: none;
+  color: var(--color-subtle);
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+.reorder__button svg {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.25;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.reorder__button--down svg { transform: rotate(180deg); }
+.reorder__button:hover:not(:disabled) {
+  color: var(--color-foreground);
+  background: var(--color-input);
+}
+/* Kept in place rather than hidden at the ends, so the controls do not shift
+   under the pointer as rows change places. */
+.reorder__button:disabled { opacity: 0.3; cursor: default; }
+
+/* The colour, as the control. A select naming ten colours in words was three
+   times the width and had to be read rather than seen. */
+.swatch-button {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 1px solid var(--color-border-strong);
+  border-radius: 50%;
+  cursor: pointer;
+  flex: 0 0 auto;
+}
+.swatch-button--none {
+  background: transparent;
+  border-style: dashed;
+}
+.swatch-button:hover { border-color: var(--color-foreground); }
+
+.group__heading {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-subtle);
+  margin: var(--space-3) 0 var(--space-1);
+}
+
+/* A drop target has to have height even when empty, or a group emptied of
+   every category can never be dropped back into. */
+.rows--drop { min-height: var(--space-5); }
+.rows--drop.is-drop-into {
+  outline: 2px dashed var(--color-active);
+  outline-offset: 2px;
+  border-radius: var(--radius-md);
+}
+.group__empty {
+  font-size: 13px;
+  color: var(--color-subtle);
+  margin: 0 0 var(--space-2);
+}
+
+.palette {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(8.5rem, 1fr));
+  gap: var(--space-1);
+  margin-bottom: var(--space-3);
+}
+.palette__item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  width: 100%;
+  min-height: 44px;
+  padding: 0 var(--space-2);
   background: var(--color-input);
   color: var(--color-foreground);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
   font: inherit;
-  line-height: 1;
+  font-size: 14px;
+  text-align: left;
   cursor: pointer;
 }
-.reorder__button:hover:not(:disabled) { border-color: var(--color-border-strong); }
-/* Kept in place rather than hidden at the ends, so the controls do not shift
-   under the pointer as rows change places. */
-.reorder__button:disabled { opacity: 0.35; cursor: default; }
+.palette__item:hover { border-color: var(--color-border-strong); }
+.palette__item[aria-pressed="true"] { border-color: var(--color-active); border-width: 2px; }
+.palette__chip {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+}
+.palette__chip--none { border: 1px dashed var(--color-border-strong); }
 
 .row.is-dragging { opacity: 0.4; }
 

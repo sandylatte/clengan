@@ -1,5 +1,6 @@
 import {
   DEFAULT_CATEGORIES, DEFAULT_INCOME_CATEGORIES, DEFAULT_SPLIT, DEFAULT_FUNDS,
+  TRANSFER_CATEGORY,
 } from './budget.js';
 
 const DB_NAME = 'moneytrack';
@@ -335,8 +336,8 @@ export function addTransfer({ date, from, to, amount, name = '', note }) {
   const fromId = crypto.randomUUID();
   const toId = crypto.randomUUID();
   return run('transactions', 'readwrite', (store) => {
-    store.add({ id: fromId, date, account: from, amount: -amount, name, category: 'Transfer', bucket: null, transfer_id: toId, note });
-    store.add({ id: toId, date, account: to, amount, name, category: 'Transfer', bucket: null, transfer_id: fromId, note });
+    store.add({ id: fromId, date, account: from, amount: -amount, name, category: TRANSFER_CATEGORY, bucket: null, transfer_id: toId, note });
+    store.add({ id: toId, date, account: to, amount, name, category: TRANSFER_CATEGORY, bucket: null, transfer_id: fromId, note });
     return { value: [fromId, toId] };
   });
 }

@@ -190,7 +190,9 @@ export function categoryOptions(categories, usedNames, kind) {
   // there, so it looked orphaned. A name that still has a record is not
   // orphaned — it is simply wrong for this kind of row.
   const known = new Set(categories.map((c) => c.name));
-  const orphans = [...new Set(usedNames)].filter((name) => !known.has(name)).sort();
+  const orphans = [...new Set(usedNames)]
+    .filter((name) => !known.has(name) && name !== TRANSFER_CATEGORY)
+    .sort();
   return [...names, ...orphans];
 }
 
@@ -222,3 +224,8 @@ export function resolveBucket(txn) {
 }
 
 export const UNCATEGORISED = 'Uncategorised';
+
+// Written onto both halves of a transfer by the data layer. It is not a
+// category anyone creates, so it must never be offered as one — a spend
+// filed under it would look like a transfer to every reader of the list.
+export const TRANSFER_CATEGORY = 'Transfer';

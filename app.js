@@ -6,12 +6,12 @@ import {
 } from './rollup.js';
 import {
   BUCKETS, CATEGORY_KINDS, CATEGORY_COLOURS, DEFAULT_SPLIT, validateSplit, allocateFunds,
-  splitBalance, categoryOptions, sortByPosition, normaliseColour, UNCATEGORISED,
+  splitBalance, categoryOptions, sortByPosition, normaliseColour, moveTo, UNCATEGORISED,
 } from './budget.js';
 import { reorderButtons, dragHandle, attachDragReorder } from './reorder.js';
 import { exportXlsx, importXlsx, importPlanner } from './xlsx-io.js';
 import { attachCalendar, toISO } from './calendar.js';
-import { confirmDialog, alertDialog } from './dialog.js';
+import { confirmDialog, alertDialog, pickColour } from './dialog.js';
 import { SAMPLE_ACCOUNTS, SAMPLE_NOTE, sampleMonths, sampleTransactions } from './sample.js';
 
 function showView(name) {
@@ -386,7 +386,6 @@ function renderList(txns) {
 }
 
 const BUCKET_LABELS = { fixed: 'Fixed', flexible: 'Flexible' };
-const KIND_LABELS = { expense: 'Expense', income: 'Income' };
 
 function renderBudget(txns) {
   const t = bucketTotals(txns, state.month, state.split);
@@ -1009,113 +1008,131 @@ document.getElementById('category-form').addEventListener('submit', async (event
 });
 
 function renderCategories(categories) {
-  // The user's stored order, which is what the Add form's dropdown follows
-  // too. Expense and income are no longer forced apart here: the list IS the
-  // order, and splitting it would mean the arrows lie about where a row goes.
+  // Two groups, and the group a row sits in IS its kind. That removed the
+  // Kind dropdown from every row, which is what was squeezing the name onto
+  // two lines — the setting is now expressed by position rather than by a
+  // control that has to be read one row at a time.
   const sorted = sortByPosition(categories);
-  const names = sorted.map((c) => c.name);
-  const list = document.getElementById('category-list');
-
-  list.replaceChildren(...sorted.map(({ name, kind, colour }) => {
-    const item = document.createElement('li');
-    item.className = 'row row--ordered';
-    item.dataset.name = name;
-
-    const main = document.createElement('div');
-    main.className = 'row__main';
-    const title = document.createElement('span');
-    title.className = 'row__title';
-    const swatch = document.createElement('span');
-    swatch.className = 'swatch';
-    // No colour is shown as an outlined blank rather than a filled grey, so
-    // "not set" cannot be mistaken for a chosen colour.
-    swatch.classList.toggle('swatch--none', !colour);
-    if (colour) swatch.style.background = colour;
-    title.append(swatch, document.createTextNode(name));
-    main.append(title);
-
-    const controls = document.createElement('div');
-    controls.className = 'row__controls';
-
-    const kindSelect = document.createElement('select');
-    kindSelect.className = 'row__select';
-    kindSelect.setAttribute('aria-label', `Kind for ${name}`);
-    for (const value of CATEGORY_KINDS) {
-      const option = document.createElement('option');
-      option.value = value;
-      option.textContent = KIND_LABELS[value];
-      option.selected = value === kind;
-      kindSelect.append(option);
-    }
-    kindSelect.addEventListener('change', async () => {
-      await db.putCategory(name, { kind: kindSelect.value });
-      categoryStatus.className = '';
-      categoryStatus.textContent = `${name} is now ${KIND_LABELS[kindSelect.value].toLowerCase()}.`;
-      await refresh();
-    });
-
-    const colourSelect = document.createElement('select');
-    colourSelect.className = 'row__select';
-    colourSelect.setAttribute('aria-label', `Colour for ${name}`);
-    const none = document.createElement('option');
-    none.value = '';
-    none.textContent = 'No colour';
-    none.selected = !colour;
-    colourSelect.append(none);
-    for (const swatchColour of CATEGORY_COLOURS) {
-      const option = document.createElement('option');
-      option.value = swatchColour.value;
-      option.textContent = swatchColour.name;
-      option.selected = swatchColour.value === colour;
-      colourSelect.append(option);
-    }
-    colourSelect.addEventListener('change', async () => {
-      await db.putCategory(name, { colour: normaliseColour(colourSelect.value) });
-      categoryStatus.className = '';
-      categoryStatus.textContent = '';
-      await refresh();
-    });
-
-    controls.append(
-      kindSelect,
-      colourSelect,
-      reorderButtons({ name, names, label: 'category', onReorder: saveCategoryOrder }),
+  for (const kind of CATEGORY_KINDS) {
+    const inGroup = sorted.filter((c) => (c.kind === 'income') === (kind === 'income'));
+    const names = inGroup.map((c) => c.name);
+    document.getElementById(`category-empty-${kind}`).hidden = inGroup.length > 0;
+    document.getElementById(`category-list-${kind}`).replaceChildren(
+      ...inGroup.map((category) => categoryRow(category, names)),
     );
-
-    const remove = document.createElement('button');
-    remove.className = 'row__delete';
-    remove.type = 'button';
-    remove.innerHTML = TRASH_ICON;
-    remove.setAttribute('aria-label', `Delete category ${name}`);
-    remove.addEventListener('click', async () => {
-      const txns = await db.allTransactions();
-      const count = txns.filter((t) => t.category === name).length;
-      const ok = await confirmDialog({
-        title: `Remove ${name}`,
-        body: count
-          ? `${count} transaction${count === 1 ? '' : 's'} filed under this name ${count === 1 ? 'keeps' : 'keep'} it, but ${count === 1 ? 'stops' : 'stop'} counting against a budget. `
-            + 'The Summary reports the total separately so it still adds up.'
-          : 'Nothing is filed under it, so no transaction changes.',
-        confirmLabel: 'Remove',
-        danger: true,
-      });
-      if (!ok) return;
-      await db.deleteCategory(name);
-      categoryStatus.className = '';
-      categoryStatus.textContent = '';
-      await refresh();
-    });
-
-    controls.append(remove);
-    item.append(dragHandle(item), main, controls);
-    return item;
-  }));
+  }
 }
 
-async function saveCategoryOrder(names) {
-  await db.reorderCategories(names);
+function categoryRow({ name, colour }, names) {
+  const item = document.createElement('li');
+  item.className = 'row row--ordered';
+  item.dataset.name = name;
+
+  const main = document.createElement('div');
+  main.className = 'row__main';
+  const title = document.createElement('span');
+  title.className = 'row__title';
+  title.textContent = name;
+  main.append(title);
+
+  const controls = document.createElement('div');
+  controls.className = 'row__controls';
+
+  // The colour IS the control: a swatch that opens the palette. A select
+  // naming ten colours in words was three times the width and still had to
+  // be read rather than seen.
+  const colourButton = document.createElement('button');
+  colourButton.type = 'button';
+  colourButton.className = 'swatch-button';
+  colourButton.classList.toggle('swatch-button--none', !colour);
+  if (colour) colourButton.style.background = colour;
+  const chosen = CATEGORY_COLOURS.find((c) => c.value === colour);
+  colourButton.setAttribute('aria-label', `Colour for ${name}: ${chosen ? chosen.name : 'none'}`);
+  colourButton.addEventListener('click', async () => {
+    const picked = await pickColour({
+      title: `Colour for ${name}`,
+      colours: CATEGORY_COLOURS,
+      current: colour ?? null,
+    });
+    // undefined means dismissed, which is not the same as choosing none.
+    if (picked === undefined) return;
+    await db.putCategory(name, { colour: normaliseColour(picked) });
+    categoryStatus.className = '';
+    categoryStatus.textContent = '';
+    await refresh();
+  });
+
+  const remove = document.createElement('button');
+  remove.className = 'row__delete';
+  remove.type = 'button';
+  remove.innerHTML = TRASH_ICON;
+  remove.setAttribute('aria-label', `Delete category ${name}`);
+  remove.addEventListener('click', async () => {
+    const txns = await db.allTransactions();
+    const count = txns.filter((t) => t.category === name).length;
+    const ok = await confirmDialog({
+      title: `Remove ${name}`,
+      body: count
+        ? `${count} transaction${count === 1 ? '' : 's'} filed under this name ${count === 1 ? 'keeps' : 'keep'} it, but ${count === 1 ? 'stops' : 'stop'} counting against a budget. `
+          + 'The Summary reports the total separately so it still adds up.'
+        : 'Nothing is filed under it, so no transaction changes.',
+      confirmLabel: 'Remove',
+      danger: true,
+    });
+    if (!ok) return;
+    await db.deleteCategory(name);
+    categoryStatus.className = '';
+    categoryStatus.textContent = '';
+    await refresh();
+  });
+
+  controls.append(
+    colourButton,
+    reorderButtons({ name, names, label: 'category', onReorder: (order) => saveCategoryOrder(order, name) }),
+    remove,
+  );
+  item.append(dragHandle(item), main, controls);
+  return item;
+}
+
+// `movedWithin` is the group the arrows acted on; its new order replaces
+// that group's slice of the global sequence, and the other group keeps the
+// order it already had.
+async function saveCategoryOrder(groupNames, movedName) {
+  const moved = state.categories.find((c) => c.name === movedName);
+  const kind = moved && moved.kind === 'income' ? 'income' : 'expense';
+  const other = CATEGORY_KINDS.filter((k) => k !== kind)[0];
+  const otherNames = [...document.getElementById(`category-list-${other}`).querySelectorAll('li[data-name]')]
+    .map((li) => li.dataset.name);
+  const full = kind === 'expense' ? [...groupNames, ...otherNames] : [...otherNames, ...groupNames];
+  await db.reorderCategories(full);
   categoryStatus.className = '';
   categoryStatus.textContent = '';
+  await refresh();
+}
+
+// A drop into the other group changes the kind as well as the position, and
+// both have to land before the re-render or the row appears back where it
+// started for a frame.
+async function onCategoryDrop({ name, index, from, to }) {
+  const targetKind = to.id.endsWith('income') ? 'income' : 'expense';
+  const targetNames = [...to.querySelectorAll('li[data-name]')]
+    .map((li) => li.dataset.name)
+    .filter((n) => n !== name);
+  targetNames.splice(Math.max(0, Math.min(index, targetNames.length)), 0, name);
+
+  const otherId = targetKind === 'income' ? 'category-list-expense' : 'category-list-income';
+  const otherNames = [...document.getElementById(otherId).querySelectorAll('li[data-name]')]
+    .map((li) => li.dataset.name)
+    .filter((n) => n !== name);
+
+  if (from !== to) await db.putCategory(name, { kind: targetKind });
+  await db.reorderCategories(targetKind === 'expense'
+    ? [...targetNames, ...otherNames]
+    : [...otherNames, ...targetNames]);
+
+  categoryStatus.className = from === to ? '' : 'is-ok';
+  categoryStatus.textContent = from === to ? '' : `${name} is now ${targetKind}.`;
   await refresh();
 }
 
@@ -1235,13 +1252,15 @@ async function renderAccounts(accounts) {
     // Unlabelled next to an account name it reads as the current balance,
     // which is on the Summary's Balances card and is usually a different
     // number entirely.
+    // The figure sits on the meta line rather than in its own column: with a
+    // grip and three controls on the row, a separate money column pushed them
+    // onto a second line at 375px. It stays labelled, because unlabelled next
+    // to an account name it reads as the current balance — which is on the
+    // Summary and is usually a different number.
     const meta = document.createElement('span');
     meta.className = 'row__meta';
-    meta.textContent = 'Initial balance';
+    meta.textContent = `Initial balance ${formatIDR(opening_balance)}`;
     main.append(title, meta);
-    const value = document.createElement('span');
-    value.className = 'amount';
-    value.textContent = formatIDR(opening_balance);
 
     const remove = document.createElement('button');
     remove.className = 'row__delete';
@@ -1269,7 +1288,7 @@ async function renderAccounts(accounts) {
       reorderButtons({ name, names, label: 'account', onReorder: saveAccountOrder }),
       remove,
     );
-    item.append(dragHandle(item), main, value, controls);
+    item.append(dragHandle(item), main, controls);
     return item;
   }));
 }
@@ -1399,8 +1418,19 @@ showVersion();
 
 // Attached once to the lists themselves, not per row: the rows are rebuilt on
 // every refresh, and re-binding per row would leak a listener each time.
-attachDragReorder(document.getElementById('category-list'), saveCategoryOrder);
-attachDragReorder(document.getElementById('account-list'), saveAccountOrder);
+// Both category lists accept drops from each other, which is how a category
+// changes kind. The account list only accepts its own rows.
+for (const kind of CATEGORY_KINDS) {
+  attachDragReorder(document.getElementById(`category-list-${kind}`), onCategoryDrop);
+}
+const accountList = document.getElementById('account-list');
+attachDragReorder(
+  accountList,
+  ({ name, index }) => saveAccountOrder(moveTo(
+    [...accountList.querySelectorAll('li[data-name]')].map((li) => li.dataset.name), name, index,
+  )),
+  { accepts: (from) => from === accountList },
+);
 
 const themeSelect = document.getElementById('theme-select');
 themeSelect.value = document.documentElement.dataset.theme === 'peach' ? 'peach' : 'graphite';

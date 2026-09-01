@@ -141,3 +141,12 @@ test('every curated colour reads on the graphite card and the peach card', () =>
     assert.ok(onLight >= 3, `${name} ${value} is ${onLight.toFixed(2)}:1 on peach, needs 3:1`);
   }
 });
+
+test('the reserved Transfer name is never offered as a category', () => {
+  // Both halves of a transfer are written with category "Transfer". It is not
+  // a category anyone creates, and a spend filed under it would read as a
+  // transfer to anyone scanning the list.
+  const list = cats(['Rent', 0]);
+  assert.deepEqual(categoryOptions(list, ['Transfer'], 'expense'), ['Rent']);
+  assert.deepEqual(categoryOptions(list, ['Transfer'], 'income'), []);
+});

@@ -71,3 +71,59 @@ export function confirmDialog({ title, body, confirmLabel, cancelLabel = 'Cancel
 export async function alertDialog({ title, body, confirmLabel = 'Close' }) {
   await open({ title, body, confirmLabel, cancelLabel: null, danger: false });
 }
+
+// A separate dialog node from the confirm/alert one: this is a grid of
+// choices rather than a message with two buttons, and reusing the other
+// node would mean rebuilding its insides on every call.
+//
+// Resolves to a colour, to null for "no colour", or to undefined when
+// dismissed — which is not the same as choosing none, and must not be
+// treated as one.
+let pickerNode = null;
+
+export function pickColour({ title, colours, current }) {
+  if (!pickerNode) {
+    pickerNode = document.createElement('dialog');
+    pickerNode.className = 'dialog';
+    pickerNode.innerHTML = `
+      <h2 class="dialog__title"></h2>
+      <div class="palette"></div>
+      <div class="dialog__actions">
+        <button type="button" class="dialog__cancel">Cancel</button>
+      </div>`;
+    document.body.append(pickerNode);
+  }
+  const dialog = pickerNode;
+  dialog.querySelector('.dialog__title').textContent = title;
+
+  return new Promise((resolve) => {
+    const finish = (value) => { dialog.close(); resolve(value); };
+
+    const swatchFor = (value, label) => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'palette__item';
+      button.setAttribute('aria-pressed', String(value === current));
+      const chip = document.createElement('span');
+      chip.className = 'palette__chip';
+      if (value) chip.style.background = value;
+      else chip.classList.add('palette__chip--none');
+      const text = document.createElement('span');
+      text.textContent = label;
+      button.append(chip, text);
+      button.onclick = () => finish(value);
+      return button;
+    };
+
+    dialog.querySelector('.palette').replaceChildren(
+      swatchFor(null, 'No colour'),
+      ...colours.map((colour) => swatchFor(colour.value, colour.name)),
+    );
+
+    dialog.querySelector('.dialog__cancel').onclick = () => finish(undefined);
+    dialog.oncancel = () => finish(undefined);
+    dialog.onclick = (event) => { if (event.target === dialog) finish(undefined); };
+    dialog.showModal();
+    dialog.querySelector('.palette__item').focus();
+  });
+}
