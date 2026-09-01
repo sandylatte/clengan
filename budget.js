@@ -75,6 +75,49 @@ export function validateSplit(split) {
   return split;
 }
 
+// The three shares are edited one at a time, so the set spends most of its
+// life not totalling 100. Reporting that only on submit means aiming blind;
+// this names the gap and which way to close it while it is still open.
+//
+// `ok` and the message come from ONE comparison on purpose. They used to come
+// from two — one rounded, one exact — which put "add 0.4% more" beside an
+// enabled save button. validatePercentages rounds, so this rounds.
+export function splitBalance(split) {
+  const values = [split.fixed, split.flexible, split.savings];
+  if (!values.every((v) => Number.isFinite(v) && v >= 0)) {
+    return { ok: false, message: 'A share cannot be negative. Enter zero or more.' };
+  }
+  const total = values.reduce((sum, v) => sum + v, 0);
+  if (Math.round(total) === 100) return { ok: true, message: 'Shares total 100%.' };
+  const gap = 100 - total;
+  return {
+    ok: false,
+    message: gap > 0
+      ? `Shares total ${total}%. Add ${gap}% more.`
+      : `Shares total ${total}%. Remove ${-gap}%.`,
+  };
+}
+
+// Income rows and spending rows never share a category list: offering
+// "Groceries" under Income is how a wrong bucket gets recorded in the first
+// place. Names carried by existing rows stay selectable even once their
+// category is gone, so an old row can still be re-filed under what it says.
+export function categoryOptions(categories, usedNames, kind) {
+  const income = kind === 'income';
+  const names = categories
+    .filter((c) => (income ? c.bucket === 'income' : c.bucket !== 'income'))
+    .map((c) => c.name)
+    .sort();
+  // An orphan is a name with NO category record at all. Filtering against the
+  // kind-filtered list instead let every income category through onto the
+  // expense list the moment one income row existed: it was absent from `names`
+  // there, so it looked orphaned. A name that still has a record is not
+  // orphaned — it is simply wrong for this kind of row.
+  const known = new Set(categories.map((c) => c.name));
+  const orphans = [...new Set(usedNames)].filter((name) => !known.has(name)).sort();
+  return [...names, ...orphans];
+}
+
 export function splitBudget(incomeCents, split) {
   const [fixed, flexible, savings] = allocate(incomeCents, [split.fixed, split.flexible, split.savings]);
   return { fixed, flexible, savings };

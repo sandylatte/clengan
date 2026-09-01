@@ -69,6 +69,15 @@ export function bucketTotals(txns, categories, month, split) {
   };
 }
 
+// Date.UTC paired with toISOString, never the local constructor: west of
+// Greenwich a local midnight-of-the-first reads back as the previous month,
+// and the trend chart would silently start one month early.
+export function lastSixMonths(endMonth) {
+  const [year, month] = endMonth.split('-').map(Number);
+  return Array.from({ length: 6 }, (_, i) =>
+    new Date(Date.UTC(year, month - 6 + i, 1)).toISOString().slice(0, 7));
+}
+
 export function monthsOfYear(year) {
   return Array.from({ length: 12 }, (_, i) => `${year}-${String(i + 1).padStart(2, '0')}`);
 }

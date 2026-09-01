@@ -2,8 +2,11 @@ import * as db from './db.js';
 import { formatIDR, formatAmount, groupDigits, rupiahToCents, centsToRupiahDigits } from './money.js';
 import {
   filterMonth, monthlyTotals, categoryBreakdown, accountBalances, netTrend, bucketTotals, fundsByYear,
+  lastSixMonths,
 } from './rollup.js';
-import { BUCKETS, DEFAULT_SPLIT, validateSplit, allocateFunds } from './budget.js';
+import {
+  BUCKETS, DEFAULT_SPLIT, validateSplit, allocateFunds, splitBalance, categoryOptions,
+} from './budget.js';
 import { exportXlsx, importXlsx, importPlanner } from './xlsx-io.js';
 import { attachCalendar, toISO } from './calendar.js';
 import { confirmDialog, alertDialog } from './dialog.js';
@@ -71,18 +74,11 @@ function fillSelect(select, names, placeholder) {
 }
 
 function syncCategoryOptions() {
-  const income = selectedKind() === 'income';
-  const names = state.categories
-    .filter((c) => (income ? c.bucket === 'income' : c.bucket !== 'income'))
-    .map((c) => c.name)
-    .sort();
-  // Names on existing rows stay selectable even after their category is
-  // deleted, so an old row can still be re-filed under what it already says.
-  const used = state.usedCategories.filter((name) => !names.includes(name));
+  const kind = selectedKind();
   fillSelect(
     document.getElementById('add-category'),
-    [...names, ...used.sort()],
-    income ? 'Choose an income category' : 'Choose a category',
+    categoryOptions(state.categories, state.usedCategories, kind),
+    kind === 'income' ? 'Choose an income category' : 'Choose a category',
   );
 }
 
@@ -310,16 +306,6 @@ function renderList(txns) {
       return buildErrorRow(txn);
     }
   }));
-}
-
-function lastSixMonths(endMonth) {
-  const [year, month] = endMonth.split('-').map(Number);
-  const months = [];
-  for (let back = 5; back >= 0; back -= 1) {
-    const date = new Date(Date.UTC(year, month - 1 - back, 1));
-    months.push(date.toISOString().slice(0, 7));
-  }
-  return months;
 }
 
 const BUCKET_LABELS = { fixed: 'Fixed', flexible: 'Flexible', income: 'Income' };
@@ -818,33 +804,14 @@ const readSplit = () => Object.fromEntries(
   Object.entries(splitFields).map(([key, id]) => [key, Number(document.getElementById(id).value)]),
 );
 
-// The three shares are edited one at a time, so the set spends most of its
-// life not totalling 100. Reporting that only on submit means the user aims
-// blind and finds out afterwards; the running total names the gap and which
-// way to close it, and the save button says whether it will be accepted.
+// The running total tells the user where they are while the set is mid-edit,
+// and the save button says whether it will be accepted. Both come from the
+// one call, so they cannot disagree.
 function showSplitBalance() {
-  const split = readSplit();
-  const values = Object.values(split);
-  const saveButton = splitForm.querySelector('button[type="submit"]');
-
-  if (!values.every((v) => Number.isFinite(v) && v >= 0)) {
-    splitStatus.className = 'budget-note__warning';
-    splitStatus.textContent = 'A share cannot be negative. Enter zero or more.';
-    saveButton.disabled = true;
-    return;
-  }
-  const total = values.reduce((sum, v) => sum + v, 0);
-  const gap = 100 - total;
-  saveButton.disabled = Math.round(total) !== 100;
-  if (gap === 0) {
-    splitStatus.className = '';
-    splitStatus.textContent = 'Shares total 100%.';
-  } else {
-    splitStatus.className = 'budget-note__warning';
-    splitStatus.textContent = gap > 0
-      ? `Shares total ${total}%. Add ${gap}% more.`
-      : `Shares total ${total}%. Remove ${-gap}%.`;
-  }
+  const { ok, message } = splitBalance(readSplit());
+  splitStatus.className = ok ? '' : 'budget-note__warning';
+  splitStatus.textContent = message;
+  splitForm.querySelector('button[type="submit"]').disabled = !ok;
 }
 
 for (const id of Object.values(splitFields)) {
