@@ -25,6 +25,8 @@
   --shadow-primary: none;          /* brass on graphite separates unaided */
   /* A floating layer needs a cast shadow even where a resting one does not. */
   --shadow-popover: 0 8px 24px rgba(0, 0, 0, 0.45), 0 2px 6px rgba(0, 0, 0, 0.30);
+  --color-scrim: rgb(0 0 0 / 0.55);
+  --color-tabbar: color-mix(in srgb, var(--color-muted) 92%, transparent);
   --color-active: #D9B978;         /* tab label + focus ring */
   --color-bar: color-mix(in srgb, #C8A15A 22%, transparent);
   --color-accent: #4FA96B;         /* income, 6.1:1 */
@@ -69,6 +71,12 @@
   --color-on-primary: #4A2A22;     /* 6.66:1 on primary */
   --shadow-primary: 0 1px 3px rgba(74, 42, 34, 0.20), 0 1px 2px rgba(74, 42, 34, 0.12);
   --shadow-popover: 0 8px 24px rgba(74, 42, 34, 0.20), 0 2px 6px rgba(74, 42, 34, 0.12);
+  /* Lighter than graphite's: the same opacity over a pale canvas reads as
+     the lights going out rather than the page stepping back. */
+  --color-scrim: rgb(74 42 34 / 0.38);
+  /* The tab strip is the room's floor: a step off the canvas, not a tint of
+     the card, which is what the graphite mix produces on a light ground. */
+  --color-tabbar: #EFC5B7;
   --color-active: #8E3A26;         /* 4.8:1 on the tab strip */
   --color-bar: #F0C0B0;
   --color-accent: #2F6B4F;         /* income, 5.6:1 */
@@ -84,9 +92,6 @@
   --color-border-strong: #D9A493;
   color-scheme: light;
 }
-
-/* The tab strip is the room's floor, a step off the canvas in both tones. */
-:root[data-theme="peach"] .tabbar { background: #EFC5B7; }
 
 * { box-sizing: border-box; }
 
@@ -169,7 +174,7 @@ h2 {
   right: 0;
   display: flex;
   justify-content: center;
-  background: color-mix(in srgb, var(--color-muted) 92%, transparent);
+  background: var(--color-tabbar);
   backdrop-filter: blur(12px);
   border-top: 1px solid var(--color-border);
   padding-bottom: env(safe-area-inset-bottom);
@@ -694,7 +699,7 @@ button.primary:active { filter: brightness(0.92); }
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-popover);
 }
-.dialog::backdrop { background: rgb(0 0 0 / 0.55); backdrop-filter: blur(2px); }
+.dialog::backdrop { background: var(--color-scrim); backdrop-filter: blur(2px); }
 .dialog__title {
   margin: 0 0 var(--space-2);
   font-size: 17px;

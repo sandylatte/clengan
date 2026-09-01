@@ -30,7 +30,10 @@ colors:
   peach-subtle: "#8A5A4B"
   peach-border: "#E9C2B5"
   peach-border-strong: "#D9A493"
+  tabbar: "color-mix(in srgb, var(--color-muted) 92%, transparent)"
   peach-tabbar: "#EFC5B7"
+  scrim: "rgb(0 0 0 / 0.55)"
+  peach-scrim: "rgb(74 42 34 / 0.38)"
   peach-bar: "#F0C0B0"
 
 shadows:
