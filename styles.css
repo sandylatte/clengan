@@ -541,51 +541,40 @@ button.primary:active { filter: brightness(0.92); }
   vertical-align: baseline;
 }
 
-/* One control made of three: the field carries the grouping dots a number
-   input cannot, and the buttons restore the stepping it gives up. */
-.stepper {
+/* Rp lives in the label, not in the field. Inside it, it was small enough to
+   read as noise, and the flex gap that separated it drew a hairline nobody
+   asked for. */
+.moneyfield { font-family: var(--font-num); text-align: right; }
+#add-amount {
+  min-height: 64px;
+  font-size: 34px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  margin-bottom: var(--space-1);
+}
+
+/* Chips add, they do not step. Reaching 50rb by nudging a spinner is fifty
+   taps; the amounts people actually enter are round. */
+.chips {
   display: flex;
-  align-items: stretch;
-  gap: 1px;
+  flex-wrap: wrap;
+  gap: var(--space-1);
   margin-bottom: var(--space-3);
-  background: var(--color-border);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  overflow: hidden;
 }
-.stepper input {
-  flex: 1;
-  min-width: 0;
-  margin: 0;
-  border: none;
-  border-radius: 0;
-  font-family: var(--font-num);
-  text-align: right;
-}
-.stepper__prefix {
-  display: flex;
-  align-items: center;
-  padding-left: var(--space-2);
+.chip {
+  min-height: 36px;
+  padding: 0 var(--space-2);
   background: var(--color-input);
-  color: var(--color-subtle);
-  font-size: 14px;
-}
-.stepper__button {
-  flex: 0 0 52px;
-  min-height: 44px;
-  border: none;
-  background: var(--color-muted);
   color: var(--color-foreground);
-  font-size: 20px;
-  line-height: 1;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font: inherit;
+  font-size: 13px;
   cursor: pointer;
 }
-.stepper__button:hover { background: var(--color-input); }
-.stepper__button:active { filter: brightness(0.92); }
-
-#add-amount { font-size: 34px; font-weight: 500; letter-spacing: -0.02em; }
-.stepper:has(#add-amount) .stepper__button { min-height: 64px; }
-.stepper:has(#add-amount) .stepper__prefix { font-size: 17px; }
+.chip:hover { border-color: var(--color-border-strong); background: var(--color-muted); }
+.chip:active { filter: brightness(0.92); }
+.chip--clear { margin-left: auto; color: var(--color-subtle); }
 
 /* The native date popup is browser chrome that ignores the field's width and
    takes no styling. This one is ours, so it matches every other picker. */
@@ -693,6 +682,57 @@ button.primary:active { filter: brightness(0.92); }
   font-size: 13px;
   background-color: var(--color-input);
 }
+
+/* Overlay dialogs. The native confirm cannot be styled and reads as the
+   browser interrupting rather than the app asking. */
+.dialog {
+  width: min(420px, calc(100vw - var(--space-4)));
+  padding: var(--space-4);
+  background: var(--color-muted);
+  color: var(--color-foreground);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-popover);
+}
+.dialog::backdrop { background: rgb(0 0 0 / 0.55); backdrop-filter: blur(2px); }
+.dialog__title {
+  margin: 0 0 var(--space-2);
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.dialog__body {
+  margin: 0 0 var(--space-4);
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--color-subtle);
+}
+.dialog__actions { display: flex; gap: var(--space-2); justify-content: flex-end; }
+.dialog__actions button {
+  min-height: 44px;
+  padding: 0 var(--space-3);
+  margin: 0;
+  width: auto;
+  border-radius: var(--radius-md);
+  font: inherit;
+  cursor: pointer;
+}
+.dialog__cancel {
+  background: var(--color-input);
+  color: var(--color-foreground);
+  border: 1px solid var(--color-border-strong);
+}
+.dialog__cancel:hover { background: var(--color-muted); }
+/* A destructive action is not the accent colour: the accent means "the
+   ordinary thing to do here", and this is not that. */
+.dialog__confirm.is-danger {
+  background: var(--color-destructive);
+  color: var(--color-background);
+  border: none;
+}
+
+/* One status tone in each direction, so no handler reaches for a raw colour. */
+.is-ok { color: var(--color-accent); }
 
 #trend { width: 100%; height: auto; overflow: visible; }
 #summary-status, #list-status { min-height: 20px; font-size: 14px; color: var(--color-subtle); }

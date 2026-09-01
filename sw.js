@@ -5,7 +5,7 @@
 // NAME differs from CACHE — so an unbumped CACHE means every user with the
 // worker already installed keeps being served the OLD shell forever, silently,
 // including any money bug that edit was meant to fix.
-const CACHE = 'moneytrack-v31';
+const CACHE = 'moneytrack-v32';
 
 const SHELL = [
   './',
@@ -18,6 +18,7 @@ const SHELL = [
   './budget.js',
   './planner.js',
   './calendar.js',
+  './dialog.js',
   './xlsx-io.js',
   './manifest.json',
   './vendor/xlsx.full.min.js',

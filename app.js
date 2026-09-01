@@ -6,6 +6,7 @@ import {
 import { BUCKETS, DEFAULT_SPLIT, validateSplit, allocateFunds } from './budget.js';
 import { exportXlsx, importXlsx, importPlanner } from './xlsx-io.js';
 import { attachCalendar, toISO } from './calendar.js';
+import { confirmDialog, alertDialog } from './dialog.js';
 
 function showView(name) {
   for (const section of document.querySelectorAll('.view')) {
@@ -89,8 +90,14 @@ async function fillPickers() {
   const [accounts, txns] = await Promise.all([db.allAccounts(), db.allTransactions()]);
   const names = accounts.map((a) => a.name).sort();
   state.usedCategories = [...new Set(txns.map((t) => t.category).filter(Boolean))];
-  fillSelect(document.getElementById('add-account'), names, 'Choose an account');
+  const addAccount = document.getElementById('add-account');
+  fillSelect(addAccount, names, 'Choose an account');
   fillSelect(document.getElementById('add-to'), names, 'Choose an account');
+  // Only when nothing is chosen: overriding a selection mid-entry would undo
+  // a deliberate choice every time the form refreshed.
+  if (!addAccount.value && names.includes(state.defaultAccount)) {
+    addAccount.value = state.defaultAccount;
+  }
   syncCategoryOptions();
 
   // Without an account nothing can be saved at all, and an empty select with
@@ -115,17 +122,24 @@ function attachMoneyInput(input) {
   reformat();
 }
 
-for (const input of document.querySelectorAll('.stepper input')) attachMoneyInput(input);
+for (const input of document.querySelectorAll('.moneyfield')) attachMoneyInput(input);
 
+// Chips add to what is there rather than stepping it. A rupiah amount is
+// rarely reached by nudging: it is 50rb, or 3jt plus 250rb. Adding is also
+// safe in one direction, so nothing here can drive the field negative and
+// contradict the expense/income control.
 document.addEventListener('click', (event) => {
-  const button = event.target.closest('.stepper__button');
-  if (!button) return;
-  const input = document.getElementById(button.dataset.target);
-  const step = Number(button.dataset.step);
+  const chip = event.target.closest('.chip');
+  if (!chip) return;
+  if (chip.dataset.clear) {
+    const target = document.getElementById(chip.dataset.clear);
+    target.value = '';
+    target.focus();
+    return;
+  }
+  const input = document.getElementById(chip.dataset.target);
   const current = Number(String(input.value).replace(/\D/g, '') || 0);
-  // Clamped at zero: the sign is chosen by the expense/income control, and a
-  // negative in the field would contradict whichever one is selected.
-  input.value = groupDigits(String(Math.max(0, current + step)));
+  input.value = groupDigits(String(current + Number(chip.dataset.add)));
 });
 
 const saveButton = form.querySelector('button[type="submit"]');
@@ -144,13 +158,13 @@ form.addEventListener('submit', async (event) => {
 
     const magnitude = rupiahToCents(document.getElementById('add-amount').value);
     if (magnitude === null) {
-      status.style.color = 'var(--color-destructive)';
-      status.textContent = 'Enter an amount.';
+      status.className = 'budget-note__warning';
+      status.textContent = 'Enter an amount before saving.';
       return;
     }
     if (magnitude <= 0) {
-      status.style.color = 'var(--color-destructive)';
-      status.textContent = 'Amount must be greater than zero.';
+      status.className = 'budget-note__warning';
+      status.textContent = 'The amount must be more than zero.';
       return;
     }
 
@@ -168,15 +182,15 @@ form.addEventListener('submit', async (event) => {
         });
       }
     } catch (error) {
-      status.style.color = 'var(--color-destructive)';
-      status.textContent = error.message;
+      status.className = 'budget-note__warning';
+      status.textContent = `This could not be saved. ${error.message}`;
       return;
     }
 
     form.reset();
     addDate.set(toISO(new Date()));
     syncKind();
-    status.style.color = 'var(--color-accent)';
+    status.className = 'is-ok';
     status.textContent = 'Saved.';
     await refresh();
   } finally {
@@ -185,7 +199,7 @@ form.addEventListener('submit', async (event) => {
   }
 });
 
-const state = { month: new Date().toISOString().slice(0, 7), categories: [], usedCategories: [], funds: [], split: DEFAULT_SPLIT };
+const state = { month: new Date().toISOString().slice(0, 7), categories: [], usedCategories: [], funds: [], split: DEFAULT_SPLIT, defaultAccount: '' };
 
 const monthInput = document.getElementById('list-month');
 monthInput.value = state.month;
@@ -201,7 +215,7 @@ const TRASH_ICON = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" 
 
 function showListStatus(message) {
   const status = document.getElementById('list-status');
-  status.style.color = message ? 'var(--color-destructive)' : '';
+  status.className = message ? 'budget-note__warning' : '';
   status.textContent = message;
 }
 
@@ -219,18 +233,23 @@ function renderList(txns) {
     remove.setAttribute('aria-label', label);
     remove.addEventListener('click', async () => {
       if (!txn || !txn.id) {
-        showListStatus('This row has no id and cannot be removed automatically.');
+        showListStatus('This row has no id, so it cannot be removed here. Export to Excel, delete the row there, and import the file again.');
         return;
       }
       const isTransfer = Boolean(txn.transfer_id);
-      const message = isTransfer
-        ? 'Delete this transfer? Both sides will be removed.'
-        : 'Delete this transaction?';
-      if (!confirm(message)) return;
+      const ok = await confirmDialog({
+        title: isTransfer ? 'Delete this transfer' : 'Delete this transaction',
+        body: isTransfer
+          ? `${formatAmount(txn.amount)} on ${txn.date}. Both sides of the transfer are removed, so the two accounts stay balanced against each other.\n\nThis cannot be undone.`
+          : `${formatAmount(txn.amount)} on ${txn.date}. This cannot be undone.`,
+        confirmLabel: 'Delete',
+        danger: true,
+      });
+      if (!ok) return;
       try {
         await db.deleteTransaction(txn.id);
       } catch (error) {
-        showListStatus(`Delete failed: ${error.message}`);
+        showListStatus(`This row was not deleted, and nothing changed. ${error.message}`);
         return;
       }
       showListStatus('');
@@ -271,7 +290,7 @@ function renderList(txns) {
     main.className = 'row__main';
     const title = document.createElement('span');
     title.className = 'row__title';
-    title.style.color = 'var(--color-destructive)';
+    title.className = 'row__title budget-note__warning';
     title.textContent = 'Unreadable transaction';
     const meta = document.createElement('span');
     meta.className = 'row__meta';
@@ -536,6 +555,14 @@ function renderSummary(txns, accounts, invalidTxns) {
   const balances = accountBalances(txns, accounts);
   const total = balances.reduce((sum, b) => sum + b.balance, 0);
 
+  // Net answers "how did this month go"; Balance answers "what do I hold".
+  // Showing only the first made the initial balance look lost, and folding
+  // it into Net would have produced a figure that is neither, and that two
+  // months could not be compared on.
+  const balanceStat = document.getElementById('stat-balance');
+  balanceStat.textContent = formatIDR(total);
+  balanceStat.className = `amount ${total < 0 ? 'amount--out' : ''}`;
+
   // Same figure as the Balances "Total" row, shown in the Add header so the
   // running total is visible on the view you open the app to.
   const headBalance = document.getElementById('head-balance');
@@ -571,15 +598,16 @@ function renderSummary(txns, accounts, invalidTxns) {
 
   const statusEl = document.getElementById('summary-status');
   if (invalidTxns.length) {
-    statusEl.style.color = 'var(--color-destructive)';
-    const label = invalidTxns.length === 1 ? 'transaction' : 'transactions';
+    statusEl.className = 'budget-note__warning';
+    const label = invalidTxns.length === 1 ? 'transaction has' : 'transactions have';
     const list = invalidTxns
       .map((t) => [t && t.id, t && t.date, t && t.account].filter(Boolean).join(' '))
       .join('; ');
     statusEl.textContent =
-      `Figures exclude ${invalidTxns.length} unreadable ${label} (fix or delete in List): ${list}.`;
+      `${invalidTxns.length} ${label} an amount this app cannot read, so every figure below leaves ${invalidTxns.length === 1 ? 'it' : 'them'} out. `
+      + `Fix or delete ${invalidTxns.length === 1 ? 'it' : 'them'} on the List tab: ${list}.`;
   } else {
-    statusEl.style.color = '';
+    statusEl.className = '';
     statusEl.textContent = '';
   }
 }
@@ -610,10 +638,11 @@ function renderTrend(points) {
 }
 
 async function refresh() {
-  const [txns, accounts, categories, funds, split] = await Promise.all([
+  const [txns, accounts, categories, funds, split, defaultAccount] = await Promise.all([
     db.allTransactions(), db.allAccounts(), db.allCategories(), db.allFunds(),
-    db.getSetting('split', DEFAULT_SPLIT),
+    db.getSetting('split', DEFAULT_SPLIT), db.getSetting('default-account', ''),
   ]);
+  state.defaultAccount = defaultAccount;
   state.categories = categories;
   state.funds = funds;
   state.split = split;
@@ -632,6 +661,7 @@ async function refresh() {
     renderSummary(validTxns, accounts, invalidTxns);
     await renderAccounts(accounts);
     renderCategories(categories);
+    renderDefaultAccount(accounts);
     renderFundList(funds);
     renderSplit(split);
   } catch (error) {
@@ -639,8 +669,12 @@ async function refresh() {
     // nothing on screen). Surface it instead of leaving a half-painted or
     // stale dashboard with no indication anything went wrong.
     const summaryStatus = document.getElementById('summary-status');
-    summaryStatus.style.color = 'var(--color-destructive)';
-    summaryStatus.textContent = `Could not render dashboard: ${error.message}`;
+    summaryStatus.className = 'budget-note__warning';
+    summaryStatus.textContent = 'The Summary could not be drawn. Your transactions are unaffected.';
+    await alertDialog({
+      title: 'Summary could not be drawn',
+      body: `Your transactions are stored and unaffected; only this view failed. The List tab still shows every row.\n\nThe reason given was: ${error.message}`,
+    });
   }
 }
 
@@ -651,13 +685,17 @@ document.getElementById('export-button').addEventListener('click', async () => {
     const [txns, accounts] = await Promise.all([db.allTransactions(), db.allAccounts()]);
     exportXlsx(txns, accounts);
     const unreadable = txns.filter((t) => !Number.isInteger(t.amount)).length;
-    ioStatus.style.color = 'var(--color-accent)';
+    ioStatus.className = 'is-ok';
     ioStatus.textContent = unreadable
       ? `Exported. ${unreadable} row${unreadable === 1 ? '' : 's'} had an unreadable amount — fix the raw value in the file and re-import.`
       : 'Exported.';
   } catch (error) {
-    ioStatus.style.color = 'var(--color-destructive)';
-    ioStatus.textContent = `Export failed. ${error.message}`;
+    ioStatus.className = 'budget-note__warning';
+    ioStatus.textContent = 'The export did not finish.';
+    await alertDialog({
+      title: 'Export did not finish',
+      body: `Nothing on this device changed, so your data is intact. The file was not written.\n\nThe reason given was: ${error.message}`,
+    });
   }
 });
 
@@ -687,7 +725,7 @@ document.getElementById('import-input').addEventListener('change', async (event)
       row.account = await db.ensureAccount(row.account, 0);
     }
     await db.putTransactions(rows);
-    ioStatus.style.color = 'var(--color-accent)';
+    ioStatus.className = 'is-ok';
     // 0 rows is valid (an empty database backs up to an empty sheet), but
     // naming the sheet makes it obvious if the user actually picked the
     // wrong file or the data sits on a different sheet than expected.
@@ -696,8 +734,12 @@ document.getElementById('import-input').addEventListener('change', async (event)
       : `Imported ${rows.length} transactions.`;
     await refresh();
   } catch (error) {
-    ioStatus.style.color = 'var(--color-destructive)';
-    ioStatus.textContent = `Import failed — no transactions were changed. ${error.message}`;
+    ioStatus.className = 'budget-note__warning';
+    ioStatus.textContent = 'The import was stopped. No transactions changed.';
+    await alertDialog({
+      title: 'Import stopped',
+      body: `No transactions were changed, so the file can be corrected and imported again.\n\nThe reason given was: ${error.message}`,
+    });
   }
   event.target.value = '';
 });
@@ -709,7 +751,7 @@ document.getElementById('planner-input').addEventListener('change', async (event
   if (!file) return;
   const account = document.getElementById('planner-account').value.trim();
   if (!account) {
-    plannerStatus.style.color = 'var(--color-destructive)';
+    plannerStatus.className = 'budget-note__warning';
     plannerStatus.textContent = 'Name the account these rows belong to first.';
     event.target.value = '';
     return;
@@ -718,10 +760,17 @@ document.getElementById('planner-input').addEventListener('change', async (event
     const { rows, categories, problems, months } = await importPlanner(file, account);
     if (rows.length === 0) throw new Error('found month sheets but no ledger rows in them');
 
-    const summary = `Import ${rows.length} row${rows.length === 1 ? '' : 's'} from ${months.join(', ')} under "${account}"?`;
-    const detail = problems.length ? `\n\n${problems.length} row${problems.length === 1 ? '' : 's'} needed adjusting:\n${problems.slice(0, 8).join('\n')}` : '';
-    if (!confirm(summary + detail)) {
-      plannerStatus.style.color = '';
+    const detail = problems.length
+      ? `\n\n${problems.length} row${problems.length === 1 ? ' needs' : 's need'} adjusting before it can be filed:\n${problems.slice(0, 8).join('\n')}`
+      : '';
+    const ok = await confirmDialog({
+      title: 'Import this planner',
+      body: `${rows.length} row${rows.length === 1 ? '' : 's'} from ${months.join(', ')}, filed under "${account}". `
+        + 'They are added to what is already here, not put in its place.' + detail,
+      confirmLabel: 'Import',
+    });
+    if (!ok) {
+      plannerStatus.className = '';
       plannerStatus.textContent = 'Import cancelled. Nothing was changed.';
       return;
     }
@@ -735,14 +784,18 @@ document.getElementById('planner-input').addEventListener('change', async (event
     for (const [name, bucket] of categories) await db.putCategory(name, bucket);
     await db.putTransactions(rows);
 
-    plannerStatus.style.color = 'var(--color-accent)';
+    plannerStatus.className = 'is-ok';
     plannerStatus.textContent = problems.length
       ? `Imported ${rows.length} rows and ${categories.size} categories. ${problems.length} row${problems.length === 1 ? ' was' : 's were'} adjusted — check the List view.`
       : `Imported ${rows.length} rows and ${categories.size} categories.`;
     await refresh();
   } catch (error) {
-    plannerStatus.style.color = 'var(--color-destructive)';
-    plannerStatus.textContent = `Import failed — nothing was changed. ${error.message}`;
+    plannerStatus.className = 'budget-note__warning';
+    plannerStatus.textContent = 'The import was stopped. Nothing changed.';
+    await alertDialog({
+      title: 'Planner import stopped',
+      body: `Nothing was changed, so the workbook can be corrected and imported again.\n\nThe reason given was: ${error.message}`,
+    });
   }
   event.target.value = '';
 });
@@ -776,7 +829,7 @@ function showSplitBalance() {
 
   if (!values.every((v) => Number.isFinite(v) && v >= 0)) {
     splitStatus.className = 'budget-note__warning';
-    splitStatus.textContent = 'Each share must be zero or more.';
+    splitStatus.textContent = 'A share cannot be negative. Enter zero or more.';
     saveButton.disabled = true;
     return;
   }
@@ -825,7 +878,7 @@ document.getElementById('fund-form').addEventListener('submit', async (event) =>
   if (!name) return;
   if (!Number.isFinite(percent) || percent < 0) {
     fundStatus.className = 'budget-note__warning';
-    fundStatus.textContent = 'Share must be a non-negative number.';
+    fundStatus.textContent = 'A share cannot be negative. Enter zero or more.';
     return;
   }
   await db.putFund(name, percent);
@@ -855,7 +908,13 @@ function renderFundList(funds) {
     remove.innerHTML = TRASH_ICON;
     remove.setAttribute('aria-label', `Delete fund ${name}`);
     remove.addEventListener('click', async () => {
-      if (!confirm(`Remove ${name}? The remaining funds will need to total 100% again.`)) return;
+      const ok = await confirmDialog({
+        title: `Remove ${name}`,
+        body: `Its ${percent}% share is freed up. Savings stops dividing until the remaining funds total 100% again, and Settings will say so.`,
+        confirmLabel: 'Remove',
+        danger: true,
+      });
+      if (!ok) return;
       await db.deleteFund(name);
       await refresh();
     });
@@ -879,7 +938,7 @@ document.getElementById('category-form').addEventListener('submit', async (event
   if (!name) return;
   await db.putCategory(name, document.getElementById('category-bucket').value);
   event.target.reset();
-  categoryStatus.style.color = 'var(--color-accent)';
+  categoryStatus.className = 'is-ok';
   categoryStatus.textContent = `Saved ${name}.`;
   await refresh();
 });
@@ -930,10 +989,16 @@ function renderCategories(categories) {
     remove.addEventListener('click', async () => {
       const txns = await db.allTransactions();
       const count = txns.filter((t) => t.category === name).length;
-      const warning = count
-        ? `Remove ${name}? ${count} transaction${count === 1 ? '' : 's'} keep${count === 1 ? 's' : ''} the name but stop counting against a budget.`
-        : `Remove ${name}?`;
-      if (!confirm(warning)) return;
+      const ok = await confirmDialog({
+        title: `Remove ${name}`,
+        body: count
+          ? `${count} transaction${count === 1 ? '' : 's'} filed under this name ${count === 1 ? 'keeps' : 'keep'} it, but ${count === 1 ? 'stops' : 'stop'} counting against a budget. `
+            + 'The Summary reports the total separately so it still adds up.'
+          : 'Nothing is filed under it, so no transaction changes.',
+        confirmLabel: 'Remove',
+        danger: true,
+      });
+      if (!ok) return;
       await db.deleteCategory(name);
       categoryStatus.className = '';
       categoryStatus.textContent = '';
@@ -960,13 +1025,15 @@ document.getElementById('account-form').addEventListener('submit', async (event)
     const label = clash.name === name
       ? `${name} already exists.`
       : `${clash.name} already exists, and "${name}" differs only by capitalisation.`;
-    const confirmed = confirm(
-      `${label}\n\nReplace its initial balance with ${formatIDR(opening)}?`
-      + `\nIt is currently ${formatIDR(clash.opening_balance)}.`
-      + '\n\nEvery transaction already filed under it is kept, and its balance shifts by the difference.',
-    );
+    const confirmed = await confirmDialog({
+      title: 'Replace the initial balance',
+      body: `${label} Its initial balance is ${formatIDR(clash.opening_balance)}, and this would make it ${formatIDR(opening)}.`
+        + '\n\nEvery transaction already filed under it is kept. Its current balance shifts by the difference.',
+      confirmLabel: 'Replace',
+      danger: true,
+    });
     if (!confirmed) {
-      showAccountStatus(`Kept ${clash.name} at ${formatIDR(clash.opening_balance)}.`);
+      showAccountStatus(`Kept ${clash.name} at ${formatIDR(clash.opening_balance)}.`, 'ok');
       return;
     }
     // Written under the EXISTING spelling. Using what was typed would create
@@ -986,9 +1053,9 @@ document.getElementById('account-form').addEventListener('submit', async (event)
   await refresh();
 });
 
-function showAccountStatus(message) {
+function showAccountStatus(message, tone = 'warning') {
   const el = document.getElementById('account-status');
-  el.style.color = message ? 'var(--color-destructive)' : '';
+  el.className = message ? (tone === 'ok' ? 'is-ok' : 'budget-note__warning') : '';
   el.textContent = message;
 }
 
@@ -1002,7 +1069,7 @@ async function deleteAccount(name) {
   const txns = await db.allTransactions();
   const count = txns.filter((t) => t.account === name).length;
   if (count > 0) {
-    showAccountStatus(`Cannot remove ${name} — ${count} transaction${count === 1 ? '' : 's'} still ${count === 1 ? 'uses' : 'use'} it.`);
+    showAccountStatus(`${name} still has ${count} transaction${count === 1 ? '' : 's'} filed under it. Delete or re-file ${count === 1 ? 'it' : 'them'} on the List tab first.`);
     return;
   }
   const database = await db.openDb();
@@ -1015,6 +1082,27 @@ async function deleteAccount(name) {
   showAccountStatus('');
   await refresh();
 }
+
+// A deleted account must not stay the default, or the Add form silently
+// selects nothing and the user cannot tell why.
+function renderDefaultAccount(accounts) {
+  const select = document.getElementById('default-account');
+  const names = accounts.map((a) => a.name).sort();
+  const options = [Object.assign(document.createElement('option'), { value: '', textContent: 'No default' })];
+  for (const name of names) {
+    options.push(Object.assign(document.createElement('option'), { value: name, textContent: name }));
+  }
+  select.replaceChildren(...options);
+  select.value = names.includes(state.defaultAccount) ? state.defaultAccount : '';
+}
+
+document.getElementById('default-account').addEventListener('change', async (event) => {
+  await db.putSetting('default-account', event.target.value);
+  state.defaultAccount = event.target.value;
+  const addAccount = document.getElementById('add-account');
+  if (event.target.value) addAccount.value = event.target.value;
+  showAccountStatus('');
+});
 
 async function renderAccounts(accounts) {
   document.getElementById('account-list').replaceChildren(...accounts.map(({ name, opening_balance }) => {
@@ -1043,11 +1131,17 @@ async function renderAccounts(accounts) {
     remove.innerHTML = TRASH_ICON;
     remove.setAttribute('aria-label', `Delete account ${name}`);
     remove.addEventListener('click', async () => {
-      if (!confirm(`Remove account ${name}?`)) return;
+      const ok = await confirmDialog({
+        title: `Remove ${name}`,
+        body: `Its initial balance of ${formatIDR(opening_balance)} goes with it, so the Balance figure drops by that much.`,
+        confirmLabel: 'Remove',
+        danger: true,
+      });
+      if (!ok) return;
       try {
         await deleteAccount(name);
       } catch (error) {
-        showAccountStatus(`Delete failed: ${error.message}`);
+        showAccountStatus(`${name} was not removed, and nothing changed. ${error.message}`);
       }
     });
 

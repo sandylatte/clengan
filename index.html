@@ -25,12 +25,14 @@
 <section class="view" id="view-add">
   <h1>Add <span class="h1-meta amount" id="head-balance"></span></h1>
   <form id="add-form">
-    <label for="add-amount">Amount</label>
-    <div class="stepper">
-      <button type="button" class="stepper__button" data-step="-1000" data-target="add-amount" aria-label="Decrease amount by 1.000">&minus;</button>
-      <span class="stepper__prefix" aria-hidden="true">Rp</span>
-      <input type="text" id="add-amount" inputmode="numeric" autocomplete="off" placeholder="0" required>
-      <button type="button" class="stepper__button" data-step="1000" data-target="add-amount" aria-label="Increase amount by 1.000">+</button>
+    <label for="add-amount">Amount (Rp)</label>
+    <input type="text" id="add-amount" class="moneyfield" inputmode="numeric" autocomplete="off" placeholder="0" required>
+    <div class="chips" role="group" aria-label="Add to amount">
+      <button type="button" class="chip" data-add="1000" data-target="add-amount">+1rb</button>
+      <button type="button" class="chip" data-add="10000" data-target="add-amount">+10rb</button>
+      <button type="button" class="chip" data-add="50000" data-target="add-amount">+50rb</button>
+      <button type="button" class="chip" data-add="100000" data-target="add-amount">+100rb</button>
+      <button type="button" class="chip chip--clear" data-clear="add-amount">Clear</button>
     </div>
 
     <div id="add-kind" role="group" aria-label="Kind">
@@ -83,7 +85,8 @@
   <div class="card stats">
     <div class="stat"><span class="stat__label">Income</span><span class="amount amount--in" id="stat-income">Rp 0</span></div>
     <div class="stat"><span class="stat__label">Spent</span><span class="amount amount--out" id="stat-spent">Rp 0</span></div>
-    <div class="stat stat--net"><span class="stat__label">Net</span><span class="amount" id="stat-net">Rp 0</span></div>
+    <div class="stat stat--net"><span class="stat__label">Net this month</span><span class="amount" id="stat-net">Rp 0</span></div>
+    <div class="stat stat--balance"><span class="stat__label">Balance</span><span class="amount" id="stat-balance">Rp 0</span></div>
   </div>
 
   <div class="card">
@@ -141,17 +144,21 @@
     <form id="account-form">
       <label for="account-name">Name</label>
       <input type="text" id="account-name" required>
-      <label for="account-opening">Initial balance</label>
-      <div class="stepper">
-        <button type="button" class="stepper__button" data-step="-1000" data-target="account-opening" aria-label="Decrease initial balance by 1.000">&minus;</button>
-        <span class="stepper__prefix" aria-hidden="true">Rp</span>
-        <input type="text" id="account-opening" inputmode="numeric" autocomplete="off" value="0">
-        <button type="button" class="stepper__button" data-step="1000" data-target="account-opening" aria-label="Increase initial balance by 1.000">+</button>
+      <label for="account-opening">Initial balance (Rp)</label>
+      <input type="text" id="account-opening" class="moneyfield" inputmode="numeric" autocomplete="off" value="0">
+      <div class="chips" role="group" aria-label="Add to initial balance">
+        <button type="button" class="chip" data-add="100000" data-target="account-opening">+100rb</button>
+        <button type="button" class="chip" data-add="1000000" data-target="account-opening">+1jt</button>
+        <button type="button" class="chip" data-add="10000000" data-target="account-opening">+10jt</button>
+        <button type="button" class="chip chip--clear" data-clear="account-opening">Clear</button>
       </div>
       <button type="submit" class="primary">Save account</button>
     </form>
     <p id="account-status" role="status"></p>
     <ul id="account-list" class="rows"></ul>
+
+    <label for="default-account">Default on the Add form</label>
+    <select id="default-account"></select>
   </div>
 
   <div class="card">
