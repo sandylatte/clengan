@@ -119,3 +119,19 @@ for (const [tone, selector] of [['graphite', ':root {'], ['peach', ':root[data-t
     }
   });
 }
+
+// The type ramp drifted the same way the colours did: the Ledger pass added
+// a 10px micro-label and a 9.5px column heading, neither in DESIGN.md, and
+// two near-identical steps where one would do. Sizes are cheap to add one at
+// a time and the ramp stops meaning anything.
+test('every font size in the stylesheet is on the ramp in DESIGN.md', () => {
+  const documented = new Set([...design.matchAll(/fontSize:\s*([\d.]+px)/g)].map((m) => m[1]));
+  const used = new Set([...css.matchAll(/font-size:\s*([\d.]+px)/g)].map((m) => m[1]));
+  const undocumented = [...used].filter((size) => !documented.has(size));
+  assert.deepEqual(
+    undocumented,
+    [],
+    `font sizes not on the DESIGN.md ramp: ${undocumented.join(', ')}. Add the step to the `
+    + 'ramp if it is intentional, or reuse one that is already there.',
+  );
+});

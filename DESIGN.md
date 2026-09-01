@@ -49,15 +49,21 @@ typography:
     fontWeight: 500
     lineHeight: 1.2
     letterSpacing: -0.02em
+  stat-hero:
+    fontFamily: Fira Code
+    fontSize: 34px
+    fontWeight: 600
+    lineHeight: 1.05
+    letterSpacing: -0.03em
   stat-net:
     fontFamily: Fira Code
-    fontSize: 40px
-    fontWeight: 700
-    lineHeight: 1.1
-    letterSpacing: -1.5px
+    fontSize: 20px
+    fontWeight: 600
+    lineHeight: 1.2
+    letterSpacing: 0
   stat-value:
     fontFamily: Fira Code
-    fontSize: 20px
+    fontSize: 17px
     fontWeight: 500
     lineHeight: 1.2
     letterSpacing: 0
@@ -87,10 +93,10 @@ typography:
     letterSpacing: 0
   section-heading:
     fontFamily: Fira Sans
-    fontSize: 13px
-    fontWeight: 500
+    fontSize: 10px
+    fontWeight: 600
     lineHeight: 1.4
-    letterSpacing: 0.06em
+    letterSpacing: 0.14em
   supporting:
     fontFamily: Fira Sans
     fontSize: 13px
@@ -105,9 +111,15 @@ typography:
     letterSpacing: 0
   stat-label:
     fontFamily: Fira Sans
-    fontSize: 12px
-    fontWeight: 500
+    fontSize: 10px
+    fontWeight: 600
     lineHeight: 1.3
+    letterSpacing: 0.12em
+  field-label:
+    fontFamily: Fira Sans
+    fontSize: 11px
+    fontWeight: 600
+    lineHeight: 1.4
     letterSpacing: 0.08em
   tab-label:
     fontFamily: Fira Sans
@@ -117,10 +129,10 @@ typography:
     letterSpacing: 0.01em
   column-heading:
     fontFamily: Fira Sans
-    fontSize: 11px
-    fontWeight: 500
+    fontSize: 10px
+    fontWeight: 600
     lineHeight: 1.3
-    letterSpacing: 0.04em
+    letterSpacing: 0.1em
 
 rounded:
   xs: 2px
@@ -149,12 +161,17 @@ components:
     typography: "{typography.control}"
     rounded: "{rounded.md}"
     minHeight: 44px
-  card:
-    backgroundColor: "{colors.muted}"
+  section:
+    backgroundColor: transparent
     textColor: "{colors.foreground}"
     typography: "{typography.body}"
-    rounded: "{rounded.lg}"
-    padding: 24px
+    borderTop: "1px solid {colors.border}"
+    padding: 32px 0 0
+    note: >
+      Sections are divided by a rule and by space, not by a filled panel.
+      Anything that used to sit on the card fill now sits on the page
+      background, which is why the peach subtle, accent and destructive
+      values were retuned — see the colour table.
   text-input:
     backgroundColor: "{colors.input}"
     textColor: "{colors.foreground}"
