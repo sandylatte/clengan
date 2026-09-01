@@ -133,10 +133,17 @@ export function putSetting(key, value) {
 // because accounts are also created by the Excel import and the planner
 // import, and guarding only the form left both of those able to mint a
 // casing variant.
+// Pure, and exported so it can be tested. Everything else in this module
+// needs a live IndexedDB, which node has none of; keeping the rule itself
+// separate from the read means the rule is the part under test.
+export function matchAccountName(accounts, name) {
+  const wanted = String(name ?? '').trim().toLowerCase();
+  if (wanted === '') return null;
+  return accounts.find((a) => String(a.name).trim().toLowerCase() === wanted) ?? null;
+}
+
 export async function findAccount(name) {
-  const wanted = String(name).trim().toLowerCase();
-  const accounts = await allAccounts();
-  return accounts.find((a) => a.name.toLowerCase() === wanted) ?? null;
+  return matchAccountName(await allAccounts(), name);
 }
 
 // Refuses to create a second casing of an account that already exists.
