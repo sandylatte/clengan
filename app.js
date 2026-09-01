@@ -5,7 +5,7 @@ import {
   lastSixMonths,
 } from './rollup.js';
 import {
-  BUCKETS, DEFAULT_SPLIT, validateSplit, allocateFunds, splitBalance, categoryOptions, bucketOf,
+  BUCKETS, CATEGORY_KINDS, DEFAULT_SPLIT, validateSplit, allocateFunds, splitBalance, categoryOptions,
 } from './budget.js';
 import { exportXlsx, importXlsx, importPlanner } from './xlsx-io.js';
 import { attachCalendar, toISO } from './calendar.js';
@@ -51,36 +51,8 @@ function syncKind() {
   document.getElementById('add-to').required = transfer;
   accountLabel.textContent = transfer ? 'From account' : 'Account';
   if (state.categories.length) syncCategoryOptions();
-  syncBucketHint();
 }
 
-// Naming the bucket the row will actually land in, rather than leaving
-// "Use the category's bucket" to be guessed at. A category with no bucket,
-// or no category at all, means the spend is not charged to a budget — say
-// so here rather than letting it turn up as unbucketed on the Summary.
-function syncBucketHint() {
-  const hint = document.getElementById('add-bucket-hint');
-  if (bucketWrap.hidden) return;
-  if (document.getElementById('add-bucket').value !== '') {
-    hint.textContent = 'This row only. The category keeps its own setting.';
-    hint.className = 'hint';
-    return;
-  }
-  const category = document.getElementById('add-category').value;
-  const bucket = bucketOf(state.categories, category);
-  if (bucket === 'fixed' || bucket === 'flexible') {
-    hint.textContent = `${category} is ${bucket}, so this goes to ${bucket}.`;
-    hint.className = 'hint';
-  } else {
-    hint.textContent = category
-      ? `${category} has no spending bucket, so this is not charged to a budget.`
-      : 'With no category and no bucket, this is not charged to a budget.';
-    hint.className = 'hint budget-note__warning';
-  }
-}
-
-document.getElementById('add-bucket').addEventListener('change', syncBucketHint);
-document.getElementById('add-category').addEventListener('change', syncBucketHint);
 
 for (const input of kindInputs) input.addEventListener('change', syncKind);
 
@@ -118,7 +90,6 @@ function syncCategoryOptions() {
     'No category',
     { optional: true },
   );
-  syncBucketHint();
 }
 
 async function fillPickers() {
@@ -216,8 +187,8 @@ form.addEventListener('submit', async (event) => {
         const to = document.getElementById('add-to').value.trim();
         await db.addTransfer({ date, from: account, to, amount: magnitude, name, note });
       } else {
-        // Only an expense carries a row bucket. Sending one on an income row
-        // would put a spending bucket on money the budget divides FROM.
+        // Only an expense carries a bucket. Income is what the budget is
+        // divided FROM, so a spending bucket on it would be meaningless.
         const chosen = document.getElementById('add-bucket').value;
         await db.addFlow({
           date,
@@ -225,7 +196,7 @@ form.addEventListener('submit', async (event) => {
           amount: kind === 'income' ? magnitude : -magnitude,
           name,
           category: document.getElementById('add-category').value.trim(),
-          bucket: kind === 'expense' && chosen ? chosen : null,
+          bucket: kind === 'expense' ? chosen : null,
           note,
         });
       }
@@ -402,10 +373,11 @@ function renderList(txns) {
   }));
 }
 
-const BUCKET_LABELS = { fixed: 'Fixed', flexible: 'Flexible', income: 'Income' };
+const BUCKET_LABELS = { fixed: 'Fixed', flexible: 'Flexible' };
+const KIND_LABELS = { expense: 'Expense', income: 'Income' };
 
 function renderBudget(txns) {
-  const t = bucketTotals(txns, state.categories, state.month, state.split);
+  const t = bucketTotals(txns, state.month, state.split);
 
   const cell = (text, className) => {
     const td = document.createElement('td');
@@ -485,8 +457,8 @@ function renderFunds(txns) {
     return;
   }
 
-  const month = bucketTotals(txns, state.categories, state.month, state.split).savings.projected;
-  const year = fundsByYear(txns, state.categories, state.split, state.funds, Number(state.month.slice(0, 4)));
+  const month = bucketTotals(txns, state.month, state.split).savings.projected;
+  const year = fundsByYear(txns, state.split, state.funds, Number(state.month.slice(0, 4)));
   const monthly = new Map(allocateFunds(month, state.funds).map((f) => [f.name, f.amount]));
   const yearly = new Map(year.funds.map((f) => [f.name, f.amount]));
 
@@ -609,7 +581,7 @@ function renderSummary(txns, accounts, invalidTxns) {
   net.textContent = formatAmount(totals.net);
   net.className = `amount ${totals.net >= 0 ? 'amount--in' : 'amount--out'}`;
 
-  const breakdown = spendingBreakdown(txns, state.categories, {
+  const breakdown = spendingBreakdown(txns, {
     period: state.filter.period,
     month: state.month,
     account: state.filter.account,
@@ -867,7 +839,10 @@ document.getElementById('planner-input').addEventListener('change', async (event
     for (const row of rows) row.account = target;
     // The planner's own filing is the whole point of reading it, so its
     // buckets are written before the rows that depend on them.
-    for (const [name, bucket] of categories) await db.putCategory(name, bucket);
+    // Every category named in a planner ledger is a spending category. Which
+    // of the two ledgers it sat in is carried on the ROWS, not here, so the
+    // planner's habit of listing one category under both survives intact.
+    for (const [name] of categories) await db.putCategory(name, 'expense');
     await db.putTransactions(rows);
 
     plannerStatus.className = 'is-ok';
@@ -1003,7 +978,7 @@ document.getElementById('category-form').addEventListener('submit', async (event
   event.preventDefault();
   const name = document.getElementById('category-name').value.trim();
   if (!name) return;
-  await db.putCategory(name, document.getElementById('category-bucket').value);
+  await db.putCategory(name, document.getElementById('category-kind').value);
   event.target.reset();
   categoryStatus.className = 'is-ok';
   categoryStatus.textContent = `Saved ${name}.`;
@@ -1011,13 +986,13 @@ document.getElementById('category-form').addEventListener('submit', async (event
 });
 
 function renderCategories(categories) {
-  // Group by bucket in the order the form offers them, not alphabetically,
-  // so income does not sort itself in between fixed and flexible.
-  const order = { fixed: 0, flexible: 1, income: 2 };
+  // Expenses first, income second, alphabetical inside each. Sorting purely
+  // by name would interleave the two and make neither list scannable.
+  const order = { expense: 0, income: 1 };
   const sorted = [...categories].sort(
-    (a, b) => order[a.bucket] - order[b.bucket] || a.name.localeCompare(b.name),
+    (a, b) => order[a.kind] - order[b.kind] || a.name.localeCompare(b.name),
   );
-  document.getElementById('category-list').replaceChildren(...sorted.map(({ name, bucket }) => {
+  document.getElementById('category-list').replaceChildren(...sorted.map(({ name, kind }) => {
     const item = document.createElement('li');
     item.className = 'row';
     const main = document.createElement('div');
@@ -1029,22 +1004,23 @@ function renderCategories(categories) {
 
     // Editable in place. Re-saving through the form above meant retyping the
     // name exactly, and a typo there created a second category rather than
-    // moving this one. Changing the bucket re-files every transaction already
-    // under this name, because the category owns the bucket.
-    const bucketSelect = document.createElement('select');
-    bucketSelect.className = 'row__select';
-    bucketSelect.setAttribute('aria-label', `Bucket for ${name}`);
-    for (const value of ['fixed', 'flexible', 'income']) {
+    // moving this one. This changes which side of the Add form the category
+    // is offered on; it charges nothing anywhere, because fixed and flexible
+    // now live on the transaction.
+    const kindSelect = document.createElement('select');
+    kindSelect.className = 'row__select';
+    kindSelect.setAttribute('aria-label', `Kind for ${name}`);
+    for (const value of CATEGORY_KINDS) {
       const option = document.createElement('option');
       option.value = value;
-      option.textContent = BUCKET_LABELS[value];
-      option.selected = value === bucket;
-      bucketSelect.append(option);
+      option.textContent = KIND_LABELS[value];
+      option.selected = value === kind;
+      kindSelect.append(option);
     }
-    bucketSelect.addEventListener('change', async () => {
-      await db.putCategory(name, bucketSelect.value);
+    kindSelect.addEventListener('change', async () => {
+      await db.putCategory(name, kindSelect.value);
       categoryStatus.className = '';
-      categoryStatus.textContent = `${name} is now ${BUCKET_LABELS[bucketSelect.value].toLowerCase()}.`;
+      categoryStatus.textContent = `${name} is now ${KIND_LABELS[kindSelect.value].toLowerCase()}.`;
       await refresh();
     });
 
@@ -1072,7 +1048,7 @@ function renderCategories(categories) {
       await refresh();
     });
 
-    item.append(main, bucketSelect, remove);
+    item.append(main, kindSelect, remove);
     return item;
   }));
 }

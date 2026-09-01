@@ -3,7 +3,7 @@ import {
 } from './budget.js';
 
 const DB_NAME = 'moneytrack';
-const DB_VERSION = 4;
+const DB_VERSION = 5;
 
 let dbPromise = null;
 
@@ -49,11 +49,67 @@ export function openDb(name = DB_NAME) {
         const categories = request.transaction.objectStore('categories');
         for (const category of DEFAULT_INCOME_CATEGORIES) categories.put(category);
       }
+      if (event.oldVersion >= 1 && event.oldVersion < 5) {
+        migrateBucketsOntoRows(request.transaction);
+      }
     };
     request.onsuccess = () => resolve(request.result);
     request.onerror = () => reject(request.error);
   });
   return dbPromise;
+}
+
+// v5. Fixed and flexible stopped being a property of the category and became
+// a property of the spend. Every existing row was bucketed THROUGH its
+// category, so removing that link without doing anything else would blank the
+// budget history: months already reconciled would report their whole spend as
+// unbucketed.
+//
+// So the old category bucket is stamped onto the rows first, then the
+// categories are rewritten to carry only expense-or-income. Every past row
+// therefore lands exactly where it landed before, and no figure on any
+// closed month moves.
+//
+// Both cursors run inside the versionchange transaction the caller passes in.
+// If either fails the whole upgrade aborts and the database stays on v4 —
+// there is no state where the rows are half-stamped and the categories have
+// already forgotten what the buckets were.
+function migrateBucketsOntoRows(transaction) {
+  const categories = transaction.objectStore('categories');
+  const oldBuckets = new Map();
+
+  const walk = categories.openCursor();
+  walk.onsuccess = () => {
+    const cursor = walk.result;
+    if (cursor) {
+      const category = cursor.value;
+      oldBuckets.set(category.name, category.bucket);
+      // 'income' is the only bucket that was ever a kind. Everything else was
+      // a spending bucket, which makes it an expense.
+      cursor.update({ name: category.name, kind: category.bucket === 'income' ? 'income' : 'expense' });
+      cursor.continue();
+      return;
+    }
+    // The map is only complete once the cursor is exhausted, so the rows are
+    // not touched until here.
+    const rows = transaction.objectStore('transactions').openCursor();
+    rows.onsuccess = () => {
+      const rowCursor = rows.result;
+      if (!rowCursor) return;
+      const txn = rowCursor.value;
+      const inherited = oldBuckets.get(txn.category);
+      const needsBucket = txn.bucket !== 'fixed' && txn.bucket !== 'flexible';
+      // Transfer halves and income rows are not charged to a bucket and must
+      // not acquire one here.
+      const chargeable = !txn.transfer_id && txn.amount < 0;
+      if (needsBucket && chargeable && (inherited === 'fixed' || inherited === 'flexible')) {
+        rowCursor.update({ ...txn, bucket: inherited });
+      } else if (txn.bucket === undefined) {
+        rowCursor.update({ ...txn, bucket: null });
+      }
+      rowCursor.continue();
+    };
+  };
 }
 
 function run(store, mode, work) {
@@ -94,9 +150,9 @@ export function deleteFund(name) {
   });
 }
 
-export function putCategory(name, bucket) {
+export function putCategory(name, kind) {
   return run('categories', 'readwrite', (store) => {
-    store.put({ name, bucket });
+    store.put({ name, kind });
     return { value: undefined };
   });
 }

@@ -63,10 +63,10 @@ test('splitBalance agrees with itself about what is savable', () => {
 });
 
 const CATEGORIES = [
-  { name: 'Salary', bucket: 'income' },
-  { name: 'Groceries', bucket: 'flexible' },
-  { name: 'Rent', bucket: 'fixed' },
-  { name: 'Bonus', bucket: 'income' },
+  { name: 'Salary', kind: 'income' },
+  { name: 'Groceries', kind: 'expense' },
+  { name: 'Rent', kind: 'expense' },
+  { name: 'Bonus', kind: 'income' },
 ];
 
 test('categoryOptions offers only income categories for an income row', () => {

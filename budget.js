@@ -1,35 +1,38 @@
-// The planner this model came from keeps two parallel ledgers, one fixed and
-// one flexible, and rolls a category up with SUMIF across BOTH of them. That
-// lets "Groceries" be fixed on one row and flexible on the next, which no
-// reader can reconcile. Here the category owns the bucket, so a category has
-// exactly one answer and the add form needs no extra field.
-// The two buckets a spend is charged against. Income categories exist too and
-// carry bucket 'income', but they are not budget buckets — nothing is
-// budgeted against income, income is what the budget is divided from. Keep
-// BUCKETS meaning "spending buckets" and every consumer stays correct.
+// Fixed and flexible describe a SPEND, not a category. The same groceries
+// category is a flexible weekly shop one row and a fixed monthly stock-up
+// the next, so the bucket lives on the transaction and nowhere else.
+//
+// A category answers a different question — is this money coming in or going
+// out — and that one it can answer for good. Keeping both on the category is
+// what the source planner did, via a SUMIF across two ledgers, and it is why
+// a category there could contradict itself.
 export const BUCKETS = ['fixed', 'flexible'];
-export const CATEGORY_BUCKETS = ['fixed', 'flexible', 'income'];
+export const CATEGORY_KINDS = ['expense', 'income'];
 
 export const DEFAULT_INCOME_CATEGORIES = [
-  { name: 'Salary', bucket: 'income' },
-  { name: 'Bonus', bucket: 'income' },
-  { name: 'Other income', bucket: 'income' },
+  { name: 'Salary', kind: 'income' },
+  { name: 'Bonus', kind: 'income' },
+  { name: 'Other income', kind: 'income' },
 ];
 
 export const DEFAULT_CATEGORIES = [
   ...DEFAULT_INCOME_CATEGORIES,
-  { name: 'Housing & Bills', bucket: 'fixed' },
-  { name: 'Insurance', bucket: 'fixed' },
-  { name: 'Internet', bucket: 'fixed' },
-  { name: 'Subscription', bucket: 'fixed' },
-  { name: 'Health & Skincare', bucket: 'fixed' },
-  { name: 'Food & Drinks', bucket: 'flexible' },
-  { name: 'Groceries', bucket: 'flexible' },
-  { name: 'Transportation', bucket: 'flexible' },
-  { name: 'Shopping', bucket: 'flexible' },
-  { name: 'Entertainment', bucket: 'flexible' },
-  { name: 'Others', bucket: 'flexible' },
+  { name: 'Housing & Bills', kind: 'expense' },
+  { name: 'Insurance', kind: 'expense' },
+  { name: 'Internet', kind: 'expense' },
+  { name: 'Subscription', kind: 'expense' },
+  { name: 'Health & Skincare', kind: 'expense' },
+  { name: 'Food & Drinks', kind: 'expense' },
+  { name: 'Groceries', kind: 'expense' },
+  { name: 'Transportation', kind: 'expense' },
+  { name: 'Shopping', kind: 'expense' },
+  { name: 'Entertainment', kind: 'expense' },
+  { name: 'Others', kind: 'expense' },
 ];
+
+// The bucket every expense starts on. Most spending is flexible, and a
+// required field with no default is a tap on every single entry.
+export const DEFAULT_BUCKET = 'flexible';
 
 // Percent of income, matching the planner's 50%/20%/30%. Savings is not a
 // spending bucket: nothing is charged against it. It is the target, and
@@ -105,7 +108,7 @@ export function splitBalance(split) {
 export function categoryOptions(categories, usedNames, kind) {
   const income = kind === 'income';
   const names = categories
-    .filter((c) => (income ? c.bucket === 'income' : c.bucket !== 'income'))
+    .filter((c) => (income ? c.kind === 'income' : c.kind !== 'income'))
     .map((c) => c.name)
     .sort();
   // An orphan is a name with NO category record at all. Filtering against the
@@ -132,22 +135,17 @@ export function allocateFunds(poolCents, funds) {
   return funds.map((fund, i) => ({ ...fund, amount: amounts[i] }));
 }
 
-export function bucketOf(categories, name) {
-  return categories.find((c) => c.name === name)?.bucket ?? null;
+export function kindOf(categories, name) {
+  return categories.find((c) => c.name === name)?.kind ?? null;
 }
 
-// The same category is genuinely fixed one month and flexible the next —
-// rent paid on a plan versus a one-off top-up, groceries versus a big shop.
-// So the row owns its bucket and the category only supplies the default the
-// form starts from. A row written before this existed has no bucket of its
-// own and falls back to its category, which is what it was always charged to.
-//
-// Returns null for "no answer", which bucketTotals reports as unbucketed
-// rather than guessing. An income category never yields a spending bucket.
-export function resolveBucket(txn, categories) {
-  if (txn.bucket === 'fixed' || txn.bucket === 'flexible') return txn.bucket;
-  const fromCategory = bucketOf(categories, txn.category);
-  return fromCategory === 'fixed' || fromCategory === 'flexible' ? fromCategory : null;
+// The row is the only place a bucket can come from. There is deliberately no
+// fallback to the category any more: every expense row carries its own answer
+// (the v5 migration stamped the old category bucket onto the rows that
+// predate the field), and anything without one is genuinely unbucketed, which
+// bucketTotals reports separately rather than charging to a guess.
+export function resolveBucket(txn) {
+  return txn.bucket === 'fixed' || txn.bucket === 'flexible' ? txn.bucket : null;
 }
 
 export const UNCATEGORISED = 'Uncategorised';

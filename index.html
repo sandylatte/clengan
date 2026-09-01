@@ -58,13 +58,11 @@
     </div>
 
     <div id="add-bucket-wrap">
-      <label for="add-bucket">Charge to</label>
+      <label for="add-bucket">Type of expense</label>
       <select id="add-bucket">
-        <option value="">Use the category's bucket</option>
-        <option value="fixed">Fixed</option>
-        <option value="flexible">Flexible</option>
+        <option value="flexible">Flexible — varies month to month</option>
+        <option value="fixed">Fixed — same every month</option>
       </select>
-      <p class="hint" id="add-bucket-hint"></p>
     </div>
 
     <p id="add-setup" class="hint" hidden></p>
@@ -241,10 +239,9 @@
     <form id="category-form">
       <label for="category-name">Name</label>
       <input type="text" id="category-name" required>
-      <label for="category-bucket">Bucket</label>
-      <select id="category-bucket">
-        <option value="fixed">Fixed expense</option>
-        <option value="flexible">Flexible expense</option>
+      <label for="category-kind">Kind</label>
+      <select id="category-kind">
+        <option value="expense">Expense</option>
         <option value="income">Income</option>
       </select>
       <button type="submit" class="primary">Save category</button>

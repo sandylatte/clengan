@@ -7,7 +7,7 @@ import {
 import { fundsByYear, monthsOfYear } from '../rollup.js';
 
 const cats = DEFAULT_CATEGORIES;
-const flow = (date, amount, category) => ({ id: date + amount + category, date, account: 'a', amount, category, transfer_id: null });
+const flow = (date, amount, category, bucket = null) => ({ id: date + amount + category, date, account: 'a', amount, category, bucket, transfer_id: null });
 
 test('allocate divides a pool and the parts always re-sum to it', () => {
   for (const pool of [0, 1, 7, 101, 999999, 30000000]) {
@@ -59,7 +59,7 @@ test('fundsByYear accumulates across every month that has income', () => {
     flow('2026-09-01', 100000, 'Salary'),
     flow('2026-10-01', 100000, 'Salary'),
   ];
-  const year = fundsByYear(txns, cats, DEFAULT_SPLIT, DEFAULT_FUNDS, 2026);
+  const year = fundsByYear(txns, DEFAULT_SPLIT, DEFAULT_FUNDS, 2026);
   assert.equal(year.months.length, 2);
   assert.equal(year.total, 200000);
   const emergency = year.funds.find((f) => f.name === 'Emergency Fund');
@@ -69,7 +69,7 @@ test('fundsByYear accumulates across every month that has income', () => {
 
 test('a month with no income contributes nothing and is not listed', () => {
   const txns = [flow('2026-09-01', 100000, 'Salary')];
-  const year = fundsByYear(txns, cats, DEFAULT_SPLIT, DEFAULT_FUNDS, 2026);
+  const year = fundsByYear(txns, DEFAULT_SPLIT, DEFAULT_FUNDS, 2026);
   assert.deepEqual(year.months.map((m) => m.month), ['2026-09']);
 });
 
@@ -77,28 +77,28 @@ test('an overspent month pulls the year total down', () => {
   const txns = [
     flow('2026-09-01', 100000, 'Salary'),
     flow('2026-10-01', 100000, 'Salary'),
-    flow('2026-10-05', -200000, 'Housing & Bills'),
+    flow('2026-10-05', -200000, 'Housing & Bills', 'fixed'),
   ];
-  const year = fundsByYear(txns, cats, DEFAULT_SPLIT, DEFAULT_FUNDS, 2026);
+  const year = fundsByYear(txns, DEFAULT_SPLIT, DEFAULT_FUNDS, 2026);
   assert.equal(year.months[1].projected, -100000);
   assert.equal(year.total, 0);
 });
 
 test('adding a month needs no edit anywhere, unlike the source spreadsheet', () => {
   const base = [flow('2026-09-01', 100000, 'Salary')];
-  const before = fundsByYear(base, cats, DEFAULT_SPLIT, DEFAULT_FUNDS, 2026);
-  const after = fundsByYear([...base, flow('2026-11-01', 100000, 'Salary')], cats, DEFAULT_SPLIT, DEFAULT_FUNDS, 2026);
+  const before = fundsByYear(base, DEFAULT_SPLIT, DEFAULT_FUNDS, 2026);
+  const after = fundsByYear([...base, flow('2026-11-01', 100000, 'Salary')], DEFAULT_SPLIT, DEFAULT_FUNDS, 2026);
   assert.equal(before.total, 100000);
   assert.equal(after.total, 200000);
 });
 
 test('another year does not leak in', () => {
   const txns = [flow('2025-09-01', 100000, 'Salary'), flow('2026-09-01', 50000, 'Salary')];
-  assert.equal(fundsByYear(txns, cats, DEFAULT_SPLIT, DEFAULT_FUNDS, 2026).total, 50000);
+  assert.equal(fundsByYear(txns, DEFAULT_SPLIT, DEFAULT_FUNDS, 2026).total, 50000);
 });
 
 test('a custom fund set works as long as it totals 100', () => {
   const funds = [{ name: 'All of it', percent: 100 }];
-  const year = fundsByYear([flow('2026-09-01', 100000, 'Salary')], cats, DEFAULT_SPLIT, funds, 2026);
+  const year = fundsByYear([flow('2026-09-01', 100000, 'Salary')], DEFAULT_SPLIT, funds, 2026);
   assert.deepEqual(year.funds, [{ name: 'All of it', percent: 100, amount: 100000 }]);
 });

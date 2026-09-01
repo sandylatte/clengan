@@ -44,7 +44,7 @@ test('monthlyTotals of an empty month is all zeroes', () => {
 });
 
 test('spendingBreakdown returns positive totals, largest first, spending only', () => {
-  assert.deepEqual(spendingBreakdown(txns, [], { month: '2026-08' }), [
+  assert.deepEqual(spendingBreakdown(txns, { month: '2026-08' }), [
     { category: 'Rent', total: 9000 },
     { category: 'Food', total: 6000 },
   ]);

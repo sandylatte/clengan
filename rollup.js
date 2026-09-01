@@ -30,14 +30,14 @@ export function monthlyTotals(txns, month) {
 // An empty account or bucket means "all", not "blank": a filter nobody set
 // must not silently exclude everything. `bucket: 'none'` is the deliberate
 // opposite — show only what has no bucket at all.
-export function selectSpending(txns, categories, { period = 'month', month, account = '', bucket = '' }) {
+export function selectSpending(txns, { period = 'month', month, account = '', bucket = '' }) {
   const inPeriod = period === 'year'
     ? txns.filter((txn) => txn.date.slice(0, 4) === month.slice(0, 4))
     : filterMonth(txns, month);
   return inPeriod.filter((txn) => {
     if (!isFlow(txn) || txn.amount >= 0) return false;
     if (account && txn.account !== account) return false;
-    if (bucket && (resolveBucket(txn, categories) ?? 'none') !== bucket) return false;
+    if (bucket && (resolveBucket(txn) ?? 'none') !== bucket) return false;
     return true;
   });
 }
@@ -45,9 +45,9 @@ export function selectSpending(txns, categories, { period = 'month', month, acco
 // A row with no category is a real row with real money on it. It groups
 // under one visible label rather than an empty string, which would render as
 // a nameless slice the reader cannot account for.
-export function spendingBreakdown(txns, categories, filter) {
+export function spendingBreakdown(txns, filter) {
   const totals = new Map();
-  for (const txn of selectSpending(txns, categories, filter)) {
+  for (const txn of selectSpending(txns, filter)) {
     const key = txn.category || UNCATEGORISED;
     totals.set(key, (totals.get(key) ?? 0) - txn.amount);
   }
@@ -64,7 +64,7 @@ export function spendingBreakdown(txns, categories, filter) {
 // named one we do not know) is returned as `unbucketed` rather than being
 // folded into either budget. Silently charging it to "flexible" would make a
 // remaining figure the user cannot reconcile against their own rows.
-export function bucketTotals(txns, categories, month, split) {
+export function bucketTotals(txns, month, split) {
   const { income } = monthlyTotals(txns, month);
   const budget = splitBudget(income, split);
 
@@ -72,7 +72,7 @@ export function bucketTotals(txns, categories, month, split) {
   let unbucketed = 0;
   for (const txn of filterMonth(txns, month)) {
     if (!isFlow(txn) || txn.amount >= 0) continue;
-    const bucket = resolveBucket(txn, categories);
+    const bucket = resolveBucket(txn);
     if (bucket) spent[bucket] -= txn.amount;
     else unbucketed -= txn.amount;
   }
@@ -110,11 +110,11 @@ export function monthsOfYear(year) {
 // Each month allocates that month's own projected savings, so a month that
 // overspent contributes negative shares and pulls the year total down. That
 // is the honest reading: the year is what actually accumulated.
-export function fundsByYear(txns, categories, split, funds, year) {
+export function fundsByYear(txns, split, funds, year) {
   const totals = new Map(funds.map((f) => [f.name, 0]));
   const months = [];
   for (const month of monthsOfYear(year)) {
-    const { savings, income } = bucketTotals(txns, categories, month, split);
+    const { savings, income } = bucketTotals(txns, month, split);
     if (income === 0) continue;
     months.push({ month, projected: savings.projected });
     for (const { name, amount } of allocateFunds(savings.projected, funds)) {
