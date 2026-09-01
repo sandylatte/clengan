@@ -3,7 +3,7 @@ import {
 } from './budget.js';
 
 const DB_NAME = 'moneytrack';
-const DB_VERSION = 5;
+const DB_VERSION = 6;
 
 let dbPromise = null;
 
@@ -29,7 +29,10 @@ export function openDb(name = DB_NAME) {
       }
       if (event.oldVersion < 2) {
         const categories = database.createObjectStore('categories', { keyPath: 'name' });
-        for (const category of DEFAULT_CATEGORIES) categories.add(category);
+        // Seeded WITH a position, because the authored order of
+        // DEFAULT_CATEGORIES is meaningful and the store keys on name, so
+        // getAll would otherwise hand them back alphabetically and lose it.
+        DEFAULT_CATEGORIES.forEach((category, index) => categories.add({ ...category, position: index }));
         const settings = database.createObjectStore('settings', { keyPath: 'key' });
         settings.add({ key: 'split', value: DEFAULT_SPLIT });
       }
@@ -51,6 +54,9 @@ export function openDb(name = DB_NAME) {
       }
       if (event.oldVersion >= 1 && event.oldVersion < 5) {
         migrateBucketsOntoRows(request.transaction);
+      }
+      if (event.oldVersion < 6) {
+        stampPositions(request.transaction);
       }
     };
     request.onsuccess = () => resolve(request.result);
@@ -74,6 +80,33 @@ export function openDb(name = DB_NAME) {
 // If either fails the whole upgrade aborts and the database stays on v4 —
 // there is no state where the rows are half-stamped and the categories have
 // already forgotten what the buckets were.
+// v6. Categories and accounts became orderable, so every record needs a
+// position. Only records missing one are touched: a fresh database seeds its
+// own positions from the authored order, and re-stamping those would replace
+// a deliberate arrangement with an alphabetical one.
+//
+// The starting order is the one the lists were already displayed in, so
+// turning ordering on changes nothing visible until the user moves something.
+function stampPositions(transaction) {
+  const assign = (storeName, compare) => {
+    const store = transaction.objectStore(storeName);
+    const request = store.getAll();
+    request.onsuccess = () => {
+      const rows = request.result;
+      if (rows.every((row) => Number.isFinite(row.position))) return;
+      [...rows].sort(compare).forEach((row, index) => {
+        if (!Number.isFinite(row.position)) store.put({ ...row, position: index });
+      });
+    };
+  };
+
+  // Expenses before income, alphabetical inside each — exactly what
+  // renderCategories was already sorting by.
+  const kindRank = (row) => (row.kind === 'income' ? 1 : 0);
+  assign('categories', (a, b) => kindRank(a) - kindRank(b) || a.name.localeCompare(b.name));
+  assign('accounts', (a, b) => a.name.localeCompare(b.name));
+}
+
 function migrateBucketsOntoRows(transaction) {
   const categories = transaction.objectStore('categories');
   const oldBuckets = new Map();
@@ -150,12 +183,50 @@ export function deleteFund(name) {
   });
 }
 
-export function putCategory(name, kind) {
+// Merges rather than replaces. A plain put here would silently wipe a
+// category's colour every time its kind changed, and its position every time
+// it was recoloured — the fields are edited from three different controls
+// and each one only knows about its own.
+//
+// A category that does not exist yet is appended, so a new one lands at the
+// end of the list rather than jumping to wherever its name sorts.
+export function putCategory(name, changes) {
   return run('categories', 'readwrite', (store) => {
-    store.put({ name, kind });
+    const existing = store.get(name);
+    const all = store.getAll();
+    existing.onsuccess = () => {
+      const current = existing.result;
+      if (current) {
+        store.put({ ...current, ...changes, name });
+        return;
+      }
+      const highest = all.result.reduce(
+        (max, row) => (Number.isFinite(row.position) ? Math.max(max, row.position) : max),
+        -1,
+      );
+      store.put({ kind: 'expense', colour: null, ...changes, name, position: highest + 1 });
+    };
     return { value: undefined };
   });
 }
+
+// Writes the given order onto the named records. Names not present are
+// skipped rather than created, so a list that raced with a delete cannot
+// resurrect the deleted row.
+function reorder(storeName, names) {
+  return run(storeName, 'readwrite', (store) => {
+    names.forEach((name, index) => {
+      const request = store.get(name);
+      request.onsuccess = () => {
+        if (request.result) store.put({ ...request.result, position: index });
+      };
+    });
+    return { value: undefined };
+  });
+}
+
+export const reorderCategories = (names) => reorder('categories', names);
+export const reorderAccounts = (names) => reorder('accounts', names);
 
 // Deleting a category leaves its past rows alone. They keep the name they
 // were filed under and surface as `unbucketed` in the budget, which is the
@@ -218,7 +289,22 @@ export async function ensureAccount(name, openingBalance = 0) {
 // the user first.
 export function putAccount(name, openingBalance) {
   return run('accounts', 'readwrite', (store) => {
-    store.put({ name, opening_balance: openingBalance });
+    const existing = store.get(name);
+    const all = store.getAll();
+    existing.onsuccess = () => {
+      // Keep the position an existing account already has. Replacing its
+      // opening balance is a deliberate act; sending it to the bottom of the
+      // list at the same time is not.
+      if (existing.result) {
+        store.put({ ...existing.result, name, opening_balance: openingBalance });
+        return;
+      }
+      const highest = all.result.reduce(
+        (max, row) => (Number.isFinite(row.position) ? Math.max(max, row.position) : max),
+        -1,
+      );
+      store.put({ name, opening_balance: openingBalance, position: highest + 1 });
+    };
     return { value: undefined };
   });
 }

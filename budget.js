@@ -34,6 +34,78 @@ export const DEFAULT_CATEGORIES = [
 // required field with no default is a tap on every single entry.
 export const DEFAULT_BUCKET = 'flexible';
 
+// A category colour is DATA, not theme: it is stored per category and paints
+// the same in both tones. So each of these has to be legible on the graphite
+// card (#17191C) and the peach card (#F7DCD3) alike, which rules out anything
+// very light or very dark. They sit in the middle of the lightness range and
+// carry their identity by hue instead.
+//
+// Ten, and no more, on purpose. A pie with fifteen colours stops being
+// readable, and a fixed set means two categories can be told apart at a
+// glance rather than being two neighbouring shades of the same guess.
+// Solved rather than eyeballed. Clearing 3:1 against BOTH cards at once pins
+// relative luminance into a narrow band — roughly 0.13 to 0.22 — so these are
+// one hue sweep at the lightness that balances the two ratios. The first
+// hand-picked set failed: amber came out 2.33:1 on peach.
+export const CATEGORY_COLOURS = [
+  { name: 'Clay', value: '#AB5D46' },     /* 3.7:1 graphite, 3.7:1 peach */
+  { name: 'Amber', value: '#906C37' },    /* 3.7:1 graphite, 3.7:1 peach */
+  { name: 'Olive', value: '#657A33' },    /* 3.7:1 graphite, 3.7:1 peach */
+  { name: 'Green', value: '#2B8159' },    /* 3.7:1 graphite, 3.7:1 peach */
+  { name: 'Teal', value: '#257D8B' },     /* 3.7:1 graphite, 3.7:1 peach */
+  { name: 'Blue', value: '#4975A7' },     /* 3.7:1 graphite, 3.7:1 peach */
+  { name: 'Indigo', value: '#7369B2' },   /* 3.7:1 graphite, 3.7:1 peach */
+  { name: 'Violet', value: '#9F54B2' },   /* 3.7:1 graphite, 3.7:1 peach */
+  { name: 'Pink', value: '#AC567E' },     /* 3.7:1 graphite, 3.7:1 peach */
+  { name: 'Stone', value: '#7E7063' },    /* 3.7:1 graphite, 3.7:1 peach */
+];
+
+const COLOUR_VALUES = new Set(CATEGORY_COLOURS.map((c) => c.value));
+
+// Anything not from the set becomes "no colour" rather than being trusted.
+// Colours arrive from imported workbooks and hand-edited backups too, and an
+// arbitrary value would defeat the legibility the fixed set exists to give.
+export function normaliseColour(value) {
+  const wanted = String(value ?? '').trim().toUpperCase();
+  return COLOUR_VALUES.has(wanted) ? wanted : null;
+}
+
+// Ordering is the user's, so it is stored, not derived. Ties fall back to the
+// name so a set that has never been reordered still comes out stable rather
+// than in whatever order the store happened to return.
+export function byPosition(a, b) {
+  const left = Number.isFinite(a.position) ? a.position : Number.MAX_SAFE_INTEGER;
+  const right = Number.isFinite(b.position) ? b.position : Number.MAX_SAFE_INTEGER;
+  return left - right || String(a.name).localeCompare(String(b.name));
+}
+
+export function sortByPosition(items) {
+  return [...items].sort(byPosition);
+}
+
+// Moving one item by one place, returned as a new list of names. Out-of-range
+// moves return the order unchanged rather than throwing, because the caller
+// is a button that can be pressed at either end of the list.
+export function moveByOne(names, name, direction) {
+  const from = names.indexOf(name);
+  const to = from + direction;
+  if (from === -1 || to < 0 || to >= names.length) return [...names];
+  const next = [...names];
+  next.splice(to, 0, next.splice(from, 1)[0]);
+  return next;
+}
+
+// Dropping an item onto an index, for drag and drop. Same tolerance: an index
+// off either end clamps rather than throwing.
+export function moveTo(names, name, index) {
+  const from = names.indexOf(name);
+  if (from === -1) return [...names];
+  const next = [...names];
+  const [item] = next.splice(from, 1);
+  next.splice(Math.max(0, Math.min(index, next.length)), 0, item);
+  return next;
+}
+
 // Percent of income, matching the planner's 50%/20%/30%. Savings is not a
 // spending bucket: nothing is charged against it. It is the target, and
 // whatever fixed and flexible leave unspent lands on top of it.
@@ -107,10 +179,11 @@ export function splitBalance(split) {
 // category is gone, so an old row can still be re-filed under what it says.
 export function categoryOptions(categories, usedNames, kind) {
   const income = kind === 'income';
-  const names = categories
-    .filter((c) => (income ? c.kind === 'income' : c.kind !== 'income'))
-    .map((c) => c.name)
-    .sort();
+  // The user's own order, not alphabetical: the whole point of letting them
+  // arrange the list in Settings is that the dropdown they use every day
+  // comes out in that arrangement.
+  const names = sortByPosition(categories.filter((c) => (income ? c.kind === 'income' : c.kind !== 'income')))
+    .map((c) => c.name);
   // An orphan is a name with NO category record at all. Filtering against the
   // kind-filtered list instead let every income category through onto the
   // expense list the moment one income row existed: it was absent from `names`

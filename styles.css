@@ -576,6 +576,67 @@ button.primary:active { filter: brightness(0.92); }
   vertical-align: baseline;
 }
 
+/* "No colour" as an outlined blank. A filled grey would be indistinguishable
+   from Stone, which IS one of the choices. */
+.swatch--none {
+  background: transparent;
+  border: 1px dashed var(--color-border-strong);
+}
+
+/* An ordered row wraps its controls under the name on a narrow screen rather
+   than crushing four of them onto one line. */
+.row--ordered { flex-wrap: wrap; }
+.row--ordered .row__main { flex: 1 1 8rem; }
+
+.row__controls {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  flex-wrap: wrap;
+}
+
+.row__controls { margin-left: auto; }
+.row__controls .row__select { flex: 0 1 auto; min-width: 6.5rem; }
+
+.grip {
+  display: flex;
+  align-items: center;
+  color: var(--color-subtle);
+  cursor: grab;
+  /* Stops the browser claiming the gesture for scrolling before the drag
+     starts, which is what makes a touch drag impossible otherwise. */
+  touch-action: none;
+  flex: 0 0 auto;
+}
+.grip svg { fill: currentColor; }
+.grip:active { cursor: grabbing; }
+
+.reorder { display: flex; gap: 2px; flex: 0 0 auto; }
+
+.reorder__button {
+  min-width: 36px;
+  min-height: 36px;
+  padding: 0;
+  background: var(--color-input);
+  color: var(--color-foreground);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font: inherit;
+  line-height: 1;
+  cursor: pointer;
+}
+.reorder__button:hover:not(:disabled) { border-color: var(--color-border-strong); }
+/* Kept in place rather than hidden at the ends, so the controls do not shift
+   under the pointer as rows change places. */
+.reorder__button:disabled { opacity: 0.35; cursor: default; }
+
+.row.is-dragging { opacity: 0.4; }
+
+/* The drop marker is a line where the row will land, drawn on the row being
+   hovered rather than by moving anything, so nothing jumps until the drop. */
+.row.is-drop-before { box-shadow: inset 0 2px 0 0 var(--color-active); }
+.row.is-drop-after { box-shadow: inset 0 -2px 0 0 var(--color-active); }
+
 /* Rp lives in the label, not in the field. Inside it, it was small enough to
    read as noise, and the flex gap that separated it drew a hairline nobody
    asked for. */

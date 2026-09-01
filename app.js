@@ -5,8 +5,10 @@ import {
   lastSixMonths,
 } from './rollup.js';
 import {
-  BUCKETS, CATEGORY_KINDS, DEFAULT_SPLIT, validateSplit, allocateFunds, splitBalance, categoryOptions,
+  BUCKETS, CATEGORY_KINDS, CATEGORY_COLOURS, DEFAULT_SPLIT, validateSplit, allocateFunds,
+  splitBalance, categoryOptions, sortByPosition, normaliseColour, UNCATEGORISED,
 } from './budget.js';
+import { reorderButtons, dragHandle, attachDragReorder } from './reorder.js';
 import { exportXlsx, importXlsx, importPlanner } from './xlsx-io.js';
 import { attachCalendar, toISO } from './calendar.js';
 import { confirmDialog, alertDialog } from './dialog.js';
@@ -95,7 +97,7 @@ function syncCategoryOptions() {
 
 async function fillPickers() {
   const [accounts, txns] = await Promise.all([db.allAccounts(), db.allTransactions()]);
-  const names = accounts.map((a) => a.name).sort();
+  const names = sortByPosition(accounts).map((a) => a.name);
   state.usedCategories = [...new Set(txns.map((t) => t.category).filter(Boolean))];
   const addAccount = document.getElementById('add-account');
   fillSelect(addAccount, names, 'Choose an account');
@@ -324,8 +326,17 @@ function renderList(txns) {
     // existed fall back to the category so they never render blank.
     const title = document.createElement('span');
     title.className = 'row__title';
-    const fallback = txn.transfer_id ? 'Transfer' : (txn.category || 'Uncategorised');
-    title.textContent = txn.name || fallback;
+    const fallback = txn.transfer_id ? 'Transfer' : (txn.category || UNCATEGORISED);
+    // The category's colour, carried onto the row it files. This is what
+    // makes a long list scannable: the eye finds the colour before the word.
+    const colour = state.categories.find((c) => c.name === txn.category)?.colour;
+    if (colour && !txn.transfer_id) {
+      const dot = document.createElement('span');
+      dot.className = 'swatch';
+      dot.style.background = colour;
+      title.append(dot);
+    }
+    title.append(document.createTextNode(txn.name || fallback));
     const meta = document.createElement('span');
     meta.className = 'row__meta';
     // Only name the category here when it is not already doing duty as the
@@ -509,13 +520,24 @@ function renderFunds(txns) {
 //
 // color-mix resolves the tokens at paint time, so this follows a tone switch
 // with no JavaScript involved and no colour conversion here.
-function sliceColours(count) {
-  if (count === 0) return [];
+// A category's own colour wins. Where one has not been set, the slice falls
+// back to the single-hue ramp: largest at full accent, each smaller one
+// stepping toward the card behind it.
+//
+// The ramp is positional, so it is computed over the UNCOLOURED slices only.
+// Ranking it across all of them would leave gaps in the sequence and hand two
+// neighbouring uncoloured categories near-identical tints.
+function sliceColours(breakdown, categories) {
+  const colourOf = new Map(categories.map((c) => [c.name, c.colour]));
+  const uncoloured = breakdown.filter((b) => !colourOf.get(b.category));
   const FAINTEST = 35;
-  return Array.from({ length: count }, (_, i) => {
-    const strength = count === 1 ? 100 : 100 - ((100 - FAINTEST) * i) / (count - 1);
-    return `color-mix(in srgb, var(--color-primary) ${strength.toFixed(1)}%, var(--color-muted))`;
-  });
+  const ramp = new Map(uncoloured.map((b, i) => {
+    const strength = uncoloured.length === 1
+      ? 100
+      : 100 - ((100 - FAINTEST) * i) / (uncoloured.length - 1);
+    return [b.category, `color-mix(in srgb, var(--color-primary) ${strength.toFixed(1)}%, var(--color-muted))`];
+  }));
+  return breakdown.map((b) => colourOf.get(b.category) || ramp.get(b.category));
 }
 
 function renderPie(breakdown, colours) {
@@ -590,7 +612,7 @@ function renderSummary(txns, accounts, invalidTxns) {
   });
   renderPieScope(breakdown);
   const largest = breakdown.length ? breakdown[0].total : 0;
-  const slices = sliceColours(breakdown.length);
+  const slices = sliceColours(breakdown, state.categories);
   document.getElementById('bars-empty').hidden = breakdown.length > 0;
   renderPie(breakdown, slices);
   document.querySelector('#bars tbody').replaceChildren(...breakdown.map(({ category, total }, i) => {
@@ -843,7 +865,7 @@ document.getElementById('planner-input').addEventListener('change', async (event
     // Every category named in a planner ledger is a spending category. Which
     // of the two ledgers it sat in is carried on the ROWS, not here, so the
     // planner's habit of listing one category under both survives intact.
-    for (const [name] of categories) await db.putCategory(name, 'expense');
+    for (const [name] of categories) await db.putCategory(name, { kind: 'expense' });
     await db.putTransactions(rows);
 
     plannerStatus.className = 'is-ok';
@@ -979,7 +1001,7 @@ document.getElementById('category-form').addEventListener('submit', async (event
   event.preventDefault();
   const name = document.getElementById('category-name').value.trim();
   if (!name) return;
-  await db.putCategory(name, document.getElementById('category-kind').value);
+  await db.putCategory(name, { kind: document.getElementById('category-kind').value });
   event.target.reset();
   categoryStatus.className = 'is-ok';
   categoryStatus.textContent = `Saved ${name}.`;
@@ -987,27 +1009,34 @@ document.getElementById('category-form').addEventListener('submit', async (event
 });
 
 function renderCategories(categories) {
-  // Expenses first, income second, alphabetical inside each. Sorting purely
-  // by name would interleave the two and make neither list scannable.
-  const order = { expense: 0, income: 1 };
-  const sorted = [...categories].sort(
-    (a, b) => order[a.kind] - order[b.kind] || a.name.localeCompare(b.name),
-  );
-  document.getElementById('category-list').replaceChildren(...sorted.map(({ name, kind }) => {
+  // The user's stored order, which is what the Add form's dropdown follows
+  // too. Expense and income are no longer forced apart here: the list IS the
+  // order, and splitting it would mean the arrows lie about where a row goes.
+  const sorted = sortByPosition(categories);
+  const names = sorted.map((c) => c.name);
+  const list = document.getElementById('category-list');
+
+  list.replaceChildren(...sorted.map(({ name, kind, colour }) => {
     const item = document.createElement('li');
-    item.className = 'row';
+    item.className = 'row row--ordered';
+    item.dataset.name = name;
+
     const main = document.createElement('div');
     main.className = 'row__main';
     const title = document.createElement('span');
     title.className = 'row__title';
-    title.textContent = name;
+    const swatch = document.createElement('span');
+    swatch.className = 'swatch';
+    // No colour is shown as an outlined blank rather than a filled grey, so
+    // "not set" cannot be mistaken for a chosen colour.
+    swatch.classList.toggle('swatch--none', !colour);
+    if (colour) swatch.style.background = colour;
+    title.append(swatch, document.createTextNode(name));
     main.append(title);
 
-    // Editable in place. Re-saving through the form above meant retyping the
-    // name exactly, and a typo there created a second category rather than
-    // moving this one. This changes which side of the Add form the category
-    // is offered on; it charges nothing anywhere, because fixed and flexible
-    // now live on the transaction.
+    const controls = document.createElement('div');
+    controls.className = 'row__controls';
+
     const kindSelect = document.createElement('select');
     kindSelect.className = 'row__select';
     kindSelect.setAttribute('aria-label', `Kind for ${name}`);
@@ -1019,11 +1048,39 @@ function renderCategories(categories) {
       kindSelect.append(option);
     }
     kindSelect.addEventListener('change', async () => {
-      await db.putCategory(name, kindSelect.value);
+      await db.putCategory(name, { kind: kindSelect.value });
       categoryStatus.className = '';
       categoryStatus.textContent = `${name} is now ${KIND_LABELS[kindSelect.value].toLowerCase()}.`;
       await refresh();
     });
+
+    const colourSelect = document.createElement('select');
+    colourSelect.className = 'row__select';
+    colourSelect.setAttribute('aria-label', `Colour for ${name}`);
+    const none = document.createElement('option');
+    none.value = '';
+    none.textContent = 'No colour';
+    none.selected = !colour;
+    colourSelect.append(none);
+    for (const swatchColour of CATEGORY_COLOURS) {
+      const option = document.createElement('option');
+      option.value = swatchColour.value;
+      option.textContent = swatchColour.name;
+      option.selected = swatchColour.value === colour;
+      colourSelect.append(option);
+    }
+    colourSelect.addEventListener('change', async () => {
+      await db.putCategory(name, { colour: normaliseColour(colourSelect.value) });
+      categoryStatus.className = '';
+      categoryStatus.textContent = '';
+      await refresh();
+    });
+
+    controls.append(
+      kindSelect,
+      colourSelect,
+      reorderButtons({ name, names, label: 'category', onReorder: saveCategoryOrder }),
+    );
 
     const remove = document.createElement('button');
     remove.className = 'row__delete';
@@ -1049,9 +1106,23 @@ function renderCategories(categories) {
       await refresh();
     });
 
-    item.append(main, kindSelect, remove);
+    controls.append(remove);
+    item.append(dragHandle(item), main, controls);
     return item;
   }));
+}
+
+async function saveCategoryOrder(names) {
+  await db.reorderCategories(names);
+  categoryStatus.className = '';
+  categoryStatus.textContent = '';
+  await refresh();
+}
+
+async function saveAccountOrder(names) {
+  await db.reorderAccounts(names);
+  showAccountStatus('');
+  await refresh();
 }
 
 document.getElementById('account-form').addEventListener('submit', async (event) => {
@@ -1131,7 +1202,7 @@ async function deleteAccount(name) {
 // selects nothing and the user cannot tell why.
 function renderDefaultAccount(accounts) {
   const select = document.getElementById('default-account');
-  const names = accounts.map((a) => a.name).sort();
+  const names = sortByPosition(accounts).map((a) => a.name);
   const options = [Object.assign(document.createElement('option'), { value: '', textContent: 'No default' })];
   for (const name of names) {
     options.push(Object.assign(document.createElement('option'), { value: name, textContent: name }));
@@ -1149,9 +1220,12 @@ document.getElementById('default-account').addEventListener('change', async (eve
 });
 
 async function renderAccounts(accounts) {
-  document.getElementById('account-list').replaceChildren(...accounts.map(({ name, opening_balance }) => {
+  const sorted = sortByPosition(accounts);
+  const names = sorted.map((a) => a.name);
+  document.getElementById('account-list').replaceChildren(...sorted.map(({ name, opening_balance }) => {
     const item = document.createElement('li');
-    item.className = 'row';
+    item.className = 'row row--ordered';
+    item.dataset.name = name;
     const main = document.createElement('div');
     main.className = 'row__main';
     const title = document.createElement('span');
@@ -1189,7 +1263,13 @@ async function renderAccounts(accounts) {
       }
     });
 
-    item.append(main, value, remove);
+    const controls = document.createElement('div');
+    controls.className = 'row__controls';
+    controls.append(
+      reorderButtons({ name, names, label: 'account', onReorder: saveAccountOrder }),
+      remove,
+    );
+    item.append(dragHandle(item), main, value, controls);
     return item;
   }));
 }
@@ -1316,6 +1396,11 @@ document.getElementById('update-button').addEventListener('click', async (event)
 });
 
 showVersion();
+
+// Attached once to the lists themselves, not per row: the rows are rebuilt on
+// every refresh, and re-binding per row would leak a listener each time.
+attachDragReorder(document.getElementById('category-list'), saveCategoryOrder);
+attachDragReorder(document.getElementById('account-list'), saveAccountOrder);
 
 const themeSelect = document.getElementById('theme-select');
 themeSelect.value = document.documentElement.dataset.theme === 'peach' ? 'peach' : 'graphite';
