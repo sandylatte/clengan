@@ -5,7 +5,7 @@
 // NAME differs from CACHE — so an unbumped CACHE means every user with the
 // worker already installed keeps being served the OLD shell forever, silently,
 // including any money bug that edit was meant to fix.
-const CACHE = 'moneytrack-v38';
+const CACHE = 'moneytrack-v43';
 
 const SHELL = [
   './',
@@ -35,7 +35,7 @@ const SHELL = [
 // all about what goes into it. A server that does not send no-store (GitHub
 // Pages, any static host, `python3 -m http.server`) lets the browser answer
 // those fetches from its own heuristic cache, so a cache honestly named
-// moneytrack-v38 gets filled with weeks-old CSS and modules.
+// moneytrack-v43 gets filled with weeks-old CSS and modules.
 //
 // That is how the peach tone kept coming back RED: styles.css from before
 // 932f081, when the peach button was salmon #B2503A, reinstalled into a
@@ -62,6 +62,15 @@ self.addEventListener('activate', (event) => {
       keys.filter((key) => key !== CACHE).map((key) => caches.delete(key)),
     )).then(() => self.clients.claim()),
   );
+});
+
+// The Settings card asks the worker directly rather than listing caches.
+// caches.keys() is read from the page, which can catch the moment between a
+// new cache being filled and activate() deleting the old one — it reported
+// two versions at once. Only the worker knows which one the fetch handler is
+// actually reading from, and that is the question the card exists to answer.
+self.addEventListener('message', (event) => {
+  if (event.data === 'which-cache') event.source.postMessage({ cache: CACHE });
 });
 
 // Cache-first, and deliberately scoped to CACHE.

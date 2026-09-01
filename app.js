@@ -1206,10 +1206,45 @@ async function showVersion() {
   if ('serviceWorker' in navigator) {
     await navigator.serviceWorker.ready.catch(() => {});
   }
+  // Ask the worker which cache it is serving from. caches.keys() answers a
+  // different question — what exists — and during a changeover that briefly
+  // includes the cache being deleted, so the card showed two versions at once.
+  const serving = await askWorkerForCache();
+  if (serving) {
+    versionStatus.textContent = `Serving ${serving}.`;
+    return;
+  }
   const names = await caches.keys();
   versionStatus.textContent = names.length
-    ? `Serving ${names.join(', ')}.`
+    ? `Cached: ${names.join(', ')}. No worker is controlling this page yet.`
     : 'No offline cache yet — everything is coming straight from the server.';
+}
+
+// Resolves null rather than hanging if no worker is controlling the page, or
+// if one is controlling it but is too old to understand the question — which
+// is exactly the case this card is most needed for.
+function askWorkerForCache() {
+  const worker = navigator.serviceWorker?.controller;
+  if (!worker) return Promise.resolve(null);
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => resolve(null), 500);
+    navigator.serviceWorker.addEventListener('message', function handler(event) {
+      if (!event.data?.cache) return;
+      clearTimeout(timer);
+      navigator.serviceWorker.removeEventListener('message', handler);
+      resolve(event.data.cache);
+    });
+    worker.postMessage('which-cache');
+  });
+}
+
+// This card is read precisely when the app is suspected of being stale, so a
+// stale reading from it is worse than none. showVersion runs once at startup,
+// which is BEFORE a newly installed worker has activated and swapped caches —
+// it reported v37 while the cache on disk was already v38. Re-read whenever
+// the controlling worker changes, so the card describes what is serving now.
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.addEventListener('controllerchange', () => { showVersion(); });
 }
 
 document.getElementById('update-button').addEventListener('click', async (event) => {
