@@ -109,19 +109,15 @@
   <p id="summary-status" role="status"></p>
 
   <div class="card stats">
+    <div class="stat stat--balance"><span class="stat__label">Balance</span><span class="amount" id="stat-balance">Rp 0</span></div>
+    <div class="stat stat--net"><span class="stat__label">Net</span><span class="amount" id="stat-net">Rp 0</span></div>
     <div class="stat"><span class="stat__label">Income</span><span class="amount amount--in" id="stat-income">Rp 0</span></div>
     <div class="stat"><span class="stat__label">Spent</span><span class="amount amount--out" id="stat-spent">Rp 0</span></div>
-    <div class="stat stat--net"><span class="stat__label">Net this month</span><span class="amount" id="stat-net">Rp 0</span></div>
-    <div class="stat stat--balance"><span class="stat__label">Balance</span><span class="amount" id="stat-balance">Rp 0</span></div>
   </div>
 
   <div class="card">
     <h2>Budget</h2>
-    <table class="budget" id="budget">
-      <caption class="visually-hidden">Budget, spent and remaining for each bucket this month</caption>
-      <thead><tr><th scope="col">Bucket</th><th scope="col">Budget</th><th scope="col">Spent</th><th scope="col">Left</th></tr></thead>
-      <tbody></tbody>
-    </table>
+    <div id="budget" class="tracks"></div>
     <p id="budget-note"></p>
   </div>
 

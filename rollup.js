@@ -13,6 +13,27 @@ export function filterMonth(txns, month) {
   return txns.filter((txn) => monthOf(txn.date) === month);
 }
 
+// The List groups rows under a date instead of repeating it on every row.
+// Each group carries that day's net, which is the figure a reader wants when
+// scanning: "what did this day cost me". Transfers are excluded from the net
+// for the same reason they are excluded everywhere else — moving money
+// between your own accounts is not a day's spending — but the ROWS stay, so
+// nothing disappears from the list.
+export function groupByDay(txns) {
+  const days = new Map();
+  for (const txn of txns) {
+    if (!days.has(txn.date)) days.set(txn.date, []);
+    days.get(txn.date).push(txn);
+  }
+  return [...days]
+    .sort((a, b) => b[0].localeCompare(a[0]))
+    .map(([date, rows]) => ({
+      date,
+      rows,
+      net: rows.reduce((sum, txn) => (isFlow(txn) ? sum + txn.amount : sum), 0),
+    }));
+}
+
 export function monthlyTotals(txns, month) {
   let income = 0;
   let spending = 0;

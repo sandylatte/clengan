@@ -373,13 +373,20 @@ export function updateTransaction(txn) {
           fail('cannot change or clear transfer_id on a transfer half');
           return;
         }
-        if (txn.amount === existing.amount) { store.put(txn); return; }
+        // Amount AND date cascade. Amount was always cascaded, because a pair
+        // that stops netting to zero unbalances two accounts permanently.
+        // Date was not, and editing became possible today — leaving one half
+        // on the 10th and the other on the 12th, which shows the money
+        // leaving one account a day before it arrives in the other.
+        const sameAmount = txn.amount === existing.amount;
+        const sameDate = txn.date === existing.date;
+        if (sameAmount && sameDate) { store.put(txn); return; }
         const partnerRequest = store.get(existing.transfer_id);
         partnerRequest.onsuccess = () => {
           const partner = partnerRequest.result;
           if (!partner) { fail('transfer partner is missing'); return; }
           store.put(txn);
-          store.put({ ...partner, amount: -txn.amount });
+          store.put({ ...partner, amount: -txn.amount, date: txn.date });
         };
       } else {
         if (txn.transfer_id) {

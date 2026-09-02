@@ -59,7 +59,7 @@
   --space-3: 16px;
   --space-4: 24px;
   --space-5: 32px;
-  --space-6: 48px;
+  --space-6: 40px;
 
   /* For marks small enough that 6px would round them into circles. */
   --radius-xs: 2px;
@@ -162,12 +162,13 @@ h1 {
 }
 .h1-meta:empty { display: none; }
 
-/* A section marker, not a heading with presence. Small, wide-tracked and
-   quiet, so the figures below it are the only thing with weight. */
+/* A section marker, not a heading with presence — but readable. The Ledger
+   pass put this at 10px and field labels at 11px, which is what made the app
+   feel cramped: everything that was not a figure had shrunk. */
 h2 {
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 600;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--color-subtle);
   margin: 0 0 var(--space-3);
@@ -196,11 +197,11 @@ h2 {
    itself. The surface ladder survives where it still does work — inputs keep
    their fill, because a field has to look like somewhere you can type. */
 .card {
-  padding: var(--space-5) 0 0;
+  padding: var(--space-6) 0 0;
   margin: 0;
   border-top: 1px solid var(--color-border);
 }
-.card:first-of-type { border-top: none; padding-top: var(--space-2); }
+.card:first-of-type { border-top: none; padding-top: var(--space-3); }
 /* The last section needs room above the fixed tab bar. */
 .view > .card:last-of-type { padding-bottom: var(--space-5); }
 
@@ -276,10 +277,10 @@ h2 {
    so the form reads as one ruled column rather than as boxes with captions. */
 label {
   display: block;
-  margin-bottom: var(--space-0);
-  font-size: 11px;
+  margin-bottom: var(--space-1);
+  font-size: 12px;
   font-weight: 600;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--color-subtle);
 }
@@ -443,7 +444,63 @@ button.primary:active { filter: brightness(0.92); }
 /* A transaction row: day, tag, name, amount over account, delete. Five things
    on one line at 375px, so every fixed part is measured and only the name is
    allowed to take what is left. */
-.row--txn { gap: var(--space-1); padding-inline: var(--space-0); }
+/* Three things on a line instead of five, because the date moved to a group
+   heading and delete moved behind a swipe. The name gets what both gave up. */
+.row--txn {
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-2);
+  border-bottom: none;
+  cursor: pointer;
+}
+
+.dayhead {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  padding: var(--space-5) var(--space-2) var(--space-1);
+}
+.dayhead b { font-size: 13px; font-weight: 700; letter-spacing: 0.01em; }
+.dayhead i { flex: 1; height: 1px; background: var(--color-border); }
+.dayhead__net { font-size: 12px; color: var(--color-subtle); }
+.dayhead:first-child { padding-top: var(--space-2); }
+
+/* The row rides on .swipe__over; .swipe__under sits behind it and is only
+   seen once the surface has moved. */
+.swipe {
+  position: relative;
+  overflow: hidden;
+  border-bottom: 1px solid var(--color-border);
+}
+.swipe:last-child { border-bottom: none; }
+
+.swipe__under {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-1);
+  padding-right: var(--space-3);
+  background: color-mix(in srgb, var(--color-destructive) 22%, var(--color-background));
+  color: var(--color-destructive);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.swipe__under svg { width: 18px; height: 18px; }
+
+.swipe__over {
+  position: relative;
+  background: var(--color-background);
+  /* Vertical scrolling stays the browser's; the horizontal axis is ours.
+     Without this the page and the row fight over every drag. */
+  touch-action: pan-y;
+  transition: transform 180ms ease;
+}
+/* While a finger is down the surface must track it exactly, so the easing is
+   dropped for the duration of the gesture. Driven by a class rather than
+   :active, which is not reliably set once the pointer is captured. */
+.swipe__over.is-dragging { transition: none; }
 
 .row__day {
   width: 26px;
@@ -466,7 +523,7 @@ button.primary:active { filter: brightness(0.92); }
    fill, and neither can drift from the other. */
 .tag {
   flex: none;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.04em;
   padding: 3px 7px;
@@ -476,22 +533,13 @@ button.primary:active { filter: brightness(0.92); }
 .tag--plain { background: var(--color-input); color: var(--color-subtle); }
 
 .row--txn .row__title {
-  flex: 1;
-  min-width: 0;
-  font-size: 14px;
+  font-size: 15px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-
-.row__money { flex: none; text-align: right; line-height: 1.25; }
-.row__money .amount { display: block; font-size: 14px; white-space: nowrap; }
-.row__money small {
-  display: block;
-  font-size: 10px;
-  color: var(--color-subtle);
-  white-space: nowrap;
-}
+.row--txn .row__meta { font-size: 12px; }
+.row--txn > .amount { font-size: 15px; font-weight: 500; white-space: nowrap; }
 
 /* An empty screen is still a screen. The mark plus a sentence that says what
    would fill it beats a bare line of grey text. */
@@ -544,23 +592,24 @@ button.primary:active { filter: brightness(0.92); }
    opened to answer. Net, income and spent are the supporting line beneath it.
    Only one figure per screen gets to be large; giving two that weight is what
    made the old stats block read as four competing numbers. */
+/* Balance leads full width, then net, then income and spent as a pair. */
 .stats {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: var(--space-3) var(--space-4);
+  gap: var(--space-4);
 }
 
 .stat { display: flex; flex-direction: column; gap: var(--space-0); }
 
 .stat__label {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--color-subtle);
 }
 
-.stat .amount { font-size: 17px; font-weight: 500; }
+.stat .amount { font-size: 17px; font-weight: 600; }
 
 /* Explicit order rather than HTML order: balance leads, net follows full
    width, and income and spent pair off beneath. Three items in a two-column
@@ -654,6 +703,40 @@ button.primary:active { filter: brightness(0.92); }
   background-image: none;
   border-top: 1px solid var(--color-border-strong);
 }
+/* S2. A labelled track per bucket: what is spent against what is budgeted,
+   a bar for how far through, and the remainder underneath in words. */
+.tracks { display: flex; flex-direction: column; gap: var(--space-4); }
+
+.track__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+  font-size: 14px;
+  margin-bottom: var(--space-1);
+}
+.track__figures { font-size: 12px; color: var(--color-subtle); }
+
+.track__rail {
+  height: 8px;
+  background: var(--color-input);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+.track__rail i {
+  display: block;
+  height: 100%;
+  background: var(--color-primary);
+  border-radius: var(--radius-sm);
+}
+.track__rail i.is-savings { background: var(--color-accent); }
+
+.track__foot {
+  margin-top: var(--space-1);
+  font-size: 12px;
+  color: var(--color-subtle);
+}
+
 #budget-note {
   font-size: 13px;
   line-height: 1.5;
@@ -846,6 +929,26 @@ label + .hint { margin-top: 0; }
   color: var(--color-subtle);
   margin: 0 0 var(--space-2);
 }
+
+/* The editor is a form in a dialog, so it scrolls on a short screen rather
+   than pushing its own buttons off the bottom. */
+.dialog--editor { max-height: 88vh; overflow-y: auto; }
+.editor__kind { margin-top: calc(var(--space-1) * -1); }
+.editor__error:empty { display: none; }
+.editor__error { margin: 0 0 var(--space-2); font-size: 13px; }
+.editor__actions { display: flex; gap: var(--space-1); align-items: center; }
+.editor__delete {
+  margin-right: auto;
+  min-height: 44px;
+  padding: 0 var(--space-2);
+  background: none;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-destructive);
+  font: inherit;
+  cursor: pointer;
+}
+.editor__delete:hover { border-color: var(--color-destructive); }
 
 .palette {
   display: grid;

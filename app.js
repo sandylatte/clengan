@@ -2,7 +2,7 @@ import * as db from './db.js';
 import { formatIDR, formatAmount, groupDigits, rupiahToCents, centsToRupiahDigits } from './money.js';
 import {
   filterMonth, monthlyTotals, spendingBreakdown, accountBalances, netTrend, bucketTotals, fundsByYear,
-  lastSixMonths,
+  lastSixMonths, groupByDay,
 } from './rollup.js';
 import {
   BUCKETS, CATEGORY_KINDS, CATEGORY_COLOURS, DEFAULT_SPLIT, validateSplit, allocateFunds,
@@ -10,6 +10,8 @@ import {
   categoryCodes, TRANSFER_CATEGORY,
 } from './budget.js';
 import { reorderButtons, dragHandle, attachDragReorder } from './reorder.js';
+import { attachSwipe, closeOpenRow } from './swipe.js';
+import { editTransaction } from './editor.js';
 import { exportXlsx, importXlsx, importPlanner } from './xlsx-io.js';
 import { attachCalendar, toISO } from './calendar.js';
 import { confirmDialog, alertDialog, pickColour } from './dialog.js';
@@ -271,6 +273,8 @@ function renderPieScope(breakdown) {
   document.getElementById('pie-scope').textContent = `${parts.join(', ')}.`;
 }
 
+const WEEKDAY_ABBR = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
 const MONTH_ABBR = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 const TRASH_ICON = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>`;
@@ -282,135 +286,145 @@ function showListStatus(message) {
 }
 
 function renderList(txns) {
-  const rows = filterMonth(txns, state.month)
-    .sort((a, b) => b.date.localeCompare(a.date));
+  const rows = filterMonth(txns, state.month);
   const list = document.getElementById('list-rows');
   document.getElementById('list-empty').hidden = rows.length > 0;
 
-  // The header carried nothing on this tab. Net for the month is the one
-  // figure worth having while scrolling the rows it is made of — and it is
-  // computed from the same rows on screen, so it can be checked by eye.
   const { net } = monthlyTotals(txns, state.month);
   const total = document.getElementById('head-list-total');
   total.textContent = rows.length ? formatAmount(net) : '';
   total.classList.toggle('amount--in', net >= 0);
   total.classList.toggle('amount--out', net < 0);
 
-  function buildDeleteButton(txn, label) {
-    const remove = document.createElement('button');
-    remove.className = 'row__delete';
-    remove.type = 'button';
-    remove.innerHTML = TRASH_ICON;
-    remove.setAttribute('aria-label', label);
-    remove.addEventListener('click', async () => {
-      if (!txn || !txn.id) {
-        showListStatus('This row has no id, so it cannot be removed here. Export to Excel, delete the row there, and import the file again.');
-        return;
-      }
-      const isTransfer = Boolean(txn.transfer_id);
-      const ok = await confirmDialog({
-        title: isTransfer ? 'Delete this transfer' : 'Delete this transaction',
-        body: isTransfer
-          ? `${formatAmount(txn.amount)} on ${txn.date}. Both sides of the transfer are removed, so the two accounts stay balanced against each other.\n\nThis cannot be undone.`
-          : `${formatAmount(txn.amount)} on ${txn.date}. This cannot be undone.`,
-        confirmLabel: 'Delete',
-        danger: true,
-      });
-      if (!ok) return;
-      try {
-        await db.deleteTransaction(txn.id);
-      } catch (error) {
-        showListStatus(`This row was not deleted, and nothing changed. ${error.message}`);
-        return;
-      }
-      showListStatus('');
-      await refresh();
-    });
-    return remove;
+  // Date is written once per day rather than on every row, which is what
+  // gives the transaction name back the width it was losing.
+  const items = [];
+  for (const day of groupByDay(rows)) {
+    items.push(dayHeading(day));
+    for (const txn of day.rows) items.push(transactionRow(txn));
   }
+  list.replaceChildren(...items);
+}
 
-  function buildRow(txn) {
-    const item = document.createElement('li');
-    item.className = 'row row--txn';
+function dayHeading({ date, net }) {
+  const item = document.createElement('li');
+  item.className = 'dayhead';
+  const when = document.createElement('b');
+  // Built from the parts, never from a Date: a local Date made from a
+  // YYYY-MM-DD string lands on the previous day west of Greenwich.
+  const [year, month, dayOfMonth] = date.split('-').map(Number);
+  const weekday = WEEKDAY_ABBR[new Date(Date.UTC(year, month - 1, dayOfMonth)).getUTCDay()];
+  when.textContent = `${weekday} ${String(dayOfMonth).padStart(2, '0')} ${MONTH_ABBR[month - 1]}`;
+  const rule = document.createElement('i');
+  const sum = document.createElement('span');
+  sum.className = `dayhead__net amount ${net > 0 ? 'amount--in' : ''}`;
+  // A day of nothing but transfers nets zero, and printing "0" there implies
+  // a day with no money in it. The rows below say otherwise.
+  sum.textContent = net === 0 ? '' : formatAmount(net);
+  item.append(when, rule, sum);
+  return item;
+}
 
-    // Day number and month, from the stored YYYY-MM-DD by slicing, never by
-    // constructing a Date: a local Date built from that string lands on the
-    // previous day west of Greenwich.
-    const when = document.createElement('div');
-    when.className = 'row__day';
-    const dayNumber = document.createElement('b');
-    dayNumber.className = 'amount';
-    dayNumber.textContent = txn.date.slice(8, 10);
-    const monthName = document.createElement('u');
-    monthName.textContent = MONTH_ABBR[Number(txn.date.slice(5, 7)) - 1] ?? '';
-    when.append(dayNumber, monthName);
+function transactionRow(txn) {
+  const item = document.createElement('li');
+  item.className = 'swipe';
 
-    // The tag carries the category by colour and code. Its accessible name is
-    // the full category, because a three-letter code is unreadable to anyone
-    // not looking at the colour beside it.
-    const tag = document.createElement('span');
-    tag.className = 'tag';
-    const category = txn.transfer_id ? TRANSFER_CATEGORY : txn.category;
-    const colour = state.categories.find((c) => c.name === category)?.colour;
-    if (colour) {
-      tag.style.color = colour;
-      tag.style.background = `color-mix(in srgb, ${colour} 26%, transparent)`;
-    } else {
-      tag.classList.add('tag--plain');
-    }
-    tag.textContent = state.codes.get(category) ?? '—';
-    tag.title = category || UNCATEGORISED;
-    tag.setAttribute('aria-label', category || UNCATEGORISED);
+  const under = document.createElement('div');
+  under.className = 'swipe__under';
+  under.innerHTML = `${TRASH_ICON}<span>Delete</span>`;
 
-    const title = document.createElement('span');
-    title.className = 'row__title';
-    title.textContent = txn.name || category || UNCATEGORISED;
+  const surface = document.createElement('div');
+  surface.className = 'swipe__over';
 
-    // Amount with the account beneath it, on the side of the row where money
-    // already lives. Without it a mixed-account list cannot be read at all.
-    const money = document.createElement('span');
-    money.className = 'row__money';
-    const amount = document.createElement('span');
-    amount.className = `amount ${txn.amount > 0 ? 'amount--in' : 'amount--out'}`;
-    amount.textContent = formatAmount(txn.amount);
-    const account = document.createElement('small');
-    account.textContent = txn.account;
-    money.append(amount, account);
+  const row = document.createElement('div');
+  row.className = 'row row--txn';
 
-    const remove = buildDeleteButton(txn, `Delete ${title.textContent} ${formatAmount(txn.amount)} on ${txn.date}`);
-
-    item.append(when, tag, title, money, remove);
-    return item;
+  const tag = document.createElement('span');
+  tag.className = 'tag';
+  const category = txn.transfer_id ? TRANSFER_CATEGORY : txn.category;
+  const colour = state.categories.find((c) => c.name === category)?.colour;
+  if (colour) {
+    tag.style.color = colour;
+    tag.style.background = `color-mix(in srgb, ${colour} 26%, transparent)`;
+  } else {
+    tag.classList.add('tag--plain');
   }
+  tag.textContent = state.codes.get(category) ?? '—';
+  // The code is meaningless without the colour beside it, so the full name is
+  // what assistive tech and a long press both get.
+  tag.title = category || UNCATEGORISED;
+  tag.setAttribute('aria-label', category || UNCATEGORISED);
 
-  function buildErrorRow(txn) {
-    const item = document.createElement('li');
-    item.className = 'row';
+  const mid = document.createElement('div');
+  mid.className = 'row__main';
+  const title = document.createElement('span');
+  title.className = 'row__title';
+  title.textContent = txn.name || category || UNCATEGORISED;
+  const meta = document.createElement('span');
+  meta.className = 'row__meta';
+  meta.textContent = [txn.account, txn.bucket === 'fixed' ? 'Fixed' : '', txn.note && txn.note !== SAMPLE_NOTE ? txn.note : '']
+    .filter(Boolean).join(' · ');
+  mid.append(title, meta);
 
-    const main = document.createElement('div');
-    main.className = 'row__main';
-    const title = document.createElement('span');
-    title.className = 'row__title';
-    title.className = 'row__title budget-note__warning';
-    title.textContent = 'Unreadable transaction';
-    const meta = document.createElement('span');
-    meta.className = 'row__meta';
-    meta.textContent = [txn && txn.id, txn && txn.date, txn && txn.account].filter(Boolean).join(' · ');
-    main.append(title, meta);
+  const amount = document.createElement('span');
+  amount.className = `amount ${txn.amount > 0 ? 'amount--in' : 'amount--out'}`;
+  amount.textContent = formatAmount(txn.amount);
 
-    const remove = buildDeleteButton(txn, `Delete unreadable transaction ${(txn && txn.id) || ''}`);
+  row.append(tag, mid, amount);
+  surface.append(row);
+  item.append(under, surface);
 
-    item.append(main, remove);
-    return item;
+  const remove = () => deleteTransaction(txn);
+  under.addEventListener('click', remove);
+  attachSwipe({ surface, onDelete: remove, onOpen: () => openEditor(txn) });
+
+  return item;
+}
+
+async function deleteTransaction(txn) {
+  if (!txn || !txn.id) {
+    showListStatus('This row has no id, so it cannot be removed here. Export to Excel, delete the row there, and import the file again.');
+    return;
   }
+  const isTransfer = Boolean(txn.transfer_id);
+  const ok = await confirmDialog({
+    title: isTransfer ? 'Delete this transfer' : 'Delete this transaction',
+    body: isTransfer
+      ? `${formatAmount(txn.amount)} on ${txn.date}. Both sides of the transfer are removed, so the two accounts stay balanced against each other.\n\nThis cannot be undone.`
+      : `${formatAmount(txn.amount)} on ${txn.date}. This cannot be undone.`,
+    confirmLabel: 'Delete',
+    danger: true,
+  });
+  closeOpenRow();
+  if (!ok) return;
+  try {
+    await db.deleteTransaction(txn.id);
+  } catch (error) {
+    showListStatus(`This row was not deleted, and nothing changed. ${error.message}`);
+    return;
+  }
+  showListStatus('');
+  await refresh();
+}
 
-  list.replaceChildren(...rows.map((txn) => {
-    try {
-      return buildRow(txn);
-    } catch {
-      return buildErrorRow(txn);
-    }
-  }));
+async function openEditor(txn) {
+  const accounts = sortByPosition(await db.allAccounts()).map((a) => a.name);
+  const result = await editTransaction({
+    txn,
+    accounts,
+    categories: state.categories,
+    usedCategories: state.usedCategories,
+  });
+  if (result === null) return;
+  if (result === 'delete') { await deleteTransaction(txn); return; }
+  try {
+    await db.updateTransaction(result);
+  } catch (error) {
+    showListStatus(`That change was not saved, and nothing moved. ${error.message}`);
+    return;
+  }
+  showListStatus('');
+  await refresh();
 }
 
 const BUCKET_LABELS = { fixed: 'Fixed', flexible: 'Flexible' };
@@ -418,43 +432,72 @@ const BUCKET_LABELS = { fixed: 'Fixed', flexible: 'Flexible' };
 function renderBudget(txns) {
   const t = bucketTotals(txns, state.month, state.split);
 
-  const cell = (text, className) => {
-    const td = document.createElement('td');
-    if (className) td.className = className;
-    td.textContent = text;
-    return td;
+  // Tracks, not a four-column table. The table had to shrink its type to fit
+  // "Budget / Spent / Left" on a 375px screen, and the reader still had to do
+  // the subtraction themselves to see how far through a bucket they were.
+  const track = ({ label, spent, budget, remaining, tone, fillPercent }) => {
+    const row = document.createElement('div');
+    row.className = 'track';
+
+    const head = document.createElement('div');
+    head.className = 'track__head';
+    const name = document.createElement('span');
+    name.textContent = label;
+    const figures = document.createElement('span');
+    figures.className = 'track__figures amount';
+    figures.textContent = budget > 0
+      ? `${formatIDR(spent)} / ${formatIDR(budget)}`
+      : formatIDR(spent);
+    head.append(name, figures);
+
+    const rail = document.createElement('div');
+    rail.className = 'track__rail';
+    const fill = document.createElement('i');
+    // Saturates at full width rather than overflowing: the bar answers "how
+    // much of this bucket is gone", and past 100% the remaining figure below
+    // carries the overspend.
+    // Written inline, so a class cannot supply it: an inline width always
+    // wins, and the savings rail rendered empty until this took the override.
+    fill.style.width = `${fillPercent ?? (budget > 0 ? Math.min(100, Math.round((spent / budget) * 100)) : 0)}%`;
+    if (tone) fill.classList.add(tone);
+    rail.append(fill);
+
+    const foot = document.createElement('div');
+    foot.className = 'track__foot';
+    foot.textContent = remaining;
+    if (budget > 0 && spent > budget) foot.classList.add('budget-note__warning');
+
+    row.append(head, rail, foot);
+    return row;
   };
 
-  const rows = BUCKETS.map((bucket) => {
+  const tracks = BUCKETS.map((bucket) => {
     const { budget, spent, remaining } = t[bucket];
-    const row = document.createElement('tr');
-    // The bar reads as "how much of this bucket is gone", so it saturates at
-    // full width once spending passes the budget rather than overflowing.
-    const used = budget > 0 ? Math.min(100, Math.round((spent / budget) * 100)) : 0;
-    row.style.setProperty('--bar', `${used}%`);
-    row.append(
-      cell(BUCKET_LABELS[bucket]),
-      cell(formatIDR(budget), 'amount'),
-      cell(formatIDR(spent), 'amount'),
-      cell(formatIDR(remaining), `amount ${remaining < 0 ? 'amount--out' : ''}`),
-    );
-    return row;
+    return track({
+      label: BUCKET_LABELS[bucket],
+      spent,
+      budget,
+      remaining: budget === 0
+        ? 'No budget yet — income sets it'
+        : `${formatIDR(Math.abs(remaining))} ${remaining < 0 ? 'over' : 'left'}`,
+    });
   });
 
-  // Nothing is charged against savings, so its Spent cell stays empty rather
-  // than carrying the rollover as a negative. A gain under a column headed
-  // "Spent" reads as a mistake however the sign is arranged; the rollover is
-  // named in the note below, where it can be labelled for what it is.
-  const savings = document.createElement('tr');
-  savings.className = 'budget__savings';
-  savings.append(
-    cell('Savings'),
-    cell(formatIDR(t.savings.budget), 'amount'),
-    cell('—'),
-    cell(formatIDR(t.savings.projected), `amount ${t.savings.projected < 0 ? 'amount--out' : 'amount--in'}`),
-  );
-  rows.push(savings);
-  document.querySelector('#budget tbody').replaceChildren(...rows);
+  // Savings is a target nothing is charged against, so it gets no spend bar —
+  // it shows what actually landed, which is the target plus whatever the two
+  // spending buckets left behind.
+  tracks.push(track({
+    label: 'Savings',
+    spent: t.savings.projected,
+    budget: 0,
+    tone: 'is-savings',
+    fillPercent: 100,
+    remaining: t.savings.budget > 0
+      ? `target ${formatIDR(t.savings.budget)}`
+      : 'No income recorded this month',
+  }));
+
+  document.getElementById('budget').replaceChildren(...tracks);
 
   const parts = [];
   if (t.income === 0) {
@@ -465,8 +508,6 @@ function renderBudget(txns) {
     else if (t.savings.unspent < 0) parts.push(`Overspending of ${formatIDR(-t.savings.unspent)} comes out of savings.`);
   }
 
-  // Only the unbucketed sentence is a warning. Colouring the whole note red
-  // because of it makes the ordinary explanation look like an error too.
   const explanation = document.createElement('span');
   explanation.textContent = parts.join(' ');
   const children = [explanation];
