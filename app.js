@@ -525,7 +525,7 @@ function renderBudget(txns) {
 // would reject it and take the whole dashboard render down with it.
 function renderFunds(txns) {
   const note = document.getElementById('funds-note');
-  const body = document.querySelector('#funds tbody');
+  const body = document.getElementById('funds');
   const total = state.funds.reduce((sum, f) => sum + f.percent, 0);
 
   if (state.funds.length === 0 || Math.round(total) !== 100) {
@@ -542,42 +542,75 @@ function renderFunds(txns) {
   const monthly = new Map(allocateFunds(month, state.funds).map((f) => [f.name, f.amount]));
   const yearly = new Map(year.funds.map((f) => [f.name, f.amount]));
 
-  const cell = (text, className) => {
-    const td = document.createElement('td');
-    if (className) td.className = className;
-    td.textContent = text;
-    return td;
-  };
-
+  // The share IS the bar, so the percentage does not need printing twice.
+  // The four-column table put share, month and year side by side at 13px and
+  // still left the reader working out which column was which.
   const rows = state.funds.map((fund) => {
     const amount = monthly.get(fund.name);
-    const row = document.createElement('tr');
-    row.style.setProperty('--bar', `${fund.percent}%`);
-    row.append(
-      cell(fund.name),
-      cell(`${fund.percent}%`),
-      cell(formatIDR(amount), `amount ${amount < 0 ? 'amount--out' : ''}`),
-      cell(formatIDR(yearly.get(fund.name)), `amount ${yearly.get(fund.name) < 0 ? 'amount--out' : ''}`),
-    );
+    const row = document.createElement('div');
+    row.className = 'track';
+
+    const head = document.createElement('div');
+    head.className = 'track__head';
+    const name = document.createElement('span');
+    name.textContent = fund.name;
+    const figure = document.createElement('span');
+    figure.className = `amount ${amount < 0 ? 'amount--out' : ''}`;
+    figure.textContent = formatIDR(amount);
+    head.append(name, figure);
+
+    const rail = document.createElement('div');
+    rail.className = 'track__rail';
+    const fill = document.createElement('i');
+    fill.style.width = `${fund.percent}%`;
+    fill.classList.add('is-savings');
+    rail.append(fill);
+
+    const foot = document.createElement('div');
+    foot.className = 'track__foot';
+    foot.textContent = `${fund.percent}% of savings · ${formatIDR(yearly.get(fund.name))} so far in ${year.year}`;
+
+    row.append(head, rail, foot);
     return row;
   });
 
-  const totalRow = document.createElement('tr');
-  totalRow.className = 'budget__savings';
-  totalRow.append(
-    cell('Total'),
-    cell(''),
-    cell(formatIDR(month), `amount ${month < 0 ? 'amount--out' : 'amount--in'}`),
-    cell(formatIDR(year.total), `amount ${year.total < 0 ? 'amount--out' : 'amount--in'}`),
-  );
-  rows.push(totalRow);
+  const sum = document.createElement('div');
+  sum.className = 'figures__row figures__row--total';
+  const sumLabel = document.createElement('span');
+  sumLabel.textContent = 'Total';
+  const sumValue = document.createElement('span');
+  sumValue.className = `amount ${month < 0 ? 'amount--out' : 'amount--in'}`;
+  sumValue.textContent = formatIDR(month);
+  sum.append(sumLabel, sumValue);
+  rows.push(sum);
+
   body.replaceChildren(...rows);
 
   note.className = '';
   const counted = year.months.length;
   note.textContent = counted === 0
     ? `No income recorded in ${year.year} yet.`
-    : `Year column covers ${counted} month${counted === 1 ? '' : 's'} of ${year.year} with income recorded.`;
+    : `Year figures cover ${counted} month${counted === 1 ? '' : 's'} of ${year.year} with income recorded.`;
+}
+
+// One row of a plain label-and-figure list.
+function figureRow(label, value, { swatch, total, tone } = {}) {
+  const row = document.createElement('div');
+  row.className = `figures__row${total ? ' figures__row--total' : ''}`;
+  const name = document.createElement('span');
+  name.className = 'figures__label';
+  if (swatch) {
+    const chip = document.createElement('span');
+    chip.className = 'swatch';
+    chip.style.background = swatch;
+    name.append(chip);
+  }
+  name.append(document.createTextNode(label));
+  const figure = document.createElement('span');
+  figure.className = `amount ${tone ?? ''}`;
+  figure.textContent = value;
+  row.append(name, figure);
+  return row;
 }
 
 // DESIGN.md forbids a second chromatic accent, so slices are one hue: the
@@ -683,23 +716,16 @@ function renderSummary(txns, accounts, invalidTxns) {
   const slices = sliceColours(breakdown, state.categories);
   document.getElementById('bars-empty').hidden = breakdown.length > 0;
   renderPie(breakdown, slices);
-  document.querySelector('#bars tbody').replaceChildren(...breakdown.map(({ category, total }, i) => {
-    const row = document.createElement('tr');
-    // largest is 0 only when breakdown is empty, so this never divides by zero
-    row.style.setProperty('--bar', `${Math.round((total / largest) * 100)}%`);
-    const name = document.createElement('td');
-    // The swatch makes this table the pie's legend, so the chart needs no
-    // labels of its own and stays readable when a slice is a sliver.
-    const swatch = document.createElement('span');
-    swatch.className = 'swatch';
-    swatch.style.background = slices[i];
-    name.append(swatch, document.createTextNode(category));
-    const value = document.createElement('td');
-    value.className = 'amount';
-    value.textContent = formatIDR(total);
-    row.append(name, value);
-    return row;
-  }));
+  // The swatch makes this list the pie's legend, so the chart needs no labels
+  // of its own and stays readable when a slice is a sliver.
+  document.getElementById('bars').replaceChildren(
+    ...breakdown.map(({ category, total }, i) => {
+      const row = figureRow(category, formatIDR(total), { swatch: slices[i] });
+      // largest is 0 only when breakdown is empty, so this never divides by zero
+      row.style.setProperty('--bar', `${Math.round((total / largest) * 100)}%`);
+      return row;
+    }),
+  );
 
   const balances = accountBalances(txns, accounts);
   const total = balances.reduce((sum, b) => sum + b.balance, 0);
@@ -718,29 +744,12 @@ function renderSummary(txns, accounts, invalidTxns) {
   headBalance.textContent = accounts.length ? formatIDR(total) : '';
   headBalance.classList.toggle('amount--out', total < 0);
 
-  document.querySelector('#balances tbody').replaceChildren(
-    ...balances.map(({ account, balance }) => {
-      const row = document.createElement('tr');
-      const name = document.createElement('td');
-      name.textContent = account;
-      const value = document.createElement('td');
-      value.className = `amount ${balance < 0 ? 'amount--out' : ''}`;
-      value.textContent = formatIDR(balance);
-      row.append(name, value);
-      return row;
+  document.getElementById('balances').replaceChildren(
+    ...sortByPosition(accounts).map(({ name }) => {
+      const found = balances.find((b) => b.account === name);
+      return figureRow(name, formatIDR(found.balance), { tone: found.balance < 0 ? 'amount--out' : '' });
     }),
-    (() => {
-      const row = document.createElement('tr');
-      const name = document.createElement('td');
-      const strong = document.createElement('strong');
-      strong.textContent = 'Total';
-      name.append(strong);
-      const value = document.createElement('td');
-      value.className = `amount ${total < 0 ? 'amount--out' : ''}`;
-      value.textContent = formatIDR(total);
-      row.append(name, value);
-      return row;
-    })(),
+    figureRow('Total', formatIDR(total), { total: true, tone: total < 0 ? 'amount--out' : '' }),
   );
 
   renderTrend(netTrend(txns, lastSixMonths(state.month)));

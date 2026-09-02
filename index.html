@@ -123,11 +123,7 @@
 
   <div class="card">
     <h2>Savings by fund</h2>
-    <table class="budget" id="funds">
-      <caption class="visually-hidden">How this month's savings divides across funds</caption>
-      <thead><tr><th scope="col">Fund</th><th scope="col">Share</th><th scope="col">This month</th><th scope="col">Year</th></tr></thead>
-      <tbody></tbody>
-    </table>
+    <div id="funds" class="tracks"></div>
     <p id="funds-note"></p>
   </div>
 
@@ -158,11 +154,7 @@
     <p class="hint" id="pie-scope"></p>
     <svg id="pie" viewBox="0 0 100 100" role="img" aria-labelledby="pie-desc"></svg>
     <p id="pie-desc" class="visually-hidden"></p>
-    <table class="bars" id="bars">
-      <caption class="visually-hidden">Spending by category for the selected month</caption>
-      <thead><tr><th scope="col">Category</th><th scope="col">Amount</th></tr></thead>
-      <tbody></tbody>
-    </table>
+    <div id="bars" class="figures figures--legend"></div>
     <div id="bars-empty" class="empty empty--inline" hidden>
       <svg class="empty__mark" aria-hidden="true"><use href="#mark"/></svg>
       <p class="empty__title">No spending in this view</p>
@@ -178,10 +170,7 @@
 
   <div class="card">
     <h2>Balances</h2>
-    <table class="bars" id="balances">
-      <thead><tr><th scope="col">Account</th><th scope="col">Balance</th></tr></thead>
-      <tbody></tbody>
-    </table>
+    <div id="balances" class="figures"></div>
   </div>
 </section>
 <section class="view" id="view-settings" hidden>
