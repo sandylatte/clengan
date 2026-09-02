@@ -30,10 +30,6 @@ export const DEFAULT_CATEGORIES = [
   { name: 'Others', kind: 'expense' },
 ];
 
-// The bucket every expense starts on. Most spending is flexible, and a
-// required field with no default is a tap on every single entry.
-export const DEFAULT_BUCKET = 'flexible';
-
 // A category colour is DATA, not theme: it is stored per category and paints
 // the same in both tones. So each of these has to be legible on the graphite
 // card (#17191C) and the peach card (#F7DCD3) alike, which rules out anything
@@ -73,7 +69,7 @@ export function normaliseColour(value) {
 // Ordering is the user's, so it is stored, not derived. Ties fall back to the
 // name so a set that has never been reordered still comes out stable rather
 // than in whatever order the store happened to return.
-export function byPosition(a, b) {
+function byPosition(a, b) {
   const left = Number.isFinite(a.position) ? a.position : Number.MAX_SAFE_INTEGER;
   const right = Number.isFinite(b.position) ? b.position : Number.MAX_SAFE_INTEGER;
   return left - right || String(a.name).localeCompare(String(b.name));

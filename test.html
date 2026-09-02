@@ -17,6 +17,31 @@ pre { color: #DC2626; margin: 4px 0 0 24px; }
 <script type="module">
 import * as db from './db.js';
 
+// This page imports the app's real modules, so a service worker will serve
+// them FROM ITS CACHE — including a version from before the change you are
+// trying to test. That is not theoretical: reintroducing a known db.js bug
+// left this suite reporting 22/22, because the worker was still handing out
+// the fixed copy. A green run under a controlling worker means nothing.
+if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+  document.getElementById('summary').textContent =
+    'Not run: a service worker controls this page and would serve cached modules.';
+  document.getElementById('summary').style.color = '#DC2626';
+  const how = document.createElement('p');
+  how.textContent = 'Unregister it first — Settings → App version → Fetch the latest version, '
+    + 'or run this in a private window.';
+  document.getElementById('summary').after(how);
+  throw new Error('service worker present; refusing to report a result that cannot be trusted');
+}
+
+// Point the data layer at a SEPARATE database before anything touches it.
+//
+// These tests call clearAll(), and until this line they called it on the real
+// one — opening this page wiped every transaction and account the user had.
+// db.openDb memoises on first call, which is exactly the hook needed: every
+// later call inside db.js reuses this connection, so the whole suite runs
+// against moneytrack-test and the app's own data is never opened at all.
+await db.openDb('moneytrack-test');
+
 const tests = [];
 const test = (name, fn) => tests.push({ name, fn });
 const results = document.getElementById('results');
@@ -148,6 +173,127 @@ test('updateTransaction allows editing note/date on a transfer half without dist
   if (newFrom.date !== '2026-08-07' || newFrom.note !== 'renamed') throw new Error('note/date edit did not take effect');
   if (newFrom.amount !== -20000) throw new Error('amount should not have changed');
   if (newTo.amount !== 20000 || newTo.transfer_id !== fromId) throw new Error('partner was disturbed by an unrelated field edit');
+});
+
+
+// ---------------------------------------------------------------------------
+// The write paths that actually broke.
+//
+// putAccount and putCategory shipped broken for several versions: each issued
+// store.get() AND store.getAll(), then read the getAll result inside the get
+// callback, which throws InvalidStateError because IndexedDB had not run it
+// yet. It reached the user as "sample data does not work", and it also meant
+// no account or category could be saved by hand.
+//
+// Nothing caught it because these need a live IndexedDB, and the node suite
+// has none. This file does. That was the gap, not the absence of tests.
+// ---------------------------------------------------------------------------
+
+const clearStore = async (name) => {
+  const database = await db.openDb();
+  await new Promise((resolve, reject) => {
+    const tx = database.transaction(name, 'readwrite');
+    tx.objectStore(name).clear();
+    tx.oncomplete = resolve;
+    tx.onerror = () => reject(tx.error);
+  });
+};
+
+test('putAccount creates an account and gives it a position', async () => {
+  await clearStore('accounts');
+  await db.putAccount('Bank BCA', 12500000);
+  const [account] = await db.allAccounts();
+  if (!account) throw new Error('no account was written at all');
+  if (account.opening_balance !== 12500000) throw new Error(`balance is ${account.opening_balance}`);
+  if (!Number.isFinite(account.position)) throw new Error('a new account must carry a position');
+});
+
+test('putAccount appends rather than sorting a new account into the middle', async () => {
+  await clearStore('accounts');
+  await db.putAccount('Zebra', 0);
+  await db.putAccount('Apple', 0);
+  const byPosition = (await db.allAccounts()).sort((a, b) => a.position - b.position);
+  if (byPosition[0].name !== 'Zebra') throw new Error(`first is ${byPosition[0].name}, expected Zebra`);
+});
+
+test('putAccount keeps an existing account in place when its balance changes', async () => {
+  await clearStore('accounts');
+  await db.putAccount('First', 100);
+  await db.putAccount('Second', 200);
+  const before = (await db.allAccounts()).find((a) => a.name === 'First').position;
+  await db.putAccount('First', 999);
+  const after = (await db.allAccounts()).find((a) => a.name === 'First');
+  if (after.opening_balance !== 999) throw new Error('the balance did not change');
+  if (after.position !== before) throw new Error('replacing a balance must not move the account');
+});
+
+test('ensureAccount files against an existing account whatever the casing', async () => {
+  await clearStore('accounts');
+  await db.putAccount('Bank BCA', 500);
+  const used = await db.ensureAccount('bank bca', 0);
+  const accounts = await db.allAccounts();
+  if (accounts.length !== 1) throw new Error(`casing created a second account: ${accounts.length}`);
+  if (used !== 'Bank BCA') throw new Error(`filed under "${used}" instead of the existing spelling`);
+  if (accounts[0].opening_balance !== 500) throw new Error('the opening balance was overwritten');
+});
+
+test('putCategory creates a category with a kind and a position', async () => {
+  await db.putCategory('Test Category', { kind: 'expense' });
+  const found = (await db.allCategories()).find((c) => c.name === 'Test Category');
+  if (!found) throw new Error('no category was written');
+  if (found.kind !== 'expense') throw new Error(`kind is ${found.kind}`);
+  if (!Number.isFinite(found.position)) throw new Error('a new category must carry a position');
+  await db.deleteCategory('Test Category');
+});
+
+test('putCategory merges, so a colour survives a kind change', async () => {
+  // Three controls each write one field. A plain put would wipe the other two.
+  await db.putCategory('Merge Test', { kind: 'expense', colour: '#2B8159' });
+  await db.putCategory('Merge Test', { kind: 'income' });
+  const found = (await db.allCategories()).find((c) => c.name === 'Merge Test');
+  if (found.colour !== '#2B8159') throw new Error(`colour was lost: ${found.colour}`);
+  if (found.kind !== 'income') throw new Error('the kind did not change');
+  await db.deleteCategory('Merge Test');
+});
+
+test('reorderCategories writes the order it is given', async () => {
+  const names = (await db.allCategories()).map((c) => c.name);
+  const reversed = [...names].reverse();
+  await db.reorderCategories(reversed);
+  const after = (await db.allCategories()).sort((a, b) => a.position - b.position).map((c) => c.name);
+  if (after.join() !== reversed.join()) throw new Error('the stored order does not match');
+  await db.reorderCategories(names);
+});
+
+test('reorder skips a name that is not there instead of resurrecting it', async () => {
+  const names = (await db.allCategories()).map((c) => c.name);
+  await db.reorderCategories(['Ghost Category', ...names]);
+  const found = (await db.allCategories()).find((c) => c.name === 'Ghost Category');
+  if (found) throw new Error('reorder created a category that does not exist');
+});
+
+test('editing a transfer date moves BOTH halves', async () => {
+  // Cascading only the amount left the money leaving one account a day
+  // before it arrived in the other.
+  await db.clearAll();
+  const [fromId] = await db.addTransfer({ date: '2026-08-06', from: 'Bank', to: 'Savings', amount: 20000, note: '' });
+  const rows = await db.allTransactions();
+  const half = rows.find((r) => r.id === fromId);
+  await db.updateTransaction({ ...half, date: '2026-08-20' });
+  const after = await db.allTransactions();
+  const dates = new Set(after.map((r) => r.date));
+  if (dates.size !== 1) throw new Error(`halves are on different dates: ${[...dates].join(', ')}`);
+  if (after.reduce((sum, r) => sum + r.amount, 0) !== 0) throw new Error('the pair no longer nets to zero');
+});
+
+test('editing a transfer amount keeps the pair netting to zero', async () => {
+  await db.clearAll();
+  const [fromId] = await db.addTransfer({ date: '2026-08-06', from: 'Bank', to: 'Savings', amount: 20000, note: '' });
+  const half = (await db.allTransactions()).find((r) => r.id === fromId);
+  await db.updateTransaction({ ...half, amount: -75000 });
+  const after = await db.allTransactions();
+  if (after.reduce((sum, r) => sum + r.amount, 0) !== 0) throw new Error('the pair no longer nets to zero');
+  if (!after.some((r) => r.amount === 75000)) throw new Error('the partner did not follow the new amount');
 });
 
 let passed = 0;

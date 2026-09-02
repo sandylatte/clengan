@@ -4,8 +4,8 @@ import { parsePlannerGrid, monthFromSheetName } from './planner.js';
 // `name` and `bucket` sit beside category, not instead of it: the backup is
 // the only copy of this data that leaves the device, so a field missing here
 // is a field the user loses on the next restore.
-export const COLUMNS = ['id', 'date', 'account', 'amount', 'name', 'category', 'bucket', 'transfer_id', 'note'];
-export const ACCOUNTS_COLUMNS = ['name', 'opening_balance'];
+const COLUMNS = ['id', 'date', 'account', 'amount', 'name', 'category', 'bucket', 'transfer_id', 'note'];
+const ACCOUNTS_COLUMNS = ['name', 'opening_balance'];
 
 // A row whose amount is not a valid integer cent value (corrupt data that
 // reached the db some other way — see Task 6/7) must still make it into the

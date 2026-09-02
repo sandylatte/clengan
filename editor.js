@@ -1,4 +1,4 @@
-import { formatIDR, groupDigits, rupiahToCents, centsToRupiahDigits } from './money.js';
+import { groupDigits, rupiahToCents, centsToRupiahDigits } from './money.js';
 import { BUCKETS, TRANSFER_CATEGORY, categoryOptions } from './budget.js';
 
 // Opening a transaction to read and change it. Until now the only way to fix
@@ -153,8 +153,4 @@ export function editTransaction({ txn, accounts, categories, usedCategories }) {
     $('edit-amount').focus();
     $('edit-amount').select();
   });
-}
-
-export function transactionSummary(txn) {
-  return `${txn.name || txn.category || 'Transaction'} · ${formatIDR(Math.abs(txn.amount))}`;
 }

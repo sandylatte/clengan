@@ -502,21 +502,6 @@ button.primary:active { filter: brightness(0.92); }
    :active, which is not reliably set once the pointer is captured. */
 .swipe__over.is-dragging { transition: none; }
 
-.row__day {
-  width: 26px;
-  flex: none;
-  text-align: center;
-  line-height: 1.05;
-}
-.row__day b { display: block; font-size: 15px; font-weight: 700; }
-.row__day u {
-  display: block;
-  text-decoration: none;
-  font-size: 10px;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--color-subtle);
-}
 
 /* The category, as colour first and letters second. The tint is mixed from
    the category's own colour so one stored value drives both the text and the
@@ -782,12 +767,6 @@ label + .hint { margin-top: 0; }
   vertical-align: baseline;
 }
 
-/* "No colour" as an outlined blank. A filled grey would be indistinguishable
-   from Stone, which IS one of the choices. */
-.swatch--none {
-  background: transparent;
-  border: 1px dashed var(--color-border-strong);
-}
 
 /* An ordered row wraps its controls under the name on a narrow screen rather
    than crushing four of them onto one line. */
@@ -1096,15 +1075,6 @@ label + .hint { margin-top: 0; }
 }
 .calendar__today:hover { background: var(--color-input); }
 
-/* Editing a row in place, so it stays inside the row's height. */
-.row__select {
-  width: auto;
-  min-height: 32px;
-  margin: 0 var(--space-1) 0 0;
-  padding: 0 var(--space-4) 0 var(--space-1);
-  font-size: 13px;
-  background-color: var(--color-input);
-}
 
 /* Overlay dialogs. The native confirm cannot be styled and reads as the
    browser interrupting rather than the app asking. */
