@@ -1581,6 +1581,8 @@ themeSelect.addEventListener('change', () => {
   const peach = themeSelect.value === 'peach';
   document.documentElement.dataset.theme = peach ? 'peach' : '';
   document.querySelector('meta[name="theme-color"]').content = peach ? '#F3CEC2' : '#000000';
+  // Same reason as DB_NAME: renaming this key would silently reset the tone
+  // for anyone who had already chosen one.
   localStorage.setItem('moneytrack-theme', peach ? 'peach' : 'graphite');
 });
 

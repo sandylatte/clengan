@@ -1,4 +1,4 @@
-# Shipping MoneyTrack to phones
+# Shipping Clengan to phones
 
 The app is an installable PWA with no build step. Every route below starts from
 that same artifact, so nothing here requires rewriting the app.

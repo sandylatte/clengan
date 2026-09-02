@@ -1,6 +1,6 @@
 ---
 version: alpha
-name: MoneyTrack
+name: Clengan
 description: "A phone-first local-only money tracker, shipped as an installable PWA with no build step. Two user-switchable tones share one token vocabulary: Tone A is carbon and volt, a true-black AMOLED canvas (#000000) carrying a high-chroma green accent (#00EB62); Tone B is peach room, a warm light canvas (#F3CEC2) built from a photographic reference where the frame interior reads brighter than the wall. Type is Fira Sans for UI and Fira Code for every figure, so digits stay in tabular columns. The system is an app UI, not a marketing canvas: the tallest step in the ramp is the amount field at 34px, headings sit at 17px and below, and depth comes from a three-step surface ladder plus hairline borders. Colour carries meaning only — green for income, red for spending, the accent for the primary action and the active tab. Nothing is decorative."
 
 colors:
@@ -230,7 +230,7 @@ components:
 
 ## Overview
 
-MoneyTrack is a local-only money tracker installed to a phone home screen. It has no server, no accounts, and no build step: the shipped artifact is hand-written HTML, CSS, and ES modules served by a cache-first service worker. Every design decision below follows from that, and from one fact about the product: the user opens it to type a number and leave.
+Clengan is a local-only money tracker installed to a phone home screen. It has no server, no accounts, and no build step: the shipped artifact is hand-written HTML, CSS, and ES modules served by a cache-first service worker. Every design decision below follows from that, and from one fact about the product: the user opens it to type a number and leave.
 
 The system ships **two tones the user switches in Settings**. They share one token vocabulary, so no rule outside the two `:root` blocks knows which tone is active. Tone A, graphite and brass, is the default. Tone B, peach room, was derived from a photographic reference the user supplied — a warm monochrome interior where the frame interior reads brighter than the wall, which is why cards in Tone B sit *lighter* than the canvas while cards in Tone A sit darker.
 

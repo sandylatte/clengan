@@ -3,6 +3,10 @@ import {
   TRANSFER_CATEGORY,
 } from './budget.js';
 
+// Deliberately still 'moneytrack' after the app was renamed to Clengan. This
+// string is the key to every transaction already on the device: change it and
+// a user's ledger is not migrated, it is simply no longer found. The name is
+// internal and nobody sees it, so there is nothing to gain by touching it.
 const DB_NAME = 'moneytrack';
 const DB_VERSION = 6;
 

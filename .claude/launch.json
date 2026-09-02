@@ -2,6 +2,6 @@
   "version": "0.0.1",
   "autoPort": true,
   "configurations": [
-    { "name": "moneytrack", "runtimeExecutable": "python3", "runtimeArgs": ["serve.py"], "port": 8124 }
+    { "name": "clengan", "runtimeExecutable": "python3", "runtimeArgs": ["serve.py"], "port": 8124 }
   ]
 }

@@ -129,7 +129,7 @@ export function exportXlsx(txns, accounts) {
   const accSheet = XLSX.utils.json_to_sheet(accountsToSheetData(accounts), { header: ACCOUNTS_COLUMNS });
   XLSX.utils.book_append_sheet(book, accSheet, 'accounts');
   const stamp = new Date().toISOString().slice(0, 10);
-  XLSX.writeFile(book, `moneytrack-${stamp}.xlsx`);
+  XLSX.writeFile(book, `clengan-${stamp}.xlsx`);
 }
 
 // A one-time migration off a FINANCIAL PLANNER workbook, kept apart from

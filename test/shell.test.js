@@ -97,5 +97,5 @@ test('SHELL does not list a file that no longer exists', () => {
 });
 
 test('the cache name carries a version that can be bumped', () => {
-  assert.match(sw, /const CACHE = 'moneytrack-v\d+';/);
+  assert.match(sw, /const CACHE = 'clengan-v\d+';/);
 });

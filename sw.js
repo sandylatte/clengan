@@ -1,11 +1,11 @@
 // RELEASE RULE: if you change ANY file listed in SHELL below (app.js,
 // rollup.js, money.js, styles.css, etc.), you MUST bump this string
-// (e.g. 'moneytrack-v1' -> 'moneytrack-v2') as part of that change.
+// (e.g. 'clengan-v2' -> 'clengan-v3') as part of that change.
 // The fetch handler is cache-first and activate() only deletes caches whose
 // NAME differs from CACHE — so an unbumped CACHE means every user with the
 // worker already installed keeps being served the OLD shell forever, silently,
 // including any money bug that edit was meant to fix.
-const CACHE = 'moneytrack-v74';
+const CACHE = 'clengan-v75';
 
 const SHELL = [
   './',
@@ -40,7 +40,7 @@ const SHELL = [
 // all about what goes into it. A server that does not send no-store (GitHub
 // Pages, any static host, `python3 -m http.server`) lets the browser answer
 // those fetches from its own heuristic cache, so a cache honestly named
-// moneytrack-v74 gets filled with weeks-old CSS and modules.
+// clengan-v75 gets filled with weeks-old CSS and modules.
 //
 // That is how the peach tone kept coming back RED: styles.css from before
 // 932f081, when the peach button was salmon #B2503A, reinstalled into a
