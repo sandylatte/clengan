@@ -296,6 +296,69 @@ export async function ensureAccount(name, openingBalance = 0) {
   return name;
 }
 
+// Renaming an account is a rename of a KEY. Accounts are keyed by name and
+// transactions reference that name as a string, so there is no id to change
+// underneath — every row has to be rewritten, and so does the default-account
+// setting if it points at the old name.
+//
+// All of it runs in ONE transaction across the three stores. Done as separate
+// writes, a failure halfway leaves rows pointing at an account that no longer
+// exists: money still in the ledger, filed under nothing, and invisible in
+// every per-account total. The abort path is why this is not three calls.
+export function renameAccount(from, to) {
+  const wanted = String(to ?? '').trim();
+  if (!wanted) return Promise.reject(new RangeError('an account needs a name'));
+
+  return openDb().then((database) => new Promise((resolve, reject) => {
+    const transaction = database.transaction(['accounts', 'transactions', 'settings'], 'readwrite');
+    const accounts = transaction.objectStore('accounts');
+    let failure = null;
+    const fail = (message) => { failure = new Error(message); transaction.abort(); };
+
+    const all = accounts.getAll();
+    all.onsuccess = () => {
+      const rows = all.result;
+      const current = rows.find((row) => row.name === from);
+      if (!current) { fail(`there is no account named "${from}"`); return; }
+
+      // Same rule as creating one: two accounts differing only in casing are
+      // one account to a reader and unrecoverable once rows are split.
+      const clash = matchAccountName(rows.filter((row) => row.name !== from), wanted);
+      if (clash) { fail(`"${clash.name}" already exists`); return; }
+      if (wanted === from) { resolve(); return; }
+
+      // The new record keeps the position and the opening balance, so a
+      // rename does not move the account in the list or alter any balance.
+      accounts.delete(from);
+      accounts.put({ ...current, name: wanted });
+
+      const txns = transaction.objectStore('transactions');
+      const cursor = txns.openCursor();
+      cursor.onsuccess = () => {
+        const at = cursor.result;
+        if (at) {
+          if (at.value.account === from) at.update({ ...at.value, account: wanted });
+          at.continue();
+          return;
+        }
+        // Only once every row has been walked: a default pointing at a name
+        // that no longer exists silently selects nothing on the Add form.
+        const settings = transaction.objectStore('settings');
+        const preference = settings.get('default-account');
+        preference.onsuccess = () => {
+          if (preference.result && preference.result.value === from) {
+            settings.put({ key: 'default-account', value: wanted });
+          }
+        };
+      };
+    };
+
+    transaction.oncomplete = () => resolve();
+    transaction.onerror = () => reject(failure || transaction.error);
+    transaction.onabort = () => reject(failure || transaction.error);
+  }));
+}
+
 // The unguarded write. Replacing an account's opening balance is a real
 // operation, but it is destructive and silent, so every caller reaching for
 // it has to have decided that on purpose — the Settings form confirms with

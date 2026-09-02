@@ -14,7 +14,7 @@ import { attachSwipe, closeOpenRow } from './swipe.js';
 import { editTransaction } from './editor.js';
 import { exportXlsx, importXlsx, importPlanner } from './xlsx-io.js';
 import { attachCalendar, toISO } from './calendar.js';
-import { confirmDialog, alertDialog, pickColour } from './dialog.js';
+import { confirmDialog, alertDialog, pickColour, promptDialog } from './dialog.js';
 import {
   SAMPLE_ACCOUNTS, SAMPLE_COLOURS, SAMPLE_NOTE, sampleMonths, sampleTransactions,
 } from './sample.js';
@@ -1224,6 +1224,34 @@ async function onCategoryDrop({ name, index, from, to }) {
   await refresh();
 }
 
+async function renameAccount(from, names) {
+  const others = names.filter((name) => name !== from).map((name) => name.toLowerCase());
+  const to = await promptDialog({
+    title: `Rename ${from}`,
+    body: 'Every transaction filed under this account moves with it, and its balance and position do not change.',
+    label: 'Account name',
+    value: from,
+    confirmLabel: 'Rename',
+    // Checked here as well as in the data layer: catching it in the dialog
+    // keeps what was typed on screen, where rejecting it after the dialog
+    // closed would make the user start again.
+    validate: (entered) => {
+      if (!entered) return 'An account needs a name.';
+      if (others.includes(entered.toLowerCase())) return `${entered} already exists.`;
+      return null;
+    },
+  });
+  if (to === null || to === from) return;
+  try {
+    await db.renameAccount(from, to);
+  } catch (error) {
+    showAccountStatus(`${from} was not renamed, and nothing changed. ${error.message}`);
+    return;
+  }
+  showAccountStatus(`Renamed to ${to}.`, 'ok');
+  await refresh();
+}
+
 async function saveAccountOrder(names) {
   await db.reorderAccounts(names);
   showAccountStatus('');
@@ -1368,6 +1396,20 @@ async function renderAccounts(accounts) {
       } catch (error) {
         showAccountStatus(`${name} was not removed, and nothing changed. ${error.message}`);
       }
+    });
+
+    // The name is the button. An account is renamed rarely enough that a
+    // dedicated control would be clutter, and often enough that delete-and-
+    // re-add — which is what this replaced — is not an answer: it orphans
+    // every transaction filed under the old name.
+    title.className = 'row__title row__title--action';
+    title.setAttribute('role', 'button');
+    title.setAttribute('tabindex', '0');
+    title.setAttribute('aria-label', `Rename account ${name}`);
+    const rename = () => renameAccount(name, names);
+    title.addEventListener('click', rename);
+    title.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); rename(); }
     });
 
     const controls = document.createElement('div');

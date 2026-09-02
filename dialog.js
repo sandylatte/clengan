@@ -72,6 +72,59 @@ export async function alertDialog({ title, body, confirmLabel = 'Close' }) {
   await open({ title, body, confirmLabel, cancelLabel: null, danger: false });
 }
 
+// Asking for one line of text. Resolves to the trimmed string, or to null
+// when dismissed — never to an empty string, so a caller cannot mistake
+// "cancelled" for "cleared it".
+let promptNode = null;
+
+export function promptDialog({ title, body, label, value = '', confirmLabel, validate }) {
+  if (!promptNode) {
+    promptNode = document.createElement('dialog');
+    promptNode.className = 'dialog';
+    promptNode.innerHTML = `
+      <h2 class="dialog__title"></h2>
+      <p class="dialog__body"></p>
+      <label class="prompt__label" for="prompt-input"></label>
+      <input type="text" id="prompt-input" autocomplete="off">
+      <p class="prompt__error budget-note__warning" role="alert"></p>
+      <div class="dialog__actions">
+        <button type="button" class="dialog__cancel">Cancel</button>
+        <button type="button" class="dialog__confirm primary"></button>
+      </div>`;
+    document.body.append(promptNode);
+  }
+  const dialog = promptNode;
+  dialog.querySelector('.dialog__title').textContent = title;
+  dialog.querySelector('.dialog__body').textContent = body ?? '';
+  dialog.querySelector('.dialog__body').hidden = !body;
+  dialog.querySelector('.prompt__label').textContent = label;
+  dialog.querySelector('.dialog__confirm').textContent = confirmLabel;
+  const field = dialog.querySelector('#prompt-input');
+  const error = dialog.querySelector('.prompt__error');
+  field.value = value;
+  error.textContent = '';
+
+  return new Promise((resolve) => {
+    const finish = (result) => { dialog.close(); resolve(result); };
+    const submit = () => {
+      const entered = field.value.trim();
+      // Validation runs BEFORE closing, so a rejected value keeps what was
+      // typed on screen instead of making the user start again.
+      const complaint = validate ? validate(entered) : null;
+      if (complaint) { error.textContent = complaint; field.focus(); return; }
+      finish(entered);
+    };
+    dialog.querySelector('.dialog__confirm').onclick = submit;
+    field.onkeydown = (event) => { if (event.key === 'Enter') { event.preventDefault(); submit(); } };
+    dialog.querySelector('.dialog__cancel').onclick = () => finish(null);
+    dialog.oncancel = () => finish(null);
+    dialog.onclick = (event) => { if (event.target === dialog) finish(null); };
+    dialog.showModal();
+    field.focus();
+    field.select();
+  });
+}
+
 // A separate dialog node from the confirm/alert one: this is a grid of
 // choices rather than a message with two buttons, and reusing the other
 // node would mean rebuilding its insides on every call.

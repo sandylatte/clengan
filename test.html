@@ -296,6 +296,73 @@ test('editing a transfer amount keeps the pair netting to zero', async () => {
   if (!after.some((r) => r.amount === 75000)) throw new Error('the partner did not follow the new amount');
 });
 
+
+test('renameAccount moves every transaction with the account', async () => {
+  await db.clearAll();
+  await db.putAccount('Bank BCA', 1000);
+  await db.addFlow({ date: '2026-08-01', account: 'Bank BCA', amount: -500, category: 'Food', note: '' });
+  await db.addFlow({ date: '2026-08-02', account: 'Bank BCA', amount: -700, category: 'Food', note: '' });
+  await db.renameAccount('Bank BCA', 'BCA');
+  const rows = await db.allTransactions();
+  const stranded = rows.filter((r) => r.account !== 'BCA');
+  if (stranded.length) throw new Error(`${stranded.length} rows still point at the old name`);
+  const accounts = await db.allAccounts();
+  if (accounts.length !== 1) throw new Error(`expected 1 account, got ${accounts.length}`);
+  if (accounts[0].name !== 'BCA') throw new Error(`account is named ${accounts[0].name}`);
+});
+
+test('renameAccount keeps the opening balance and the position', async () => {
+  await db.clearAll();
+  await db.putAccount('First', 12345);
+  await db.putAccount('Second', 0);
+  const before = (await db.allAccounts()).find((a) => a.name === 'First');
+  await db.renameAccount('First', 'Renamed');
+  const after = (await db.allAccounts()).find((a) => a.name === 'Renamed');
+  if (after.opening_balance !== 12345) throw new Error(`balance changed to ${after.opening_balance}`);
+  if (after.position !== before.position) throw new Error('a rename must not move the account in the list');
+});
+
+test('renameAccount refuses a name another account already has', async () => {
+  await db.clearAll();
+  await db.putAccount('Cash', 0);
+  await db.putAccount('Bank', 0);
+  let threw = false;
+  try { await db.renameAccount('Bank', 'cash'); } catch { threw = true; }
+  if (!threw) throw new Error('a casing variant of an existing name was accepted');
+  const accounts = await db.allAccounts();
+  if (accounts.length !== 2) throw new Error('the account set changed despite the refusal');
+  if (!accounts.some((a) => a.name === 'Bank')) throw new Error('Bank was lost by a rejected rename');
+});
+
+test('a refused rename leaves every transaction untouched', async () => {
+  // The whole point of doing this in one transaction: a failure halfway
+  // would leave rows pointing at an account that no longer exists.
+  await db.clearAll();
+  await db.putAccount('Cash', 0);
+  await db.putAccount('Bank', 0);
+  await db.addFlow({ date: '2026-08-01', account: 'Bank', amount: -500, category: 'Food', note: '' });
+  try { await db.renameAccount('Bank', 'Cash'); } catch { /* expected */ }
+  const rows = await db.allTransactions();
+  if (rows[0].account !== 'Bank') throw new Error(`row moved to ${rows[0].account} despite the refusal`);
+});
+
+test('renameAccount follows the default-account setting', async () => {
+  await db.clearAll();
+  await db.putAccount('Bank', 0);
+  await db.putSetting('default-account', 'Bank');
+  await db.renameAccount('Bank', 'Bank BCA');
+  const preference = await db.getSetting('default-account', '');
+  if (preference !== 'Bank BCA') throw new Error(`the default still says "${preference}"`);
+});
+
+test('renameAccount rejects an empty name', async () => {
+  await db.clearAll();
+  await db.putAccount('Bank', 0);
+  let threw = false;
+  try { await db.renameAccount('Bank', '   '); } catch { threw = true; }
+  if (!threw) throw new Error('an account was allowed to have no name');
+});
+
 let passed = 0;
 for (const { name, fn } of tests) {
   const item = document.createElement('li');

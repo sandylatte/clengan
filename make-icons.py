@@ -36,9 +36,12 @@ def build(size):
     bar_h = safe * 0.185
     gap = (safe - 3 * bar_h) / 2
     radius = bar_h / 2
-    for i, colour in enumerate(BARS):
+    # Lengths step with the colours: the icon and the in-app mark have to be
+    # the same object, and three equal bars read as a hamburger menu.
+    lengths = (1.0, 0.76, 0.53)
+    for i, (colour, share) in enumerate(zip(BARS, lengths)):
         top = left + i * (bar_h + gap)
-        rounded_bar(px, size, left, top, left + safe, top + bar_h, radius, colour)
+        rounded_bar(px, size, left, top, left + safe * share, top + bar_h, radius, colour)
     return px
 
 

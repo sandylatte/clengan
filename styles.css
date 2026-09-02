@@ -441,6 +441,20 @@ button.primary:active { filter: brightness(0.92); }
 
 .row__main { flex: 1; min-width: 0; }
 
+/* A name that is also a control says so on hover and focus rather than by
+   carrying an icon: the row already has three. */
+.row__title--action { cursor: pointer; }
+.row__title--action:hover { text-decoration: underline; }
+.row__title--action:focus-visible {
+  outline: 2px solid var(--color-active);
+  outline-offset: 2px;
+  border-radius: var(--radius-xs);
+}
+
+.prompt__label { margin-top: var(--space-2); }
+.prompt__error:empty { display: none; }
+.prompt__error { margin: calc(var(--space-2) * -1) 0 var(--space-2); font-size: 13px; }
+
 /* A transaction row: day, tag, name, amount over account, delete. Five things
    on one line at 375px, so every fixed part is measured and only the name is
    allowed to take what is left. */
