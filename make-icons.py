@@ -62,6 +62,9 @@ def write_png(path, px, size):
 if __name__ == "__main__":
     out = Path(__file__).parent / "icons"
     out.mkdir(exist_ok=True)
-    for size in (192, 512):
+    # 180 is the apple-touch-icon size. Without that file iOS uses a
+    # SCREENSHOT of the page as the home-screen icon, so the mark never
+    # appears on an iPhone at all.
+    for size in (180, 192, 512):
         write_png(out / f"icon-{size}.png", build(size), size)
         print(f"wrote icons/icon-{size}.png")

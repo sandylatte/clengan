@@ -86,9 +86,11 @@ to register over plain HTTP on anything but localhost.
 
 The app is path-agnostic — every URL in `manifest.json` and `sw.js` is relative,
 so it works at a domain root or in a subfolder without edits. `manifest.json`
-deliberately omits the `id` field for this reason: `id` resolves against the
-origin, and hardcoding one would guess at a deployment path the app otherwise
-does not care about.
+deliberately omits the `id` field for this reason: a relative `id` resolves
+against the deployment path, so it would be identical to the `start_url`
+default while making the app look pinned to a location it does not care about.
+(I added `"id": "./"` while working on this and took it out again — it is a
+no-op that contradicts the paragraph above.)
 
 ## Recommendation
 
@@ -98,19 +100,41 @@ Play Store, **option 2** is a couple of hours, not a rebuild.
 
 ## Before any of this
 
-- `python3 make-icons.py` if the palette ever changes. The icons are generated,
-  not hand-drawn, and they are also the Play Store listing icon.
+- `python3 make-icons.py` if the mark or the palette ever changes. The icons
+  are generated, not hand-drawn, and they are also the Play Store listing icon.
 - Bump `CACHE` in `sw.js`. Shipping a shell change without it leaves every
   installed user on the old version permanently.
-- The Play Store listing wants screenshots. There are none in the repo yet.
+- The Play Store listing wants screenshots. There are none in the repo, and I
+  cannot take them: screenshots time out in the browser I drive. Take them from
+  a phone or a desktop browser at a phone width.
 
 ## What has actually been verified
 
-The service worker caches all 16 shell files and the app was confirmed working
-with the dev server stopped: views render, categories load, fonts come from
-cache. The manifest passes the installability criteria — name, short name,
-description, `display: standalone`, relative `start_url` and `scope`, 192 and
-512 icons in both `any` and `maskable`, and a theme colour matching Tone A.
+Installability, checked against the criteria rather than assumed. Secure
+context, manifest parses, name and short name present, `display: standalone`,
+relative `start_url` and `scope`, 192 and 512 icons in both `any` and
+`maskable`, an active service worker with a fetch handler, and every icon URL
+returning 200 — a 404 on any one of them silently disables the install prompt.
 
-None of the packaging steps above have been run. They need accounts and payment
-methods, which are yours to provide.
+Offline, checked by stopping the dev server rather than by simulating it. With
+nothing listening on the port, a reload still rendered every view, the budget
+tracks, eleven list rows and a balance of Rp 42.280.000, with fonts and styles
+served from the cache.
+
+iOS home-screen icon. `apple-touch-icon` is now linked and returns 200. iOS
+ignores the manifest's icons entirely for "Add to Home Screen", and without
+that link it uses a SCREENSHOT of the page as the home-screen icon — so until
+this commit the mark would never have appeared on an iPhone.
+
+## What has NOT been done, and why
+
+None of the packaging steps have been run. Every one of them needs something
+only you can provide: a Google Play developer account and its $25 fee, an Apple
+Developer account and its $99 a year, an app signing key, and a payment method.
+Those are yours to hold, not mine — a signing key in particular is the thing
+that proves future updates come from you, and it should never pass through a
+machine you do not control.
+
+The same goes for hosting: pushing this folder to a public URL is a decision
+about publishing your own app, so it is yours to make. Everything up to that
+point is done.
