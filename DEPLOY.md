@@ -75,10 +75,26 @@ tier covers a personal app.
 Given the cost and that option 1 puts the same app on your iPhone home screen
 for free, this is only worth it if you intend to distribute to other people.
 
-## Hosting
+## Hosting — done
 
-Options 1 and 2 both need the app at an HTTPS URL. It is a folder of static
-files, so this is free.
+**Live: https://sandylatte.github.io/clengan/**
+
+Repo `sandylatte/clengan`, public, GitHub Pages serving the `master` branch
+root. No workflow file and no build step: every push republishes.
+
+One thing that matters more here than on the dev server. Pages sends
+`cache-control: max-age=600` on every file, which is exactly the condition
+that made a freshly named cache fill with an old shell. The service worker
+fetches its shell with `cache: 'reload'` specifically to defeat that, so
+this host is safe — but it is the reason that line must never be removed.
+
+Verified live on the deployed URL, not locally: HTTPS and secure context,
+manifest served as `application/json`, service worker active with scope
+`/clengan/`, all 23 shell files cached, every icon returning 200 including
+the apple-touch-icon, and the full install checklist passing.
+
+Options 1 and 2 both needed this. It is a folder of static files, so it
+costs nothing.
 
 **GitHub Pages** is the least friction: push this folder to a repository, enable
 Pages, done. HTTPS is automatic, which matters because a service worker refuses
