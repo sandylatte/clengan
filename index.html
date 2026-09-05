@@ -29,13 +29,14 @@
 <!-- The mark, defined once. Bars are token-driven: on carbon it is volt green
      stepping up, on peach it is the rose primary doing the same. A fixed green
      would sit on the peach canvas at barely 1.3:1. -->
-<!-- Three equal bars read as a hamburger menu, and in the top-left of a
-     header that is exactly where a menu button lives — the mark was being
-     taken for a control. The bars now step in LENGTH as well as brightness,
-     which is a chart growing and cannot be mistaken for a menu. -->
+<!-- C2, as chosen: three bars of equal length stepping in brightness only.
+     I once tapered the lengths to stop it reading as a hamburger menu and
+     shipped that without asking; it was reverted. If the menu confusion is
+     ever worth solving, the fix is to drop the mark from the header, not to
+     redraw it. -->
 <svg class="sprite" aria-hidden="true"><symbol id="mark" viewBox="0 0 24 24">
-  <rect x="3.5" y="16.5" width="9" height="4" rx="2" class="mark__bar mark__bar--1"/>
-  <rect x="3.5" y="10" width="13" height="4" rx="2" class="mark__bar mark__bar--2"/>
+  <rect x="3.5" y="16.5" width="17" height="4" rx="2" class="mark__bar mark__bar--1"/>
+  <rect x="3.5" y="10" width="17" height="4" rx="2" class="mark__bar mark__bar--2"/>
   <rect x="3.5" y="3.5" width="17" height="4" rx="2" class="mark__bar mark__bar--3"/>
 </symbol></svg>
 

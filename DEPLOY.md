@@ -116,7 +116,12 @@ Play Store, **option 2** is a couple of hours, not a rebuild.
 
 ## Before any of this
 
-- `python3 make-icons.py` if the mark or the palette ever changes. The icons
+- `python3 make-icons.py` if the mark or the palette ever changes. The mark
+  is C2 — three equal bars stepping in brightness — and it is not mine to
+  redraw. I once tapered the bar lengths to stop it reading as a hamburger
+  menu and shipped that without asking; it was reverted. If that confusion is
+  worth solving, the fix is to drop the mark from the sticky header, where
+  the top-left position is what makes it read as a control. The icons
   are generated, not hand-drawn, and they are also the Play Store listing icon.
 - Bump `CACHE` in `sw.js`. Shipping a shell change without it leaves every
   installed user on the old version permanently.
