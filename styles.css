@@ -62,47 +62,49 @@
   --space-6: 40px;
 
   /* For marks small enough that 6px would round them into circles. */
-  --radius-xs: 2px;
-  --radius-sm: 6px;
-  --radius-md: 8px;
-  --radius-lg: 12px;
+  --radius-xs: 3px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
 
   --font-ui: "Fira Sans", system-ui, -apple-system, sans-serif;
   --font-num: "Fira Code", ui-monospace, "SF Mono", Menlo, monospace;
 }
 
-/* Tone B — peach room. Cards sit lighter than the canvas, matching the
-   reference where the frame interior reads brighter than the wall. */
+/* Tone B — rose room.
+   The predecessor sat at hue 15 and 67% saturation, which is orange-salmon,
+   not pink. At 86% lightness a desktop LCD flatters it; an OLED phone with a
+   vivid profile pushes it to red, and it was reported as red from the first
+   build. Every colour in it passed contrast, which is exactly why measuring
+   contrast never found the fault — the hue was wrong, not the ratio.
+   This ground is hue 338. It cannot drift into red whatever saturation a
+   phone applies, because there is no red within reach of it. */
 :root[data-theme="peach"] {
-  /* Light pink fill, so the label goes dark rather than white. A pale fill
-     on a pale card is only 1.6:1 against it, so the button is lifted off
-     the card by a shadow rather than ringed by an outline. Nothing lighter
-     than the salmon reaches 3:1 here, so the boundary is a depth cue and
-     the label carries identification at 6.66:1. */
-  --color-primary: #D7B4AD;        /* saturation 41% -> 34%, hue held at rose */
-  --color-primary-hover: #E0C2BC;
-  --color-on-primary: #4A2A22;     /* 6.66:1 on primary */
-  --shadow-primary: 0 1px 3px rgba(74, 42, 34, 0.20), 0 1px 2px rgba(74, 42, 34, 0.12);
-  --shadow-popover: 0 8px 24px rgba(74, 42, 34, 0.20), 0 2px 6px rgba(74, 42, 34, 0.12);
-  /* Lighter than graphite's: the same opacity over a pale canvas reads as
-     the lights going out rather than the page stepping back. */
-  --color-scrim: rgb(74 42 34 / 0.38);
-  /* The tab strip is the room's floor: a step off the canvas, not a tint of
-     the card, which is what the graphite mix produces on a light ground. */
-  --color-tabbar: #EFC5B7;
-  --color-active: #8E3A26;         /* 4.8:1 on the tab strip */
-  --color-bar: #F0C0B0;
-  --color-accent: #2D674C;         /* income, 4.57:1 on the page */
-  --color-destructive: #9F3B29;    /* spending, 4.60:1 on the page */
-  --color-background: #F3CEC2;
-  --color-foreground: #4A2A22;     /* 13:1 */
-  /* The ladder steps up from the canvas without reaching white — a near-white
-     input inside a peach room reads as a hole punched in the wall. */
-  --color-muted: #F7DCD3;
-  --color-input: #FBE8E1;
-  --color-subtle: #7E5144;         /* 4.58:1 on the page, 5.63:1 on an input */
-  --color-border: #E9C2B5;
-  --color-border-strong: #D9A493;
+  /* Solved, not picked: each text colour below is the LIGHTEST value that
+     still clears its ratio on this ground, so nothing shouts and nothing
+     fails on a bright screen. */
+  /* White on the first value I tried here was 4.11:1 — under AA for a button
+     label, and I had asserted 4.6 from a solver run without checking the pair
+     after wiring it up. This is the LIGHTEST rose where white clears 4.5. */
+  --color-primary: #9D4D6B;        /* white on it 5.66:1 */
+  --color-primary-hover: #AE5B7A;  /* white on it 4.59:1 */
+  --color-on-primary: #FFFFFF;
+  --shadow-primary: 0 1px 2px rgba(69, 37, 49, 0.16);
+  --shadow-popover: 0 12px 32px rgba(69, 37, 49, 0.18), 0 2px 8px rgba(69, 37, 49, 0.10);
+  --color-scrim: rgb(69 37 49 / 0.34);
+  --color-tabbar: #E8CDD8;
+  --color-active: #973B5D;         /* 4.57:1 on the tab strip */
+  --color-bar: #E3C3D1;
+  --color-accent: #2D6D4D;         /* income, 4.6:1 */
+  --color-destructive: #B3332A;    /* spending, 4.6:1 */
+  --color-background: #EFD9E1;     /* hue 338 — pink, not salmon */
+  --color-foreground: #452531;     /* 10:1 */
+  --color-muted: #F3E6EB;          /* the card surface, a step ABOVE the page */
+  --color-input: #F6EEF1;
+  --color-subtle: #845466;         /* 4.6:1 on the page */
+  --color-border: #E1C6D2;
+  --color-border-strong: #CFA9BC;
   color-scheme: light;
 }
 
@@ -135,7 +137,6 @@ h1 {
   padding: var(--space-2) var(--space-3);
   background: color-mix(in srgb, var(--color-background) 88%, transparent);
   backdrop-filter: blur(12px);
-  border-bottom: 1px solid var(--color-border);
   font-size: 17px;
   font-weight: 600;
   line-height: 1.4;
@@ -208,19 +209,18 @@ h2 {
 .view .datefield + label { margin-top: var(--space-3); }
 .view[hidden] { display: none; }
 
-/* Ledger direction: the page is one continuous sheet, not a stack of boxes.
-   A card was a filled panel with a border and a radius; it is now a section
-   separated by a rule and by space, which is how a printed statement divides
-   itself. The surface ladder survives where it still does work — inputs keep
-   their fill, because a field has to look like somewhere you can type. */
+/* Vault: the screen is a tray of objects, not a continuous sheet. A section
+   is a filled, rounded surface sitting on the canvas — which is the opposite
+   of the Ledger pass that preceded it, and deliberately so. Ledger dissolved
+   every boundary until nothing had presence; here each thing is a thing. */
 .card {
-  padding: var(--space-6) 0 0;
-  margin: 0;
-  border-top: 1px solid var(--color-border);
+  background: var(--color-muted);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+  margin-bottom: var(--space-2);
 }
-.card:first-of-type { border-top: none; padding-top: var(--space-3); }
-/* The last section needs room above the fixed tab bar. */
-.view > .card:last-of-type { padding-bottom: var(--space-5); }
+.view > .card:last-of-type { margin-bottom: var(--space-5); }
 
 .tabbar {
   position: fixed;
@@ -479,30 +479,32 @@ button.primary:active { filter: brightness(0.92); }
    heading and delete moved behind a swipe. The name gets what both gave up. */
 .row--txn {
   gap: var(--space-2);
-  padding: var(--space-3) var(--space-2);
+  padding: var(--space-3);
   border-bottom: none;
   cursor: pointer;
 }
 
+/* The day heading floats on the canvas BETWEEN groups of tiles, so it needs
+   air above it rather than a rule beneath it. */
 .dayhead {
   display: flex;
   align-items: baseline;
   gap: var(--space-2);
-  padding: var(--space-5) var(--space-2) var(--space-1);
+  padding: var(--space-4) var(--space-1) var(--space-2);
 }
 .dayhead b { font-size: 13px; font-weight: 700; letter-spacing: 0.01em; }
 .dayhead i { flex: 1; height: 1px; background: var(--color-border); }
 .dayhead__net { font-size: 12px; color: var(--color-subtle); }
-.dayhead:first-child { padding-top: var(--space-2); }
+.dayhead:first-child { padding-top: var(--space-1); }
 
 /* The row rides on .swipe__over; .swipe__under sits behind it and is only
    seen once the surface has moved. */
 .swipe {
   position: relative;
   overflow: hidden;
-  border-bottom: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--space-1);
 }
-.swipe:last-child { border-bottom: none; }
 
 .swipe__under {
   position: absolute;
@@ -522,7 +524,9 @@ button.primary:active { filter: brightness(0.92); }
 
 .swipe__over {
   position: relative;
-  background: var(--color-background);
+  background: var(--color-muted);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
   /* Vertical scrolling stays the browser's; the horizontal axis is ours.
      Without this the page and the row fight over every drag. */
   touch-action: pan-y;
@@ -608,11 +612,15 @@ button.primary:active { filter: brightness(0.92); }
    opened to answer. Net, income and spent are the supporting line beneath it.
    Only one figure per screen gets to be large; giving two that weight is what
    made the old stats block read as four competing numbers. */
-/* Balance leads full width, then net, then income and spent as a pair. */
-.stats {
+/* The hero object. Balance is the reason the screen is opened, so it gets a
+   surface of its own and the largest figure in the app; the supporting three
+   sit under it as a quiet strip rather than as three competing headlines. */
+.card.stats {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: var(--space-4);
+  gap: var(--space-3) var(--space-4);
+  padding: var(--space-4) var(--space-4) var(--space-4);
+  border-radius: var(--radius-xl);
 }
 
 .stat { display: flex; flex-direction: column; gap: var(--space-0); }
@@ -636,6 +644,7 @@ button.primary:active { filter: brightness(0.92); }
   padding-bottom: var(--space-3);
   border-bottom: 1px solid var(--color-border);
 }
+.stat--balance .stat__label { color: var(--color-subtle); }
 
 .stat--balance .amount {
   font-size: 34px;
@@ -656,17 +665,37 @@ button.primary:active { filter: brightness(0.92); }
 
 /* S2. A labelled track per bucket: what is spent against what is budgeted,
    a bar for how far through, and the remainder underneath in words. */
-.tracks { display: flex; flex-direction: column; gap: var(--space-4); }
+/* Pods. Each bucket is a separate object rather than a row in a list, so the
+   eye can compare two of them at once instead of reading down a column. */
+.tracks {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-2);
+}
+.tracks .track {
+  background: var(--color-input);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+}
+/* Savings is the outcome of the other two, not a third peer, so it spans.
+   Scoped to the budget: in the funds list the last pod is just another fund
+   and spanning it would imply a significance it does not have. */
+#budget .track:last-child { grid-column: 1 / -1; }
 
+/* The funds total is a summary of the pods above it, not a pod. */
+.tracks .figures__row { grid-column: 1 / -1; }
+
+/* Stacked inside a pod: the label sits above its figure rather than beside
+   it, because a pod is half the width a row had. */
 .track__head {
   display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--space-2);
-  font-size: 14px;
-  margin-bottom: var(--space-1);
+  flex-direction: column;
+  gap: 2px;
+  font-size: 13px;
+  margin-bottom: var(--space-2);
 }
-.track__figures { font-size: 12px; color: var(--color-subtle); }
+.track__figures { font-size: 15px; font-weight: 600; color: var(--color-foreground); }
 
 .track__rail {
   height: 8px;
@@ -698,10 +727,11 @@ button.primary:active { filter: brightness(0.92); }
   align-items: baseline;
   justify-content: space-between;
   gap: var(--space-3);
-  padding: var(--space-2) var(--space-1);
-  border-bottom: 1px solid var(--color-border);
+  padding: var(--space-2);
+  border-radius: var(--radius-sm);
   font-size: 14px;
 }
+.figures__row + .figures__row { border-top: 1px solid var(--color-border); }
 .figures__row:last-child { border-bottom: none; }
 
 .figures__label {

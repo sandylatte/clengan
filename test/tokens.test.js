@@ -139,3 +139,19 @@ test('every font size in the stylesheet is on the ramp in DESIGN.md', () => {
     + 'ramp if it is intentional, or reuse one that is already there.',
   );
 });
+
+// A button label sits on the button, not on the page, so checking it against
+// the page proves nothing. The first rose primary shipped at 4.11:1 for white
+// on the fill — below AA — and every existing test passed, because none of
+// them looked at that pair.
+for (const [tone, selector] of [['graphite', ':root {'], ['peach', ':root[data-theme="peach"] {']]) {
+  test(`${tone} primary button label clears 4.5:1 on its own fill`, () => {
+    const token = tokensOf(selector);
+    const ratio = contrast(token['--color-on-primary'], token['--color-primary']);
+    assert.ok(
+      ratio >= 4.5,
+      `${tone} --color-on-primary (${token['--color-on-primary']}) is ${ratio.toFixed(2)}:1 `
+      + `on --color-primary (${token['--color-primary']}), needs 4.5:1`,
+    );
+  });
+}
