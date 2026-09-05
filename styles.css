@@ -206,6 +206,74 @@ h2 {
   margin: 0 auto;
   padding: var(--space-3) var(--space-3) var(--space-6);
 }
+/* The period control: month picker and a two-way switch on one line, above
+   everything they govern. */
+.period {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+.period input[type="month"] { margin: 0; flex: 1; min-width: 0; }
+
+.seg {
+  display: flex;
+  flex: none;
+  padding: 3px;
+  background: var(--color-input);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+.seg__button {
+  min-height: 34px;
+  padding: 0 var(--space-2);
+  background: none;
+  border: none;
+  border-radius: var(--radius-xs);
+  color: var(--color-subtle);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.seg__button[aria-pressed="true"] {
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+  font-weight: 600;
+}
+
+/* Settings is nine sections of form. Open, it was five thousand pixels of
+   scrolling to reach a switch. Each section is a native <details>, so the
+   screen opens as a short list of what exists and the platform handles the
+   toggling — no state to keep and nothing to go wrong. */
+details.card > summary {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  list-style: none;
+  cursor: pointer;
+  min-height: 32px;
+}
+details.card > summary::-webkit-details-marker { display: none; }
+details.card > summary h2 { margin: 0; flex: 1; }
+/* The chevron is drawn rather than an icon: one border, rotated. */
+details.card > summary::after {
+  content: "";
+  width: 8px;
+  height: 8px;
+  flex: none;
+  border-right: 2px solid var(--color-subtle);
+  border-bottom: 2px solid var(--color-subtle);
+  transform: rotate(45deg) translate(-2px, -2px);
+  transition: transform 150ms ease;
+}
+details.card[open] > summary::after { transform: rotate(-135deg) translate(-2px, -2px); }
+details.card[open] > summary { margin-bottom: var(--space-3); }
+details.card > summary:focus-visible {
+  outline: 2px solid var(--color-active);
+  outline-offset: 2px;
+  border-radius: var(--radius-xs);
+}
+
 /* Two related fields on one line. auto-fit rather than a fixed two columns,
    so when one of the pair is hidden — To account outside a transfer, Type
    outside an expense — the other takes the whole row instead of leaving a

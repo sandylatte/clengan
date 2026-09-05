@@ -5,7 +5,7 @@
 // NAME differs from CACHE — so an unbumped CACHE means every user with the
 // worker already installed keeps being served the OLD shell forever, silently,
 // including any money bug that edit was meant to fix.
-const CACHE = 'clengan-v83';
+const CACHE = 'clengan-v84';
 
 const SHELL = [
   './',
@@ -40,7 +40,7 @@ const SHELL = [
 // all about what goes into it. A server that does not send no-store (GitHub
 // Pages, any static host, `python3 -m http.server`) lets the browser answer
 // those fetches from its own heuristic cache, so a cache honestly named
-// clengan-v83 gets filled with weeks-old CSS and modules.
+// clengan-v84 gets filled with weeks-old CSS and modules.
 //
 // That is how the peach tone kept coming back RED: styles.css from before
 // 932f081, when the peach button was salmon #B2503A, reinstalled into a

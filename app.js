@@ -2,7 +2,7 @@ import * as db from './db.js';
 import { formatIDR, formatAmount, groupDigits, rupiahToCents, centsToRupiahDigits } from './money.js';
 import {
   filterMonth, monthlyTotals, spendingBreakdown, accountBalances, netTrend, bucketTotals, fundsByYear,
-  lastSixMonths, groupByDay,
+  lastSixMonths, groupByDay, periodTotals, periodBuckets,
 } from './rollup.js';
 import {
   BUCKETS, CATEGORY_KINDS, CATEGORY_COLOURS, DEFAULT_SPLIT, validateSplit, allocateFunds,
@@ -251,7 +251,20 @@ for (const input of monthInputs) {
   });
 }
 
-for (const [id, key] of [['pie-period', 'period'], ['pie-account', 'account'], ['pie-bucket', 'bucket']]) {
+// One period control for the Summary. It used to live only on the spending
+// chart, which meant the balance, the budget and the funds silently stayed
+// monthly while the chart said "whole year" — two answers on one screen.
+for (const button of document.querySelectorAll('.seg__button')) {
+  button.addEventListener('click', () => {
+    state.filter.period = button.dataset.period;
+    for (const other of document.querySelectorAll('.seg__button')) {
+      other.setAttribute('aria-pressed', String(other === button));
+    }
+    refresh();
+  });
+}
+
+for (const [id, key] of [['pie-account', 'account'], ['pie-bucket', 'bucket']]) {
   document.getElementById(id).addEventListener('change', (event) => {
     state.filter[key] = event.target.value;
     refresh();
@@ -430,7 +443,7 @@ async function openEditor(txn) {
 const BUCKET_LABELS = { fixed: 'Fixed', flexible: 'Flexible' };
 
 function renderBudget(txns) {
-  const t = bucketTotals(txns, state.month, state.split);
+  const t = periodBuckets(txns, state.filter.period, state.month, state.split);
 
   // Tracks, not a four-column table. The table had to shrink its type to fit
   // "Budget / Spent / Left" on a 375px screen, and the reader still had to do
@@ -537,7 +550,9 @@ function renderFunds(txns) {
     return;
   }
 
-  const month = bucketTotals(txns, state.month, state.split).savings.projected;
+  // Follows the period too, so the funds card cannot describe a different
+  // span from the budget card sitting directly above it.
+  const month = periodBuckets(txns, state.filter.period, state.month, state.split).savings.projected;
   const year = fundsByYear(txns, state.split, state.funds, Number(state.month.slice(0, 4)));
   const monthly = new Map(allocateFunds(month, state.funds).map((f) => [f.name, f.amount]));
   const yearly = new Map(year.funds.map((f) => [f.name, f.amount]));
@@ -568,7 +583,9 @@ function renderFunds(txns) {
 
     const foot = document.createElement('div');
     foot.className = 'track__foot';
-    foot.textContent = `${fund.percent}% of savings · ${formatIDR(yearly.get(fund.name))} so far in ${year.year}`;
+    foot.textContent = state.filter.period === 'year'
+      ? `${fund.percent}% of savings`
+      : `${fund.percent}% of savings · ${formatIDR(yearly.get(fund.name))} so far in ${year.year}`;
 
     row.append(head, rail, foot);
     return row;
@@ -696,12 +713,14 @@ function renderPie(breakdown, colours) {
 // try/catch is needed: every section renders fully from clean data. Rows that
 // failed that filter are passed separately, only to name them in the banner.
 function renderSummary(txns, accounts, invalidTxns) {
-  const totals = monthlyTotals(txns, state.month);
+  const totals = periodTotals(txns, state.filter.period, state.month);
   renderBudget(txns);
   renderFunds(txns);
   document.getElementById('stat-income').textContent = formatIDR(totals.income);
   document.getElementById('stat-spent').textContent = formatIDR(-totals.spending);
   const net = document.getElementById('stat-net');
+  document.querySelector('.stat--net .stat__label').textContent =
+    state.filter.period === 'year' ? 'Net this year' : 'Net';
   net.textContent = formatAmount(totals.net);
   net.className = `amount ${totals.net >= 0 ? 'amount--in' : 'amount--out'}`;
 
@@ -734,6 +753,8 @@ function renderSummary(txns, accounts, invalidTxns) {
   // Showing only the first made the initial balance look lost, and folding
   // it into Net would have produced a figure that is neither, and that two
   // months could not be compared on.
+  // Balance is a running total and belongs to no period, so it is the one
+  // figure on the screen the toggle must NOT change.
   const balanceStat = document.getElementById('stat-balance');
   balanceStat.textContent = formatIDR(total);
   balanceStat.className = `amount ${total < 0 ? 'amount--out' : ''}`;

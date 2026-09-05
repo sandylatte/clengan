@@ -121,8 +121,13 @@
 </section>
 <section class="view" id="view-summary" hidden>
   <h1><svg class="mark" aria-hidden="true"><use href="#mark"/></svg><span class="h1-name">Summary</span></h1>
-  <label for="summary-month">Month</label>
-  <input type="month" id="summary-month">
+  <div class="period">
+    <input type="month" id="summary-month" aria-label="Month">
+    <div class="seg" role="group" aria-label="Period">
+      <button type="button" class="seg__button" data-period="month" aria-pressed="true">Month</button>
+      <button type="button" class="seg__button" data-period="year" aria-pressed="false">Year</button>
+    </div>
+  </div>
   <p id="summary-status" role="status"></p>
 
   <div class="card stats">
@@ -147,13 +152,6 @@
   <div class="card">
     <h2>Spending by category</h2>
     <div class="filters" role="group" aria-label="Filter this chart">
-      <div class="filters__field">
-        <label for="pie-period">Period</label>
-        <select id="pie-period">
-          <option value="month">This month</option>
-          <option value="year">Whole year</option>
-        </select>
-      </div>
       <div class="filters__field">
         <label for="pie-account">Account</label>
         <select id="pie-account"></select>
@@ -193,8 +191,8 @@
 <section class="view" id="view-settings" hidden>
   <h1><svg class="mark" aria-hidden="true"><use href="#mark"/></svg><span class="h1-name">Settings</span></h1>
 
-  <div class="card">
-    <h2>Accounts</h2>
+  <details class="card" open>
+    <summary><h2>Accounts</h2></summary>
     <p class="hint">Nothing can be recorded until an account exists. The balance you enter is the starting point; every transaction moves it from there.</p>
     <form id="account-form">
       <label for="account-name">Name</label>
@@ -215,19 +213,19 @@
     <label for="default-account">Default account</label>
     <p class="hint">Pre-selected on the Add form, so the account you use most is already chosen. You can still pick another on any transaction.</p>
     <select id="default-account"></select>
-  </div>
+  </details>
 
-  <div class="card">
-    <h2>Appearance</h2>
+  <details class="card">
+    <summary><h2>Appearance</h2></summary>
     <label for="theme-select">Colour tone</label>
     <select id="theme-select">
       <option value="graphite">Carbon &amp; volt</option>
       <option value="peach">Rose room</option>
     </select>
-  </div>
+  </details>
 
-  <div class="card">
-    <h2>Budget split</h2>
+  <details class="card">
+    <summary><h2>Budget split</h2></summary>
     <form id="split-form">
       <label for="split-fixed">Fixed %</label>
       <input type="number" id="split-fixed" min="0" max="100" step="1" required>
@@ -238,10 +236,10 @@
       <button type="submit" class="primary">Save split</button>
     </form>
     <p id="split-status" role="status"></p>
-  </div>
+  </details>
 
-  <div class="card">
-    <h2>Savings funds</h2>
+  <details class="card">
+    <summary><h2>Savings funds</h2></summary>
     <p class="hint">Shares of whatever savings a month actually produces, including budget you did not spend. Must total 100%.</p>
     <form id="fund-form">
       <label for="fund-name">Name</label>
@@ -252,10 +250,10 @@
     </form>
     <p id="fund-status" role="status"></p>
     <ul id="fund-list" class="rows"></ul>
-  </div>
+  </details>
 
-  <div class="card">
-    <h2>Categories</h2>
+  <details class="card">
+    <summary><h2>Categories</h2></summary>
     <form id="category-form">
       <label for="category-name">Name</label>
       <input type="text" id="category-name" required>
@@ -274,43 +272,43 @@
     <h3 class="group__heading">Income</h3>
     <ul id="category-list-income" class="rows rows--drop"></ul>
     <p class="group__empty" id="category-empty-income" hidden>No income categories. Drag one here.</p>
-  </div>
+  </details>
 
-  <div class="card">
-    <h2>Backup</h2>
+  <details class="card">
+    <summary><h2>Backup</h2></summary>
     <button type="button" class="primary" id="export-button">Export to Excel</button>
     <label for="import-input">Import from Excel</label>
     <input type="file" id="import-input" accept=".xlsx,.xls">
     <p id="io-status" role="status"></p>
-  </div>
+  </details>
 
-  <div class="card">
-    <h2>Import a planner</h2>
+  <details class="card">
+    <summary><h2>Import a planner</h2></summary>
     <p class="hint">Reads a FINANCIAL PLANNER workbook once: its ledger rows, and the fixed or flexible bucket each category was filed under. Adds to what is already here rather than replacing it.</p>
     <label for="planner-account">File rows under account</label>
     <input type="text" id="planner-account" value="Imported" required>
     <label for="planner-input">Planner workbook</label>
     <input type="file" id="planner-input" accept=".xlsx,.xls">
     <p id="planner-status" role="status"></p>
-  </div>
+  </details>
 
-  <div class="card">
-    <h2>Sample data</h2>
+  <details class="card">
+    <summary><h2>Sample data</h2></summary>
     <p class="hint">Fills the app with three months of made-up transactions so every screen has something to show. Added alongside anything already here, never in place of it — and every row is labelled in its note so you can find and delete them.</p>
     <button type="button" class="primary" id="sample-button">Load sample data</button>
     <p id="sample-status" role="status"></p>
-  </div>
+  </details>
 
-  <div class="card">
-    <h2>App version</h2>
+  <details class="card">
+    <summary><h2>App version</h2></summary>
     <p class="hint">The shell is served from an offline cache, so a stale one keeps showing old numbers with no sign anything is wrong. This names the version actually running and forces a fresh copy.</p>
     <p id="version-status" role="status"></p>
     <button type="button" class="primary" id="update-button">Fetch the latest version</button>
-    <h2 style="margin-top:var(--space-4)">Diagnostics</h2>
+    <h3 class="group__heading">Diagnostics</h3>
     <p class="hint">Read this out if something looks wrong on your device. It is the only way I can see what your phone is actually rendering.</p>
     <pre id="diagnostics" class="diagnostics"></pre>
     <button type="button" id="copy-diagnostics">Copy diagnostics</button>
-  </div>
+  </details>
 </section>
 
 <!-- Icons: Lucide (plus, list, pie-chart, sliders-horizontal), one stroke weight. -->

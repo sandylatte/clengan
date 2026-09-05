@@ -120,6 +120,50 @@ export function lastSixMonths(endMonth) {
     new Date(Date.UTC(year, month - 6 + i, 1)).toISOString().slice(0, 7));
 }
 
+// A period is either one month or the twelve of its year. Every figure on the
+// Summary now runs through this, so the balance, the budget, the funds and the
+// chart cannot disagree about which span they describe — until now only the
+// chart could switch, and the rest of the screen silently stayed monthly.
+export function monthsInPeriod(period, month) {
+  return period === 'year' ? monthsOfYear(Number(month.slice(0, 4))) : [month];
+}
+
+export function periodTotals(txns, period, month) {
+  return monthsInPeriod(period, month).reduce((sum, each) => {
+    const { income, spending } = monthlyTotals(txns, each);
+    return { income: sum.income + income, spending: sum.spending + spending,
+      net: sum.net + income + spending };
+  }, { income: 0, spending: 0, net: 0 });
+}
+
+// Budgets are summed per month rather than derived from the year's income in
+// one go. They are not the same number: each month's split comes from that
+// month's own income, so a year with uneven earnings budgets differently month
+// by month, and totalling the months is the only honest answer.
+export function periodBuckets(txns, period, month, split) {
+  const months = monthsInPeriod(period, month);
+  if (months.length === 1) return bucketTotals(txns, months[0], split);
+
+  const zero = { budget: 0, spent: 0, remaining: 0 };
+  return months.reduce((sum, each) => {
+    const t = bucketTotals(txns, each, split);
+    const add = (a, b) => ({ budget: a.budget + b.budget, spent: a.spent + b.spent,
+      remaining: a.remaining + b.remaining });
+    return {
+      income: sum.income + t.income,
+      unbucketed: sum.unbucketed + t.unbucketed,
+      fixed: add(sum.fixed, t.fixed),
+      flexible: add(sum.flexible, t.flexible),
+      savings: {
+        budget: sum.savings.budget + t.savings.budget,
+        unspent: sum.savings.unspent + t.savings.unspent,
+        projected: sum.savings.projected + t.savings.projected,
+      },
+    };
+  }, { income: 0, unbucketed: 0, fixed: { ...zero }, flexible: { ...zero },
+       savings: { budget: 0, unspent: 0, projected: 0 } });
+}
+
 export function monthsOfYear(year) {
   return Array.from({ length: 12 }, (_, i) => `${year}-${String(i + 1).padStart(2, '0')}`);
 }
