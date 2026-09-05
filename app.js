@@ -1540,8 +1540,51 @@ function askWorkerForCache() {
 // it reported v37 while the cache on disk was already v38. Re-read whenever
 // the controlling worker changes, so the card describes what is serving now.
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.addEventListener('controllerchange', () => { showVersion(); });
+  navigator.serviceWorker.addEventListener('controllerchange', () => { showVersion();
+renderDiagnostics(); });
 }
+
+// Everything needed to explain a rendering problem on a device I cannot see.
+// I have twice diagnosed a colour complaint as a stale cache and been wrong;
+// this reports what the phone is ACTUALLY painting rather than what I assume.
+async function renderDiagnostics() {
+  const cs = getComputedStyle(document.documentElement);
+  const token = (name) => cs.getPropertyValue(name).trim() || '(empty)';
+  const painted = (selector, property) => {
+    const node = document.querySelector(selector);
+    return node ? getComputedStyle(node)[property] : '(absent)';
+  };
+  const serving = await askWorkerForCache();
+  const lines = [
+    `app        ${serving ?? '(no worker)'}`,
+    `tone       stored=${localStorage.getItem('moneytrack-theme') ?? '(none)'} applied=${document.documentElement.dataset.theme || 'graphite'}`,
+    `page       ${painted('body', 'backgroundColor')}`,
+    `primary    ${token('--color-primary')}`,
+    `destruct   ${token('--color-destructive')}`,
+    // The row surface sits ON TOP of a red delete panel. If it ever paints
+    // transparent, every row in the list turns red — which is exactly the
+    // symptom that has been reported and that I could not reproduce.
+    `rowsurface ${painted('.swipe__over', 'backgroundColor')}`,
+    `rowunder   ${painted('.swipe__under', 'backgroundColor')}`,
+    `color-mix  ${CSS.supports('color', 'color-mix(in srgb, red 50%, blue)') ? 'yes' : 'NO — several colours will fall back'}`,
+    `screen     ${window.innerWidth}x${window.innerHeight} dpr${devicePixelRatio}`,
+    `display    ${matchMedia('(display-mode: standalone)').matches ? 'installed' : 'browser tab'}`,
+    `ua         ${navigator.userAgent}`,
+  ];
+  document.getElementById('diagnostics').textContent = lines.join('\n');
+}
+
+document.getElementById('copy-diagnostics').addEventListener('click', async () => {
+  const text = document.getElementById('diagnostics').textContent;
+  try {
+    await navigator.clipboard.writeText(text);
+    versionStatus.textContent = 'Diagnostics copied.';
+  } catch {
+    // Clipboard access is refused in plenty of mobile contexts. Selecting the
+    // text is a working fallback, so say that rather than just failing.
+    versionStatus.textContent = 'Could not copy — select the text above and copy it by hand.';
+  }
+});
 
 document.getElementById('update-button').addEventListener('click', async (event) => {
   const button = event.currentTarget;
@@ -1558,6 +1601,7 @@ document.getElementById('update-button').addEventListener('click', async (event)
 });
 
 showVersion();
+renderDiagnostics();
 
 // Attached once to the lists themselves, not per row: the rows are rebuilt on
 // every refresh, and re-binding per row would leak a listener each time.
