@@ -10,6 +10,14 @@
 <link rel="apple-touch-icon" href="./icons/icon-180.png">
 <meta name="apple-mobile-web-app-title" content="Clengan">
 <link rel="stylesheet" href="./styles.css">
+<!-- Android Chrome's "Auto dark theme for web contents" algorithmically
+     darkens any page that has NOT declared it handles both schemes itself.
+     A peach page put through that comes out a muddy dark red — which is
+     exactly the fault reported from a phone and never reproducible on a
+     desktop, where no such feature exists. Declaring both schemes here is
+     the documented opt-out: the app already ships its own light and dark
+     tones and does not want a second one applied on top. -->
+<meta name="color-scheme" content="light dark">
 <meta name="theme-color" content="#000000">
 <script>
 /* Inline and before the stylesheet's first paint on purpose: app.js is a
@@ -59,28 +67,28 @@
       <label><input type="radio" name="kind" value="transfer"> Transfer</label>
     </div>
 
-    <label for="add-account" id="add-account-label">Account</label>
-    <select id="add-account" required></select>
-
-    <div id="add-to-wrap" hidden>
-      <label for="add-to">To account</label>
-      <select id="add-to"></select>
+    <div class="pair">
+      <div><label for="add-account" id="add-account-label">Account</label>
+        <select id="add-account" required></select></div>
+      <div id="add-to-wrap" hidden><label for="add-to">To account</label>
+        <select id="add-to"></select></div>
     </div>
 
     <label for="add-name">Name</label>
     <input type="text" id="add-name" placeholder="What was it?">
 
-    <div id="add-category-wrap">
-      <label for="add-category">Category <span class="label-optional">optional</span></label>
-      <select id="add-category"></select>
-    </div>
-
-    <div id="add-bucket-wrap">
-      <label for="add-bucket">Type of expense</label>
-      <select id="add-bucket">
-        <option value="flexible">Flexible — varies month to month</option>
-        <option value="fixed">Fixed — same every month</option>
-      </select>
+    <div class="pair">
+      <div id="add-category-wrap">
+        <label for="add-category">Category <span class="label-optional">optional</span></label>
+        <select id="add-category"></select>
+      </div>
+      <div id="add-bucket-wrap">
+        <label for="add-bucket">Type</label>
+        <select id="add-bucket">
+          <option value="flexible">Flexible</option>
+          <option value="fixed">Fixed</option>
+        </select>
+      </div>
     </div>
 
     <p id="add-setup" class="hint" hidden></p>

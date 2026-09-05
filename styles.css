@@ -72,47 +72,51 @@
   --font-num: "Fira Code", ui-monospace, "SF Mono", Menlo, monospace;
 }
 
-/* Tone B — rose room.
-   The predecessor sat at hue 15 and 67% saturation, which is orange-salmon,
-   not pink. At 86% lightness a desktop LCD flatters it; an OLED phone with a
-   vivid profile pushes it to red, and it was reported as red from the first
-   build. Every colour in it passed contrast, which is exactly why measuring
-   contrast never found the fault — the hue was wrong, not the ratio.
-   This ground is hue 338. It cannot drift into red whatever saturation a
-   phone applies, because there is no red within reach of it. */
+/* Tone B — peach room. Cards sit lighter than the canvas, matching the
+   reference where the frame interior reads brighter than the wall. */
 :root[data-theme="peach"] {
-  /* Solved, not picked: each text colour below is the LIGHTEST value that
-     still clears its ratio on this ground, so nothing shouts and nothing
-     fails on a bright screen. */
-  /* White on the first value I tried here was 4.11:1 — under AA for a button
-     label, and I had asserted 4.6 from a solver run without checking the pair
-     after wiring it up. This is the LIGHTEST rose where white clears 4.5. */
-  --color-primary: #9D4D6B;        /* white on it 5.66:1 */
-  --color-primary-hover: #AE5B7A;  /* white on it 4.59:1 */
-  --color-on-primary: #FFFFFF;
-  --shadow-primary: 0 1px 2px rgba(69, 37, 49, 0.16);
-  --shadow-popover: 0 12px 32px rgba(69, 37, 49, 0.18), 0 2px 8px rgba(69, 37, 49, 0.10);
-  --color-scrim: rgb(69 37 49 / 0.34);
-  --color-tabbar: #E8CDD8;
-  --color-active: #973B5D;         /* 4.57:1 on the tab strip */
-  --color-bar: #E3C3D1;
-  --color-accent: #2D6D4D;         /* income, 4.6:1 */
-  --color-destructive: #B3332A;    /* spending, 4.6:1 */
-  --color-background: #EFD9E1;     /* hue 338 — pink, not salmon */
-  --color-foreground: #452531;     /* 10:1 */
-  --color-muted: #F3E6EB;          /* the card surface, a step ABOVE the page */
-  --color-input: #F6EEF1;
-  --color-subtle: #845466;         /* 4.6:1 on the page */
-  --color-border: #E1C6D2;
-  --color-border-strong: #CFA9BC;
+  /* Light pink fill, so the label goes dark rather than white. A pale fill
+     on a pale card is only 1.6:1 against it, so the button is lifted off
+     the card by a shadow rather than ringed by an outline. Nothing lighter
+     than the salmon reaches 3:1 here, so the boundary is a depth cue and
+     the label carries identification at 6.66:1. */
+  --color-primary: #D7B4AD;        /* saturation 41% -> 34%, hue held at rose */
+  --color-primary-hover: #E0C2BC;
+  --color-on-primary: #4A2A22;     /* 6.66:1 on primary */
+  --shadow-primary: 0 1px 3px rgba(74, 42, 34, 0.20), 0 1px 2px rgba(74, 42, 34, 0.12);
+  --shadow-popover: 0 8px 24px rgba(74, 42, 34, 0.20), 0 2px 6px rgba(74, 42, 34, 0.12);
+  /* Lighter than graphite's: the same opacity over a pale canvas reads as
+     the lights going out rather than the page stepping back. */
+  --color-scrim: rgb(74 42 34 / 0.38);
+  /* The tab strip is the room's floor: a step off the canvas, not a tint of
+     the card, which is what the graphite mix produces on a light ground. */
+  --color-tabbar: #EFC5B7;
+  --color-active: #8E3A26;         /* 4.8:1 on the tab strip */
+  --color-bar: #F0C0B0;
+  --color-accent: #2D674C;         /* income, 4.57:1 on the page */
+  --color-destructive: #9F3B29;    /* spending, 4.60:1 on the page */
+  --color-background: #F3CEC2;
+  --color-foreground: #4A2A22;     /* 13:1 */
+  /* The ladder steps up from the canvas without reaching white — a near-white
+     input inside a peach room reads as a hole punched in the wall. */
+  --color-muted: #F7DCD3;
+  --color-input: #FBE8E1;
+  --color-subtle: #7E5144;         /* 4.58:1 on the page, 5.63:1 on an input */
+  --color-border: #E9C2B5;
+  --color-border-strong: #D9A493;
   color-scheme: light;
 }
+
+/* Declared on the root as well as in the meta above. The meta is what the
+   browser reads before any CSS arrives; this is what keeps the declaration
+   true once the tone class has been applied. */
+:root { color-scheme: light dark; }
 
 * { box-sizing: border-box; }
 
 body {
   margin: 0;
-  padding: 0 0 88px;
+  padding: 0 0 76px;
   background: var(--color-background);
   color: var(--color-foreground);
   font-family: var(--font-ui);
@@ -133,7 +137,7 @@ h1 {
   position: sticky;
   top: 0;
   z-index: 5;
-  margin: calc(var(--space-4) * -1) calc(var(--space-3) * -1) var(--space-4);
+  margin: calc(var(--space-3) * -1) calc(var(--space-3) * -1) var(--space-3);
   padding: var(--space-2) var(--space-3);
   background: color-mix(in srgb, var(--color-background) 88%, transparent);
   backdrop-filter: blur(12px);
@@ -184,12 +188,12 @@ h1 {
    pass put this at 10px and field labels at 11px, which is what made the app
    feel cramped: everything that was not a figure had shrunk. */
 h2 {
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--color-subtle);
-  margin: 0 0 var(--space-3);
+  margin: 0 0 var(--space-2);
 }
 
 .amount { font-family: var(--font-num); font-variant-numeric: tabular-nums; }
@@ -200,13 +204,24 @@ h2 {
 .view {
   max-width: 620px;
   margin: 0 auto;
-  padding: var(--space-4) var(--space-3) var(--space-6);
+  padding: var(--space-3) var(--space-3) var(--space-6);
 }
-/* Space between fields carries the structure a panel border used to. */
+/* Two related fields on one line. auto-fit rather than a fixed two columns,
+   so when one of the pair is hidden — To account outside a transfer, Type
+   outside an expense — the other takes the whole row instead of leaving a
+   gap where a field used to be. */
+.pair {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: var(--space-2);
+}
+.pair > div[hidden] { display: none; }
+
+/* One step of air between fields, not two. */
 .view input + label,
 .view select + label,
 .view .chips + label,
-.view .datefield + label { margin-top: var(--space-3); }
+.view .datefield + label { margin-top: var(--space-2); }
 .view[hidden] { display: none; }
 
 /* Vault: the screen is a tray of objects, not a continuous sheet. A section
@@ -217,7 +232,7 @@ h2 {
   background: var(--color-muted);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
-  padding: var(--space-4);
+  padding: var(--space-3);
   margin-bottom: var(--space-2);
 }
 .view > .card:last-of-type { margin-bottom: var(--space-5); }
@@ -243,8 +258,8 @@ h2 {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 3px;
-  min-height: 56px;
+  gap: 2px;
+  min-height: 48px;
   background: none;
   border: none;
   color: var(--color-subtle);
@@ -292,10 +307,12 @@ h2 {
 
 /* Field labels share the section marker's voice — small, tracked, quiet —
    so the form reads as one ruled column rather than as boxes with captions. */
+/* Labels sit close to their field — they belong to it, and the gap was
+   reading as separation rather than as pairing. */
 label {
   display: block;
-  margin-bottom: var(--space-1);
-  font-size: 12px;
+  margin-bottom: var(--space-0);
+  font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -305,11 +322,15 @@ label {
 /* Flatter than before. Softly rounded boxes read as an app made of panels;
    this direction is ruled paper, so the corners come in and the fill does the
    work of saying "type here". */
-input, select, button.primary {
+/* 40px, not 44. Every field in this app is a form control the user steps
+   through in sequence rather than a target they stab at, and seven fields at
+   44 with 16px between them made the Add screen taller than the phone. The
+   primary button keeps 44 below, because that one IS stabbed at. */
+input, select {
   width: 100%;
-  min-height: 44px;
+  min-height: 40px;
   padding: 0 var(--space-2);
-  margin-bottom: var(--space-3);
+  margin-bottom: var(--space-2);
   background: var(--color-input);
   color: var(--color-foreground);
   border: 1px solid var(--color-border);
@@ -383,6 +404,11 @@ button.primary {
   transition: background 150ms ease;
 }
 
+button.primary {
+  width: 100%;
+  min-height: 44px;
+  margin-bottom: var(--space-2);
+}
 button.primary:hover { background: var(--color-primary-hover); }
 button.primary:active { filter: brightness(0.92); }
 
@@ -393,9 +419,9 @@ button.primary:active { filter: brightness(0.92); }
 /* Segmented control, built from the existing radio markup. */
 #add-kind {
   display: flex;
-  gap: var(--space-0);
-  padding: var(--space-0);
-  margin-bottom: var(--space-3);
+  gap: 2px;
+  padding: 3px;
+  margin-bottom: var(--space-2);
   background: var(--color-input);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
@@ -407,7 +433,7 @@ button.primary:active { filter: brightness(0.92); }
   align-items: center;
   justify-content: center;
   gap: 6px;
-  min-height: 38px;
+  min-height: 34px;
   margin: 0;
   border-radius: var(--radius-sm);
   font-size: 14px;
