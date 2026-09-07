@@ -44,21 +44,21 @@ shadows:
 
 typography:
   amount-hero:
-    fontFamily: Fira Code
+    fontFamily: Fira Sans
     fontSize: 34px
-    fontWeight: 500
+    fontWeight: 300
     lineHeight: 1.2
-    letterSpacing: -0.02em
+    letterSpacing: -0.045em
   stat-hero:
-    fontFamily: Fira Code
-    fontSize: 34px
-    fontWeight: 600
-    lineHeight: 1.05
-    letterSpacing: -0.03em
+    fontFamily: Fira Sans
+    fontSize: 40px
+    fontWeight: 300
+    lineHeight: 1
+    letterSpacing: -0.045em
   stat-net:
     fontFamily: Fira Code
     fontSize: 20px
-    fontWeight: 600
+    fontWeight: 400
     lineHeight: 1.2
     letterSpacing: 0
   stat-value:
@@ -321,8 +321,8 @@ This is an app ramp, not a marketing ramp. The largest step belongs to a data fi
 
 | Token | Size | Weight | Tracking | Use |
 |---|---|---|---|---|
-| `{typography.stat-net}` | 40px | 700 | -1.5px | The month's net, the one number on the Summary fold |
-| `{typography.amount-hero}` | 34px | 500 | -0.02em | The Add form's amount field |
+| `{typography.stat-hero}` | 40px | 300 | -0.045em | The balance, the one number on the Summary fold |
+| `{typography.amount-hero}` | 34px | 300 | -0.045em | The Add form's amount field |
 | `{typography.stat-value}` | 20px | 500 | 0 | Income and spent totals |
 | `{typography.title-bar}` | 17px | 600 | -0.01em | Sticky view title |
 | `{typography.body}` | 16px | 400 | 0 | Body, row titles, form values |

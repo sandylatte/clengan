@@ -187,16 +187,26 @@ h1 {
 /* A section marker, not a heading with presence — but readable. The Ledger
    pass put this at 10px and field labels at 11px, which is what made the app
    feel cramped: everything that was not a figure had shrunk. */
+/* Sentence case at a readable size. Small-caps with wide tracking was doing
+   two things at once — shouting at the thing it names, and costing height to
+   do it. A section marker only has to be quieter than its content. */
 h2 {
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 600;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  letter-spacing: -0.005em;
   color: var(--color-subtle);
   margin: 0 0 var(--space-2);
 }
 
+/* Two jobs, two treatments.
+   A figure in a COLUMN has to align with the figures above and below it, so
+   it stays monospaced and tabular — that is the only reason a money app uses
+   a mono face at all.
+   A DISPLAY figure has no column to align with. Setting it in the UI face at
+   a light weight and tight tracking is what makes it read as a headline
+   rather than as terminal output. */
 .amount { font-family: var(--font-num); font-variant-numeric: tabular-nums; }
+
 .amount--in { color: var(--color-accent); }
 .amount--out { color: var(--color-destructive); }
 
@@ -380,10 +390,8 @@ details.card > summary:focus-visible {
 label {
   display: block;
   margin-bottom: var(--space-0);
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  font-size: 13px;
+  font-weight: 400;
   color: var(--color-subtle);
 }
 
@@ -586,7 +594,7 @@ button.primary:active { filter: brightness(0.92); }
   gap: var(--space-2);
   padding: var(--space-4) var(--space-1) var(--space-2);
 }
-.dayhead b { font-size: 13px; font-weight: 700; letter-spacing: 0.01em; }
+.dayhead b { font-size: 13px; font-weight: 600; letter-spacing: -0.005em; }
 .dayhead i { flex: 1; height: 1px; background: var(--color-border); }
 .dayhead__net { font-size: 12px; color: var(--color-subtle); }
 .dayhead:first-child { padding-top: var(--space-1); }
@@ -720,14 +728,12 @@ button.primary:active { filter: brightness(0.92); }
 .stat { display: flex; flex-direction: column; gap: var(--space-0); }
 
 .stat__label {
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  font-size: 13px;
+  font-weight: 400;
   color: var(--color-subtle);
 }
 
-.stat .amount { font-size: 17px; font-weight: 600; }
+.stat .amount { font-size: 17px; font-weight: 400; }
 
 /* Explicit order rather than HTML order: balance leads, net follows full
    width, and income and spent pair off beneath. Three items in a two-column
@@ -741,10 +747,11 @@ button.primary:active { filter: brightness(0.92); }
 .stat--balance .stat__label { color: var(--color-subtle); }
 
 .stat--balance .amount {
-  font-size: 34px;
-  font-weight: 600;
-  line-height: 1.05;
-  letter-spacing: -0.03em;
+  font-family: var(--font-ui);
+  font-size: 40px;
+  font-weight: 300;
+  line-height: 1;
+  letter-spacing: -0.045em;
 }
 
 /* Net keeps its sign colour but not its size: it is the change, read against
@@ -755,7 +762,7 @@ button.primary:active { filter: brightness(0.92); }
   padding-bottom: var(--space-3);
   border-bottom: 1px solid var(--color-border);
 }
-.stat--net .amount { font-size: 20px; font-weight: 600; }
+.stat--net .amount { font-size: 20px; font-weight: 400; }
 
 /* S2. A labelled track per bucket: what is spent against what is budgeted,
    a bar for how far through, and the remainder underneath in words. */
@@ -789,7 +796,7 @@ button.primary:active { filter: brightness(0.92); }
   font-size: 13px;
   margin-bottom: var(--space-2);
 }
-.track__figures { font-size: 15px; font-weight: 600; color: var(--color-foreground); }
+.track__figures { font-size: 15px; font-weight: 400; color: var(--color-foreground); }
 
 .track__rail {
   height: 8px;
@@ -882,12 +889,10 @@ button.primary:active { filter: brightness(0.92); }
 /* Says a field can be left alone without the label having to grow a sentence.
    Quieter than the label it follows, because it is a permission, not a name. */
 .label-optional {
-  font-size: 11px;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  font-size: 13px;
   color: var(--color-subtle);
-  opacity: 0.75;
-  margin-left: var(--space-1);
+  opacity: 0.7;
+  margin-left: var(--space-0);
 }
 
 /* The negative top margin below assumes a .hint follows an INPUT, pulling it
@@ -1017,10 +1022,8 @@ label + .hint { margin-top: 0; }
 .swatch-button:hover { border-color: var(--color-foreground); }
 
 .group__heading {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
   color: var(--color-subtle);
   margin: var(--space-3) 0 var(--space-1);
 }
@@ -1103,10 +1106,11 @@ label + .hint { margin-top: 0; }
    asked for. */
 .moneyfield { font-family: var(--font-num); text-align: right; }
 #add-amount {
-  min-height: 64px;
+  font-family: var(--font-ui);
+  min-height: 60px;
   font-size: 34px;
-  font-weight: 500;
-  letter-spacing: -0.02em;
+  font-weight: 300;
+  letter-spacing: -0.045em;
   margin-bottom: var(--space-1);
 }
 
