@@ -321,7 +321,10 @@ function renderList(txns) {
 
 function dayHeading({ date, net }) {
   const item = document.createElement('li');
-  item.className = 'dayhead';
+  // A day is a node on the List's spine; the transactions under it hang off
+  // the same line without nodes of their own, so the line reads as a sequence
+  // of days rather than of rows.
+  item.className = 'dayhead node';
   const when = document.createElement('b');
   // Built from the parts, never from a Date: a local Date made from a
   // YYYY-MM-DD string lands on the previous day west of Greenwich.

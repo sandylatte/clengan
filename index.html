@@ -50,58 +50,75 @@
 
 <section class="view" id="view-add">
   <h1><svg class="mark" aria-hidden="true"><use href="#mark"/></svg><span class="h1-name">Add</span><span class="h1-meta amount" id="head-balance"></span></h1>
-  <form id="add-form">
-    <label for="add-amount">Amount (Rp)</label>
-    <input type="text" id="add-amount" class="moneyfield" inputmode="numeric" autocomplete="off" placeholder="0" required>
-    <div class="chips" role="group" aria-label="Add to amount">
-      <button type="button" class="chip" data-add="1000" data-target="add-amount">+1rb</button>
-      <button type="button" class="chip" data-add="10000" data-target="add-amount">+10rb</button>
-      <button type="button" class="chip" data-add="50000" data-target="add-amount">+50rb</button>
-      <button type="button" class="chip" data-add="100000" data-target="add-amount">+100rb</button>
-      <button type="button" class="chip chip--clear" data-clear="add-amount">Clear</button>
-    </div>
-
-    <div id="add-kind" role="group" aria-label="Kind">
-      <label><input type="radio" name="kind" value="expense" checked> Expense</label>
-      <label><input type="radio" name="kind" value="income"> Income</label>
-      <label><input type="radio" name="kind" value="transfer"> Transfer</label>
-    </div>
-
-    <div class="pair">
-      <div><label for="add-account" id="add-account-label">Account</label>
-        <select id="add-account" required></select></div>
-      <div id="add-to-wrap" hidden><label for="add-to">To account</label>
-        <select id="add-to"></select></div>
-    </div>
-
-    <label for="add-name">Name</label>
-    <input type="text" id="add-name" placeholder="What was it?">
-
-    <div class="pair">
-      <div id="add-category-wrap">
-        <label for="add-category">Category <span class="label-optional">optional</span></label>
-        <select id="add-category"></select>
+  <!-- Four steps hung off one spine, rather than twelve fields stacked flat.
+       The grouping is the same order the form always had — nothing moved
+       between steps — so muscle memory and the tab order are unchanged. The
+       <fieldset>s carry the grouping for assistive tech too; the spine and its
+       nodes are drawn entirely in CSS and are aria-hidden by construction. -->
+  <form id="add-form" class="spine">
+    <fieldset class="node node--lead">
+      <legend>How much</legend>
+      <label for="add-amount">Amount (Rp)</label>
+      <input type="text" id="add-amount" class="moneyfield" inputmode="numeric" autocomplete="off" placeholder="0" required>
+      <div class="chips" role="group" aria-label="Add to amount">
+        <button type="button" class="chip" data-add="1000" data-target="add-amount">+1rb</button>
+        <button type="button" class="chip" data-add="10000" data-target="add-amount">+10rb</button>
+        <button type="button" class="chip" data-add="50000" data-target="add-amount">+50rb</button>
+        <button type="button" class="chip" data-add="100000" data-target="add-amount">+100rb</button>
+        <button type="button" class="chip chip--clear" data-clear="add-amount">Clear</button>
       </div>
-      <div id="add-bucket-wrap">
-        <label for="add-bucket">Type</label>
-        <select id="add-bucket">
-          <option value="flexible">Flexible</option>
-          <option value="fixed">Fixed</option>
-        </select>
+    </fieldset>
+
+    <fieldset class="node node--lead">
+      <legend>What kind</legend>
+      <div id="add-kind" role="group" aria-label="Kind">
+        <label><input type="radio" name="kind" value="expense" checked> Expense</label>
+        <label><input type="radio" name="kind" value="income"> Income</label>
+        <label><input type="radio" name="kind" value="transfer"> Transfer</label>
       </div>
-    </div>
+    </fieldset>
 
-    <p id="add-setup" class="hint" hidden></p>
+    <fieldset class="node">
+      <legend>What for</legend>
+      <label for="add-name">Name</label>
+      <input type="text" id="add-name" placeholder="What was it?">
 
-    <label for="add-note">Note <span class="label-optional">optional</span></label>
-    <input type="text" id="add-note">
+      <div class="pair">
+        <div id="add-category-wrap">
+          <label for="add-category">Category <span class="label-optional">optional</span></label>
+          <select id="add-category"></select>
+        </div>
+        <div id="add-bucket-wrap">
+          <label for="add-bucket">Type</label>
+          <select id="add-bucket">
+            <option value="flexible">Flexible</option>
+            <option value="fixed">Fixed</option>
+          </select>
+        </div>
+      </div>
 
-    <label for="add-date">Date</label>
-    <div class="datefield">
-      <button type="button" id="add-date-button" aria-haspopup="dialog" aria-expanded="false"></button>
-      <input type="hidden" id="add-date">
-      <div class="calendar" id="add-date-popup" role="dialog" aria-label="Choose a date" hidden></div>
-    </div>
+      <p id="add-setup" class="hint" hidden></p>
+
+      <label for="add-note">Note <span class="label-optional">optional</span></label>
+      <input type="text" id="add-note">
+    </fieldset>
+
+    <fieldset class="node">
+      <legend>From where, and when</legend>
+      <div class="pair">
+        <div><label for="add-account" id="add-account-label">Account</label>
+          <select id="add-account" required></select></div>
+        <div id="add-to-wrap" hidden><label for="add-to">To account</label>
+          <select id="add-to"></select></div>
+      </div>
+
+      <label for="add-date">Date</label>
+      <div class="datefield">
+        <button type="button" id="add-date-button" aria-haspopup="dialog" aria-expanded="false"></button>
+        <input type="hidden" id="add-date">
+        <div class="calendar" id="add-date-popup" role="dialog" aria-label="Choose a date" hidden></div>
+      </div>
+    </fieldset>
 
     <button type="submit" class="primary">Save</button>
     <p id="add-status" role="status"></p>
@@ -112,7 +129,7 @@
   <label for="list-month">Month</label>
   <input type="month" id="list-month">
   <p id="list-status" role="status"></p>
-  <ul id="list-rows" class="rows"></ul>
+  <ul id="list-rows" class="rows spine"></ul>
   <div id="list-empty" class="empty" hidden>
     <svg class="empty__mark" aria-hidden="true"><use href="#mark"/></svg>
     <p class="empty__title">Nothing recorded this month</p>
@@ -130,26 +147,27 @@
   </div>
   <p id="summary-status" role="status"></p>
 
-  <div class="card stats">
+  <div class="spine">
+  <div class="card stats node">
     <div class="stat stat--balance"><span class="stat__label">Balance</span><span class="amount" id="stat-balance">Rp 0</span></div>
     <div class="stat stat--net"><span class="stat__label">Net</span><span class="amount" id="stat-net">Rp 0</span></div>
     <div class="stat"><span class="stat__label">Income</span><span class="amount amount--in" id="stat-income">Rp 0</span></div>
     <div class="stat"><span class="stat__label">Spent</span><span class="amount amount--out" id="stat-spent">Rp 0</span></div>
   </div>
 
-  <div class="card">
+  <div class="card node">
     <h2>Budget</h2>
     <div id="budget" class="tracks"></div>
     <p id="budget-note"></p>
   </div>
 
-  <div class="card">
+  <div class="card node">
     <h2>Savings by fund</h2>
     <div id="funds" class="tracks"></div>
     <p id="funds-note"></p>
   </div>
 
-  <div class="card">
+  <div class="card node">
     <h2>Spending by category</h2>
     <div class="filters" role="group" aria-label="Filter this chart">
       <div class="filters__field">
@@ -177,15 +195,16 @@
     </div>
   </div>
 
-  <div class="card">
+  <div class="card node">
     <h2>Net, last 6 months</h2>
     <svg id="trend" viewBox="0 0 300 80" role="img" aria-labelledby="trend-desc"></svg>
     <p id="trend-desc" class="visually-hidden"></p>
   </div>
 
-  <div class="card">
+  <div class="card node">
     <h2>Balances</h2>
     <div id="balances" class="figures"></div>
+  </div>
   </div>
 </section>
 <section class="view" id="view-settings" hidden>

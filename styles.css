@@ -544,6 +544,110 @@ button.primary:active { filter: brightness(0.92); }
 
 .rows { list-style: none; margin: 0; padding: 0; }
 
+/* ── The spine ──────────────────────────────────────────────────────────────
+   One line down the screen instead of a boundary drawn around each group.
+   Days on the List, steps on the Add form and blocks on the Summary hang off
+   it as nodes, so a screen reads as one sequence rather than as a stack of
+   separately fenced things.
+
+   It costs 20px of a 375px screen on every screen that uses it, and that is
+   the deliberate trade: the rows lost width, the screen gained an order.
+
+   Drawn entirely in CSS on ::before, so there is no extra element for a
+   screen reader to meet — the grouping is carried by the real markup
+   (<fieldset>/<legend> on Add, the day heading on List, <h2> on Summary). */
+.spine {
+  --spine-inset: 20px;
+  --spine-x: 5px;          /* the line's own offset inside that inset */
+  --spine-dot: 9px;
+  position: relative;
+  padding-left: var(--spine-inset);
+}
+
+/* An empty list would otherwise draw a 1px line down a screen with nothing
+   on it, which reads as a rendering fault rather than as structure. */
+.spine:empty::before { display: none; }
+
+.spine::before {
+  content: "";
+  position: absolute;
+  left: var(--spine-x);
+  /* Stops short at both ends rather than running to the edge: a line that
+     touches the first and last node reads as a border, not as a thread. */
+  top: var(--space-2);
+  bottom: var(--space-2);
+  width: 1px;
+  background: var(--color-border);
+}
+
+.node { position: relative; }
+
+.node::before {
+  content: "";
+  position: absolute;
+  left: calc((var(--spine-inset) - var(--spine-x) + var(--spine-dot) / 2) * -1);
+  top: 0.5em;
+  width: var(--spine-dot);
+  height: var(--spine-dot);
+  border-radius: 50%;
+  /* Filled with the canvas so the line does not show through the hollow
+     ones. --color-background, not the card colour: the cards are gone on
+     every screen the spine is used on. */
+  background: var(--color-background);
+  /* --color-subtle, not --color-border-strong. A node marks where a step
+     begins, so it is a graphical object and owes 3:1 against the canvas;
+     border-strong is 1.9:1 on carbon and the ring simply vanished. Subtle is
+     6.4:1 there and 4.6:1 on peach. */
+  border: 1.5px solid var(--color-subtle);
+  box-sizing: border-box;
+}
+
+/* The steps that carry the money: a filled node, so the eye can find the
+   amount and the balance without reading. Everything else is hollow. */
+.node--lead::before,
+.card.stats.node::before {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+/* On the Summary the spine replaces the card, rather than sitting beside it.
+   Keeping both would be two structures saying the same thing, and the fill
+   is what was making the screen read as nineteen boxes. */
+.spine > .card.node {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  padding: var(--space-3) 0;
+  margin-bottom: 0;
+}
+.spine > .card.stats.node {
+  padding: var(--space-2) 0 var(--space-3);
+  border-radius: 0;
+}
+.spine > .card.node + .card.node { border-top: 1px solid var(--color-border); }
+.spine > .card.node::before { top: var(--space-3); }
+.spine > .card.node:first-child::before { top: var(--space-2); }
+
+/* The Add form's steps. <fieldset> and <legend> carry the grouping for
+   assistive tech, so both are stripped of the browser's own box and the
+   legend is set as the same quiet marker every other section heading uses. */
+.spine > fieldset.node {
+  min-width: 0;         /* a fieldset defaults to min-content, which breaks
+                           the two-column .pair inside it at 375px */
+  border: 0;
+  margin: 0;
+  padding: var(--space-2) 0 var(--space-3);
+}
+.spine > fieldset.node + fieldset.node { border-top: 1px solid var(--color-border); }
+.spine > fieldset.node > legend {
+  padding: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-subtle);
+}
+.spine > fieldset.node::before { top: var(--space-2); }
+.spine > fieldset.node > :first-child + * { margin-top: var(--space-1); }
+
 .row {
   display: flex;
   align-items: center;
@@ -592,12 +696,18 @@ button.primary:active { filter: brightness(0.92); }
   display: flex;
   align-items: baseline;
   gap: var(--space-2);
-  padding: var(--space-4) var(--space-1) var(--space-2);
+  padding: var(--space-4) 0 var(--space-1);
 }
+.dayhead.node::before { top: calc(var(--space-4) + 3px); }
+.dayhead.node:first-child::before { top: calc(var(--space-1) + 3px); }
 .dayhead b { font-size: 13px; font-weight: 600; letter-spacing: -0.005em; }
-.dayhead i { flex: 1; height: 1px; background: var(--color-border); }
+.dayhead i { flex: 1; }
 .dayhead__net { font-size: 12px; color: var(--color-subtle); }
 .dayhead:first-child { padding-top: var(--space-1); }
+/* .row's negative side margins let a row bleed past the card padding it was
+   designed inside. Against the spine that bleed reaches back into the gutter
+   and crowds the line, so the left one is dropped here only. */
+.rows.spine .row--txn { margin-left: 0; padding-left: 0; }
 
 /* The row rides on .swipe__over; .swipe__under sits behind it and is only
    seen once the surface has moved. */
