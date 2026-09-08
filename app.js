@@ -360,8 +360,12 @@ function transactionRow(txn) {
   const category = txn.transfer_id ? TRANSFER_CATEGORY : txn.category;
   const colour = state.categories.find((c) => c.name === category)?.colour;
   if (colour) {
-    tag.style.color = colour;
-    tag.style.background = `color-mix(in srgb, ${colour} 26%, transparent)`;
+    // One custom property, not two literal declarations. An inline
+    // `background` is a shorthand and beats any stylesheet rule, so setting
+    // it here made the tag impossible to restyle from CSS — which is exactly
+    // what the List needs to do when it draws the tag as a rail instead of a
+    // chip. The colour is data; how it is painted belongs in the stylesheet.
+    tag.style.setProperty('--tag-colour', colour);
   } else {
     tag.classList.add('tag--plain');
   }
@@ -378,7 +382,12 @@ function transactionRow(txn) {
   title.textContent = txn.name || category || UNCATEGORISED;
   const meta = document.createElement('span');
   meta.className = 'row__meta';
-  meta.textContent = [txn.account, txn.bucket === 'fixed' ? 'Fixed' : '', txn.note && txn.note !== SAMPLE_NOTE ? txn.note : '']
+  // The category is named here rather than only coded on the tag: on the List
+  // the tag is a colour rail, and a colour alone cannot tell ten categories
+  // apart for every reader. Skipped when the name is already the title.
+  const namedCategory = txn.name && category ? category : '';
+  meta.textContent = [namedCategory, txn.account, txn.bucket === 'fixed' ? 'Fixed' : '',
+    txn.note && txn.note !== SAMPLE_NOTE ? txn.note : '']
     .filter(Boolean).join(' · ');
   mid.append(title, meta);
 

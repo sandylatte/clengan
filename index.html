@@ -48,6 +48,20 @@
   <rect x="3.5" y="3.5" width="17" height="4" rx="2" class="mark__bar mark__bar--3"/>
 </symbol></svg>
 
+<!-- Settings tile icons: Lucide, same single stroke weight as the tab bar.
+     Defined once and referenced, so nine icons cost one sprite. -->
+<svg class="sprite" aria-hidden="true">
+  <symbol id="i-accounts" viewBox="0 0 24 24"><path d="M19 7V5a2 2 0 0 0-2-2H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4"/><path d="M3 5v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-3"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/></symbol>
+  <symbol id="i-appearance" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 3v18"/><path d="M12 9a3 3 0 0 0 0 6"/></symbol>
+  <symbol id="i-split" viewBox="0 0 24 24"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></symbol>
+  <symbol id="i-funds" viewBox="0 0 24 24"><path d="m12 3 9 5-9 5-9-5 9-5Z"/><path d="m3 13 9 5 9-5"/></symbol>
+  <symbol id="i-categories" viewBox="0 0 24 24"><path d="M3 7h13l5 5-5 5H3z"/><path d="M7 12h.01"/></symbol>
+  <symbol id="i-backup" viewBox="0 0 24 24"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M4 20h16"/></symbol>
+  <symbol id="i-planner" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z"/><path d="M14 3v5h5"/><path d="M9 13h6"/><path d="M9 17h4"/></symbol>
+  <symbol id="i-sample" viewBox="0 0 24 24"><path d="m12 3 1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9Z"/><path d="M18 16v4"/><path d="M16 18h4"/></symbol>
+  <symbol id="i-version" viewBox="0 0 24 24"><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/><path d="M3 21v-5h5"/></symbol>
+</svg>
+
 <section class="view" id="view-add">
   <h1><svg class="mark" aria-hidden="true"><use href="#mark"/></svg><span class="h1-name">Add</span><span class="h1-meta amount" id="head-balance"></span></h1>
   <!-- Four steps hung off one spine, rather than twelve fields stacked flat.
@@ -222,7 +236,7 @@
   <div class="board">
 
   <details class="card" open>
-    <summary><h2>Accounts</h2><span class="tile__state" id="state-accounts"></span></summary>
+    <summary><svg class="tile__icon" aria-hidden="true"><use href="#i-accounts"/></svg><h2>Accounts</h2><span class="tile__state" id="state-accounts"></span></summary>
     <p class="hint">Nothing can be recorded until an account exists. The balance you enter is the starting point; every transaction moves it from there.</p>
     <form id="account-form">
       <label for="account-name">Name</label>
@@ -246,7 +260,7 @@
   </details>
 
   <details class="card">
-    <summary><h2>Appearance</h2><span class="tile__state" id="state-theme"></span></summary>
+    <summary><svg class="tile__icon" aria-hidden="true"><use href="#i-appearance"/></svg><h2>Appearance</h2><span class="tile__state" id="state-theme"></span></summary>
     <label for="theme-select">Colour tone</label>
     <select id="theme-select">
       <option value="graphite">Carbon &amp; volt</option>
@@ -255,7 +269,7 @@
   </details>
 
   <details class="card">
-    <summary><h2>Budget split</h2><span class="tile__state amount" id="state-split"></span></summary>
+    <summary><svg class="tile__icon" aria-hidden="true"><use href="#i-split"/></svg><h2>Budget split</h2><span class="tile__state amount" id="state-split"></span></summary>
     <form id="split-form">
       <label for="split-fixed">Fixed %</label>
       <input type="number" id="split-fixed" min="0" max="100" step="1" required>
@@ -269,7 +283,7 @@
   </details>
 
   <details class="card">
-    <summary><h2>Savings funds</h2><span class="tile__state" id="state-funds"></span></summary>
+    <summary><svg class="tile__icon" aria-hidden="true"><use href="#i-funds"/></svg><h2>Savings funds</h2><span class="tile__state" id="state-funds"></span></summary>
     <p class="hint">Shares of whatever savings a month actually produces, including budget you did not spend. Must total 100%.</p>
     <form id="fund-form">
       <label for="fund-name">Name</label>
@@ -283,7 +297,7 @@
   </details>
 
   <details class="card">
-    <summary><h2>Categories</h2><span class="tile__state" id="state-categories"></span></summary>
+    <summary><svg class="tile__icon" aria-hidden="true"><use href="#i-categories"/></svg><h2>Categories</h2><span class="tile__state" id="state-categories"></span></summary>
     <form id="category-form">
       <label for="category-name">Name</label>
       <input type="text" id="category-name" required>
@@ -305,7 +319,7 @@
   </details>
 
   <details class="card">
-    <summary><h2>Backup</h2><span class="tile__state">Excel in, Excel out</span></summary>
+    <summary><svg class="tile__icon" aria-hidden="true"><use href="#i-backup"/></svg><h2>Backup</h2><span class="tile__state">Excel in, Excel out</span></summary>
     <button type="button" class="primary" id="export-button">Export to Excel</button>
     <label for="import-input">Import from Excel</label>
     <input type="file" id="import-input" accept=".xlsx,.xls">
@@ -313,7 +327,7 @@
   </details>
 
   <details class="card">
-    <summary><h2>Import a planner</h2><span class="tile__state">One-off, adds rows</span></summary>
+    <summary><svg class="tile__icon" aria-hidden="true"><use href="#i-planner"/></svg><h2>Import a planner</h2><span class="tile__state">One-off, adds rows</span></summary>
     <p class="hint">Reads a FINANCIAL PLANNER workbook once: its ledger rows, and the fixed or flexible bucket each category was filed under. Adds to what is already here rather than replacing it.</p>
     <label for="planner-account">File rows under account</label>
     <input type="text" id="planner-account" value="Imported" required>
@@ -323,14 +337,14 @@
   </details>
 
   <details class="card">
-    <summary><h2>Sample data</h2><span class="tile__state">Three made-up months</span></summary>
+    <summary><svg class="tile__icon" aria-hidden="true"><use href="#i-sample"/></svg><h2>Sample data</h2><span class="tile__state">Three made-up months</span></summary>
     <p class="hint">Fills the app with three months of made-up transactions so every screen has something to show. Added alongside anything already here, never in place of it — and every row is labelled in its note so you can find and delete them.</p>
     <button type="button" class="primary" id="sample-button">Load sample data</button>
     <p id="sample-status" role="status"></p>
   </details>
 
   <details class="card">
-    <summary><h2>App version</h2><span class="tile__state" id="state-version"></span></summary>
+    <summary><svg class="tile__icon" aria-hidden="true"><use href="#i-version"/></svg><h2>App version</h2><span class="tile__state" id="state-version"></span></summary>
     <p class="hint">The shell is served from an offline cache, so a stale one keeps showing old numbers with no sign anything is wrong. This names the version actually running and forces a fresh copy.</p>
     <p id="version-status" role="status"></p>
     <button type="button" class="primary" id="update-button">Fetch the latest version</button>

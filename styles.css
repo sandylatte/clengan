@@ -263,7 +263,6 @@ h2 {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: var(--space-2);
-  align-items: start;
   margin-bottom: var(--space-5);
 }
 
@@ -302,30 +301,52 @@ details.card > summary:focus-visible {
   border-radius: var(--radius-xs);
 }
 
-/* Closed, a tile is a stacked face: name over state, chevron in the corner.
-   Open, it goes back to being a row so the heading and the chevron sit on one
-   line above the form. Both from the same markup — only the flex direction
-   changes. */
-.board > details.card:not([open]) > summary {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  align-items: start;
-  gap: var(--space-0) var(--space-1);
-  min-height: 52px;
-}
-.board > details.card:not([open]) > summary h2 { grid-column: 1; }
-.board > details.card:not([open]) > summary::after {
-  grid-column: 2;
-  grid-row: 1;
-  margin-top: 4px;
-}
-.board > details.card:not([open]) > summary .tile__state {
-  grid-column: 1 / -1;
+/* Closed, a tile is a centred face: icon, name, state. Open, the same markup
+   goes back to being a row — icon, heading and chevron on one line above the
+   form. Only the layout of <summary> changes between the two.
+
+   The chevron is dropped on a closed tile. Nine of them pointing down in a
+   grid is nine identical marks saying the same obvious thing; the tile is
+   plainly a control without it. It comes back when the tile is open, where it
+   is the only affordance for closing again. */
+.tile__icon {
+  width: 20px;
+  height: 20px;
+  flex: none;
+  fill: none;
+  /* --color-active, not --color-primary. On carbon the two are the same volt
+     green; on peach the primary is a pale rose fill meant to carry dark text,
+     and drawn as a 1.75px stroke on the card it is 1.3:1 — an icon that is
+     not there. Active is the tone's readable accent: 13:1 on carbon, 5.9:1
+     on the peach card, both clear of the 3:1 a graphical object owes. */
+  stroke: var(--color-active);
+  stroke-width: 1.75;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
-/* The answer the tile exists to give, in the app's own foreground rather than
-   the subtle grey the heading uses: the state is the content here and the
-   name of the section is the label. */
+.board > details.card:not([open]) > summary {
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  text-align: center;
+  gap: var(--space-0);
+  /* Every tile is the height of the tallest in its row, so the board is a
+     grid rather than a ragged stack — align-items: start on .board would let
+     each one shrink to its own text. */
+  height: 100%;
+  padding: var(--space-1) 0;
+}
+.board > details.card:not([open]) > summary h2 { flex: none; }
+.board > details.card:not([open]) > summary::after { display: none; }
+
+/* stretch, not the board's start: paired tiles match heights, and a two-line
+   state no longer leaves its neighbour short. */
+.board { align-items: stretch; }
+
+/* The answer the tile exists to give. The section name is the label here and
+   the state is the content, so the state takes the foreground and the name
+   stays in the same quiet grey every other h2 uses. */
 .tile__state {
   font-size: 14px;
   color: var(--color-foreground);
@@ -758,7 +779,47 @@ button.primary:active { filter: brightness(0.92); }
 /* .row's negative side margins let a row bleed past the card padding it was
    designed inside. Against the spine that bleed reaches back into the gutter
    and crowds the line, so the left one is dropped here only. */
-.rows.spine .row--txn { margin-left: 0; padding-left: 0; }
+.rows.spine .row--txn { margin: 0; padding-left: 0; padding-right: 0; }
+
+/* A row on the spine is not a tile. Keeping the filled, rounded surface put a
+   box inside a structure that exists to replace boxes, and the 3-letter chip
+   inside it started every transaction name 48px right of the day label it
+   belongs under — which is the stagger that made the column look broken.
+
+   So: no surface, and the tag becomes a colour rail on the row itself. The
+   name now begins one rail-width from the left, in line with its day. */
+/* The canvas colour, NOT `transparent`. .swipe__under is a red delete
+   surface sitting directly behind this one, revealed by sliding the row
+   sideways — make the row see-through and every row in the list turns red
+   with a delete icon showing through it. The row must still be opaque; it
+   just stops looking like a tile. */
+.rows.spine .swipe__over {
+  background: var(--color-background);
+  border: 0;
+  border-radius: 0;
+}
+.rows.spine .row--txn {
+  padding-top: var(--space-2);
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--color-border);
+}
+.rows.spine .dayhead + .swipe .row--txn { border-top: 0; }
+.rows.spine .swipe:last-child .row--txn { border-bottom: 0; }
+
+/* The rail. The code is dropped to `font-size: 0` rather than removed from
+   the DOM: the element still carries its title and aria-label, so the full
+   category name is what a screen reader and a long press get — the same
+   contract the chip had. */
+.rows.spine .tag {
+  align-self: stretch;
+  width: 3px;
+  min-height: 22px;
+  padding: 0;
+  font-size: 0;
+  border-radius: 2px;
+  background: var(--tag-colour);
+}
+.rows.spine .tag.tag--plain { background: var(--color-border-strong); }
 
 /* The row rides on .swipe__over; .swipe__under sits behind it and is only
    seen once the surface has moved. */
@@ -812,6 +873,8 @@ button.primary:active { filter: brightness(0.92); }
   padding: 3px 7px;
   border-radius: var(--radius-sm);
   font-family: var(--font-num);
+  color: var(--tag-colour);
+  background: color-mix(in srgb, var(--tag-colour) 26%, transparent);
 }
 .tag--plain { background: var(--color-input); color: var(--color-subtle); }
 
