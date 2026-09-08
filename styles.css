@@ -374,6 +374,20 @@ details.card > summary:focus-visible {
 .view .datefield + label { margin-top: var(--space-2); }
 .view[hidden] { display: none; }
 
+/* The incoming view arrives rather than replacing the last one mid-blink.
+   Going from display:none to block restarts an animation, so this runs on
+   every switch with no class to add or clean up.
+
+   Short and small on purpose — 160ms and 6px. A tab switch is not a
+   transition between places, it is the same place showing something else,
+   and a long slide makes the app feel slower than the instant cut it
+   replaces. The global prefers-reduced-motion rule turns it off. */
+@keyframes view-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: none; }
+}
+.view:not([hidden]) { animation: view-in 160ms ease-out; }
+
 /* Vault: the screen is a tray of objects, not a continuous sheet. A section
    is a filled, rounded surface sitting on the canvas — which is the opposite
    of the Ledger pass that preceded it, and deliberately so. Ledger dissolved

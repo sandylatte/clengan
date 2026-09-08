@@ -19,7 +19,19 @@ import {
   SAMPLE_ACCOUNTS, SAMPLE_COLOURS, SAMPLE_NOTE, sampleMonths, sampleTransactions,
 } from './sample.js';
 
+// Each tab keeps its own scroll position, the way a native tab bar does.
+// Without this the window scroll is shared: scrolling deep into a month of
+// transactions and tapping Add landed you at the bottom of a form whose top
+// you had never seen, and tapping back to List started you somewhere you had
+// not left. Neither view moved — the page under both of them did.
+const scrollPositions = new Map();
+let currentView = 'add';
+
 function showView(name) {
+  if (name === currentView) return;
+  scrollPositions.set(currentView, window.scrollY);
+  currentView = name;
+
   for (const section of document.querySelectorAll('.view')) {
     section.hidden = section.id !== `view-${name}`;
   }
@@ -30,6 +42,11 @@ function showView(name) {
       button.removeAttribute('aria-current');
     }
   }
+
+  // 'instant', not the default smooth-if-the-page-says-so: this is a jump
+  // between two screens, not a movement within one, and animating it would
+  // scroll the incoming view past content the reader never asked to see.
+  window.scrollTo({ top: scrollPositions.get(name) ?? 0, behavior: 'instant' });
 }
 
 document.querySelector('.tabbar').addEventListener('click', (event) => {
