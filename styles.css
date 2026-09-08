@@ -251,10 +251,28 @@ h2 {
   font-weight: 600;
 }
 
-/* Settings is nine sections of form. Open, it was five thousand pixels of
-   scrolling to reach a switch. Each section is a native <details>, so the
-   screen opens as a short list of what exists and the platform handles the
-   toggling — no state to keep and nothing to go wrong. */
+/* Settings is nine sections of form. Stacked, it was eight sections to scroll
+   past to reach the ninth. As a two-column board the whole of Settings is one
+   screen, and each tile answers its own question on its face — how many
+   accounts, what the split is — without being opened at all.
+
+   Still a native <details>: it opens in place, the platform owns the toggle
+   state, and the keyboard and screen-reader behaviour is correct for free.
+   The board is a grid laid over that same markup, nothing more. */
+.board {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-2);
+  align-items: start;
+  margin-bottom: var(--space-5);
+}
+
+/* An open tile takes the full width and leaves the grid: a form squeezed into
+   half of a 375px screen is unusable, and every one of these tiles opens onto
+   a form. */
+.board > details.card[open] { grid-column: 1 / -1; }
+.board > details.card { margin-bottom: 0; }
+
 details.card > summary {
   display: flex;
   align-items: center;
@@ -283,6 +301,39 @@ details.card > summary:focus-visible {
   outline-offset: 2px;
   border-radius: var(--radius-xs);
 }
+
+/* Closed, a tile is a stacked face: name over state, chevron in the corner.
+   Open, it goes back to being a row so the heading and the chevron sit on one
+   line above the form. Both from the same markup — only the flex direction
+   changes. */
+.board > details.card:not([open]) > summary {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: start;
+  gap: var(--space-0) var(--space-1);
+  min-height: 52px;
+}
+.board > details.card:not([open]) > summary h2 { grid-column: 1; }
+.board > details.card:not([open]) > summary::after {
+  grid-column: 2;
+  grid-row: 1;
+  margin-top: 4px;
+}
+.board > details.card:not([open]) > summary .tile__state {
+  grid-column: 1 / -1;
+}
+
+/* The answer the tile exists to give, in the app's own foreground rather than
+   the subtle grey the heading uses: the state is the content here and the
+   name of the section is the label. */
+.tile__state {
+  font-size: 14px;
+  color: var(--color-foreground);
+  line-height: 1.3;
+}
+.tile__state:empty { display: none; }
+/* Open, the face's state line is redundant — the section itself is showing it. */
+.board > details.card[open] > summary .tile__state { display: none; }
 
 /* Two related fields on one line. auto-fit rather than a fixed two columns,
    so when one of the pair is hidden — To account outside a transfer, Type

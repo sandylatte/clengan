@@ -856,6 +856,7 @@ async function refresh() {
     renderDefaultAccount(accounts);
     renderFundList(funds);
     renderSplit(split);
+    renderTileStates(accounts, categories, funds, split);
   } catch (error) {
     // A render failure used to fail silently (an unhandled rejection with
     // nothing on screen). Surface it instead of leaving a half-painted or
@@ -1001,6 +1002,39 @@ const splitFields = { fixed: 'split-fixed', flexible: 'split-flexible', savings:
 
 // Refresh runs after every save, so writing the stored values back into the
 // inputs while one is focused would fight the user mid-keystroke.
+// The Settings tiles answer their own question on the face, so the common
+// ones — how many accounts, what is the split — need no opening at all.
+// Every value here is already in hand from the refresh; nothing is read twice.
+const setTileState = (id, text) => {
+  const node = document.getElementById(id);
+  if (node) node.textContent = text;
+};
+
+const countOf = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
+
+function renderTileStates(accounts, categories, funds, split) {
+  setTileState('state-accounts', accounts.length === 0
+    ? 'None yet — add one first'
+    : countOf(accounts.length, 'account'));
+  setTileState('state-categories', categories.length === 0
+    ? 'None yet'
+    : countOf(categories.length, 'category', 'categories'));
+  setTileState('state-funds', funds.length === 0
+    ? 'None yet'
+    : countOf(funds.length, 'fund'));
+  setTileState('state-split', `${split.fixed} / ${split.flexible} / ${split.savings}`);
+  renderToneState();
+}
+
+// Read from the DOM rather than closing over the `themeSelect` const declared
+// near the bottom of this file: renderTileStates runs from refresh(), and a
+// const is in its temporal dead zone until its own line has executed.
+function renderToneState() {
+  const select = document.getElementById('theme-select');
+  const tone = select.selectedOptions[0];
+  setTileState('state-theme', tone ? tone.textContent : '');
+}
+
 function renderSplit(split) {
   if (splitForm.contains(document.activeElement)) return;
   for (const [key, id] of Object.entries(splitFields)) {
@@ -1532,6 +1566,7 @@ async function showVersion() {
   const serving = await askWorkerForCache();
   if (serving) {
     versionStatus.textContent = `Serving ${serving}.`;
+    setTileState('state-version', serving);
     return;
   }
   const names = await caches.keys();
@@ -1652,6 +1687,9 @@ themeSelect.addEventListener('change', () => {
   // Same reason as DB_NAME: renaming this key would silently reset the tone
   // for anyone who had already chosen one.
   localStorage.setItem('moneytrack-theme', peach ? 'peach' : 'graphite');
+  // The tile face names the current tone, and no refresh follows a tone
+  // change — nothing in the database moved.
+  renderToneState();
 });
 
 const addDate = attachCalendar({

@@ -210,8 +210,19 @@
 <section class="view" id="view-settings" hidden>
   <h1><svg class="mark" aria-hidden="true"><use href="#mark"/></svg><span class="h1-name">Settings</span></h1>
 
+  <!-- A tile board, not a stack of accordions. Nine sections stacked meant
+       scrolling past eight to reach the ninth; as two columns the whole of
+       Settings is one screen. Each tile carries its own state on its face, so
+       "how many accounts" and "what is my split" are answered without opening
+       anything.
+
+       Still <details>/<summary>: it opens in place, it is keyboard- and
+       screen-reader-correct for free, and an open tile spans both columns so
+       its form is full width. The tiles are a grid over the same markup. -->
+  <div class="board">
+
   <details class="card" open>
-    <summary><h2>Accounts</h2></summary>
+    <summary><h2>Accounts</h2><span class="tile__state" id="state-accounts"></span></summary>
     <p class="hint">Nothing can be recorded until an account exists. The balance you enter is the starting point; every transaction moves it from there.</p>
     <form id="account-form">
       <label for="account-name">Name</label>
@@ -235,7 +246,7 @@
   </details>
 
   <details class="card">
-    <summary><h2>Appearance</h2></summary>
+    <summary><h2>Appearance</h2><span class="tile__state" id="state-theme"></span></summary>
     <label for="theme-select">Colour tone</label>
     <select id="theme-select">
       <option value="graphite">Carbon &amp; volt</option>
@@ -244,7 +255,7 @@
   </details>
 
   <details class="card">
-    <summary><h2>Budget split</h2></summary>
+    <summary><h2>Budget split</h2><span class="tile__state amount" id="state-split"></span></summary>
     <form id="split-form">
       <label for="split-fixed">Fixed %</label>
       <input type="number" id="split-fixed" min="0" max="100" step="1" required>
@@ -258,7 +269,7 @@
   </details>
 
   <details class="card">
-    <summary><h2>Savings funds</h2></summary>
+    <summary><h2>Savings funds</h2><span class="tile__state" id="state-funds"></span></summary>
     <p class="hint">Shares of whatever savings a month actually produces, including budget you did not spend. Must total 100%.</p>
     <form id="fund-form">
       <label for="fund-name">Name</label>
@@ -272,7 +283,7 @@
   </details>
 
   <details class="card">
-    <summary><h2>Categories</h2></summary>
+    <summary><h2>Categories</h2><span class="tile__state" id="state-categories"></span></summary>
     <form id="category-form">
       <label for="category-name">Name</label>
       <input type="text" id="category-name" required>
@@ -294,7 +305,7 @@
   </details>
 
   <details class="card">
-    <summary><h2>Backup</h2></summary>
+    <summary><h2>Backup</h2><span class="tile__state">Excel in, Excel out</span></summary>
     <button type="button" class="primary" id="export-button">Export to Excel</button>
     <label for="import-input">Import from Excel</label>
     <input type="file" id="import-input" accept=".xlsx,.xls">
@@ -302,7 +313,7 @@
   </details>
 
   <details class="card">
-    <summary><h2>Import a planner</h2></summary>
+    <summary><h2>Import a planner</h2><span class="tile__state">One-off, adds rows</span></summary>
     <p class="hint">Reads a FINANCIAL PLANNER workbook once: its ledger rows, and the fixed or flexible bucket each category was filed under. Adds to what is already here rather than replacing it.</p>
     <label for="planner-account">File rows under account</label>
     <input type="text" id="planner-account" value="Imported" required>
@@ -312,14 +323,14 @@
   </details>
 
   <details class="card">
-    <summary><h2>Sample data</h2></summary>
+    <summary><h2>Sample data</h2><span class="tile__state">Three made-up months</span></summary>
     <p class="hint">Fills the app with three months of made-up transactions so every screen has something to show. Added alongside anything already here, never in place of it — and every row is labelled in its note so you can find and delete them.</p>
     <button type="button" class="primary" id="sample-button">Load sample data</button>
     <p id="sample-status" role="status"></p>
   </details>
 
   <details class="card">
-    <summary><h2>App version</h2></summary>
+    <summary><h2>App version</h2><span class="tile__state" id="state-version"></span></summary>
     <p class="hint">The shell is served from an offline cache, so a stale one keeps showing old numbers with no sign anything is wrong. This names the version actually running and forces a fresh copy.</p>
     <p id="version-status" role="status"></p>
     <button type="button" class="primary" id="update-button">Fetch the latest version</button>
@@ -328,6 +339,7 @@
     <pre id="diagnostics" class="diagnostics"></pre>
     <button type="button" id="copy-diagnostics">Copy diagnostics</button>
   </details>
+  </div>
 </section>
 
 <!-- Icons: Lucide (plus, list, pie-chart, sliders-horizontal), one stroke weight. -->
