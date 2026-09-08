@@ -70,6 +70,16 @@
 
   --font-ui: "Fira Sans", system-ui, -apple-system, sans-serif;
   --font-num: "Fira Code", ui-monospace, "SF Mono", Menlo, monospace;
+
+  /* Motion — direction M2, "paper". One curve for the whole app: a hard
+     start that decelerates to a stop, which is what a surface with weight
+     does. Deliberately NOT an overshoot; a budget bar that springs past its
+     stop draws a number that is not true.
+     Three durations, and every animation in the app uses one of them. */
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --dur-fast: 140ms;   /* a control acknowledging a press */
+  --dur: 300ms;        /* a surface arriving or leaving */
+  --dur-slow: 620ms;   /* a value being drawn */
 }
 
 /* Tone B — peach room. Cards sit lighter than the canvas, matching the
@@ -117,6 +127,12 @@
 body {
   margin: 0;
   padding: 0 0 76px;
+  /* The view slide translates a full-width section 26px sideways, which makes
+     the document 401px wide on a 375px phone for the length of the animation
+     — a real horizontal scrollbar, and on a touch screen a page that can be
+     dragged off its own left edge mid-transition. Clipping the axis the app
+     never scrolls costs nothing and contains it. */
+  overflow-x: hidden;
   background: var(--color-background);
   color: var(--color-foreground);
   font-family: var(--font-ui);
@@ -374,19 +390,23 @@ details.card > summary:focus-visible {
 .view .datefield + label { margin-top: var(--space-2); }
 .view[hidden] { display: none; }
 
-/* The incoming view arrives rather than replacing the last one mid-blink.
-   Going from display:none to block restarts an animation, so this runs on
-   every switch with no class to add or clean up.
+/* The tab bar is a place, and moving along it has a direction. A view
+   entered by moving right along the bar arrives from the right; going back
+   arrives from the left. That is a spatial model people already hold, and it
+   is what turns four tabs into one app rather than four screens.
 
-   Short and small on purpose — 160ms and 6px. A tab switch is not a
-   transition between places, it is the same place showing something else,
-   and a long slide makes the app feel slower than the instant cut it
-   replaces. The global prefers-reduced-motion rule turns it off. */
+   Going from display:none to block restarts a CSS animation, so this fires on
+   every switch. .is-back is set by showView before the swap. */
 @keyframes view-in {
-  from { opacity: 0; transform: translateY(6px); }
+  from { opacity: 0; transform: translateX(26px); }
   to   { opacity: 1; transform: none; }
 }
-.view:not([hidden]) { animation: view-in 160ms ease-out; }
+@keyframes view-in-back {
+  from { opacity: 0; transform: translateX(-26px); }
+  to   { opacity: 1; transform: none; }
+}
+.view:not([hidden]) { animation: view-in var(--dur) var(--ease); }
+.view:not([hidden]).is-back { animation-name: view-in-back; }
 
 /* Vault: the screen is a tray of objects, not a continuous sheet. A section
    is a filled, rounded surface sitting on the canvas — which is the opposite
@@ -431,7 +451,7 @@ details.card > summary:focus-visible {
   font-size: 11px;
   letter-spacing: 0.01em;
   cursor: pointer;
-  transition: color 150ms ease;
+  transition: color 150ms ease, transform var(--dur-fast) var(--ease);
 }
 
 .tabbar svg {
@@ -452,16 +472,21 @@ details.card > summary:focus-visible {
   font-weight: 600;
 }
 
-/* Active tab marker rides the top hairline. */
-.tabbar button[aria-current="page"]::before {
-  content: "";
+/* Active tab marker rides the top hairline. One element for the whole bar,
+   moved with a transform, rather than a ::before on whichever button happens
+   to be current — a pseudo-element cannot travel from one element to another,
+   so the marker used to teleport while the view slid. Its position is set in
+   showView from the button's measured box, because the buttons are flexible
+   and their width is not known to the stylesheet. */
+.tabbar__marker {
   position: absolute;
   top: -1px;
-  left: 50%;
-  transform: translateX(-50%);
+  left: 0;
   width: 28px;
   height: 2px;
   background: var(--color-active);
+  transform: translateX(var(--marker-x, 0));
+  transition: transform var(--dur) var(--ease);
 }
 
 :focus-visible {
@@ -563,7 +588,10 @@ button.primary {
   box-shadow: var(--shadow-primary);
   font-weight: 600;
   cursor: pointer;
-  transition: background 150ms ease;
+  /* transform is listed here as well as in the shared press rule below: this
+     shorthand is later and more specific, so leaving it out silently removed
+     the press feedback from the app's most-used button. */
+  transition: background 150ms ease, transform var(--dur-fast) var(--ease);
 }
 
 button.primary {
@@ -573,6 +601,59 @@ button.primary {
 }
 button.primary:hover { background: var(--color-primary-hover); }
 button.primary:active { filter: brightness(0.92); }
+
+/* Every control acknowledges the press itself, not just its result. 3% is
+   small enough to read as the surface taking the weight rather than as the
+   button shrinking. */
+button, .chip, .seg__button, summary { transition: transform var(--dur-fast) var(--ease); }
+button:active, .chip:active, .seg__button:active, summary:active { transform: scale(0.97); }
+
+/* A dialog is a surface arriving, so it rises and settles; the scrim behind
+   it only fades, because a scrim is not an object. */
+@keyframes dialog-in {
+  from { opacity: 0; transform: translateY(16px) scale(0.97); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes scrim-in { from { opacity: 0; } }
+.dialog[open] { animation: dialog-in var(--dur) var(--ease); }
+.dialog[open]::backdrop { animation: scrim-in var(--dur-fast) linear; }
+
+/* An opened tile expands from its own square rather than appearing whole. */
+@keyframes tile-open {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: none; }
+}
+.board > details.card[open] > :not(summary) { animation: tile-open var(--dur) var(--ease); }
+
+/* "Saved." rises into place. The status line is the only confirmation the
+   form gives, so it is worth the 300ms of attention. */
+@keyframes note-in {
+  from { opacity: 0; transform: translateY(7px); }
+  to   { opacity: 1; transform: none; }
+}
+#add-status.is-fresh, #list-status.is-fresh { animation: note-in var(--dur) var(--ease); }
+
+/* Figures being drawn, not chrome moving — so this is the slow duration.
+   Only on entering the Summary: the bars are repainted after every save, and
+   re-growing them on each one would animate a screen nobody is looking at.
+   The bar's real width is inline, so a keyframe that only sets `from` grows
+   it to whatever that value is. */
+@keyframes bar-grow { from { width: 0; } }
+.view.is-entering .track__rail i { animation: bar-grow var(--dur-slow) var(--ease); }
+
+@keyframes slice-in { from { opacity: 0; transform: scale(0.82); } }
+.view.is-entering #pie > * {
+  transform-origin: 50% 50%;
+  animation: slice-in var(--dur) var(--ease) backwards;
+}
+/* Clockwise from twelve, one slice after another, the same order the reader
+   picks them up in. Capped at six: past that the last slice would arrive
+   after the eye had already moved on. */
+.view.is-entering #pie > :nth-child(2) { animation-delay: 60ms; }
+.view.is-entering #pie > :nth-child(3) { animation-delay: 120ms; }
+.view.is-entering #pie > :nth-child(4) { animation-delay: 180ms; }
+.view.is-entering #pie > :nth-child(5) { animation-delay: 240ms; }
+.view.is-entering #pie > :nth-child(n+6) { animation-delay: 300ms; }
 
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; animation: none !important; }
@@ -868,7 +949,7 @@ button.primary:active { filter: brightness(0.92); }
   /* Vertical scrolling stays the browser's; the horizontal axis is ours.
      Without this the page and the row fight over every drag. */
   touch-action: pan-y;
-  transition: transform 180ms ease;
+  transition: transform var(--dur) var(--ease);
 }
 /* While a finger is down the surface must track it exactly, so the easing is
    dropped for the duration of the gesture. Driven by a class rather than

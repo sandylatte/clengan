@@ -27,17 +27,37 @@ import {
 const scrollPositions = new Map();
 let currentView = 'add';
 
+// Left to right, the order the tabs are actually in. A view entered by moving
+// right along the bar arrives from the right, and going back arrives from the
+// left — which is the whole reason this array exists rather than being
+// implied by the DOM.
+const VIEW_ORDER = ['add', 'list', 'summary', 'settings'];
+
 function showView(name) {
   if (name === currentView) return;
+  const back = VIEW_ORDER.indexOf(name) < VIEW_ORDER.indexOf(currentView);
   scrollPositions.set(currentView, window.scrollY);
   currentView = name;
 
   for (const section of document.querySelectorAll('.view')) {
     section.hidden = section.id !== `view-${name}`;
+    section.classList.remove('is-back', 'is-entering');
   }
+  const entering = document.getElementById(`view-${name}`);
+  entering.classList.toggle('is-back', back);
+  // The charts draw on arrival, not on every repaint: the Summary is
+  // re-rendered after every save, and re-growing the bars each time would
+  // animate a screen nobody is looking at. Cleared when it ends so the next
+  // arrival can start it again.
+  if (name === 'summary') {
+    entering.classList.add('is-entering');
+    setTimeout(() => entering.classList.remove('is-entering'), 1000);
+  }
+
   for (const button of document.querySelectorAll('.tabbar button')) {
     if (button.dataset.view === name) {
       button.setAttribute('aria-current', 'page');
+      moveTabMarker(button);
     } else {
       button.removeAttribute('aria-current');
     }
@@ -49,7 +69,31 @@ function showView(name) {
   window.scrollTo({ top: scrollPositions.get(name) ?? 0, behavior: 'instant' });
 }
 
-document.querySelector('.tabbar').addEventListener('click', (event) => {
+// The marker is one element for the whole bar, moved with a transform. A
+// ::before on whichever button is current cannot travel between elements, so
+// it used to teleport while the view slid. Measured rather than computed: the
+// buttons are flexible and the stylesheet does not know their width.
+const tabMarker = document.createElement('i');
+tabMarker.className = 'tabbar__marker';
+tabMarker.setAttribute('aria-hidden', 'true');
+
+function moveTabMarker(button) {
+  const bar = button.closest('.tabbar');
+  const x = button.offsetLeft + (button.offsetWidth / 2) - (tabMarker.offsetWidth / 2);
+  bar.style.setProperty('--marker-x', `${Math.round(x)}px`);
+}
+
+const tabbar = document.querySelector('.tabbar');
+tabbar.append(tabMarker);
+moveTabMarker(tabbar.querySelector('button[aria-current="page"]'));
+// The marker is positioned from measured boxes, so it has to be re-placed
+// when those boxes change — a rotation or a split-screen resize.
+window.addEventListener('resize', () => {
+  const active = tabbar.querySelector('button[aria-current="page"]');
+  if (active) moveTabMarker(active);
+});
+
+tabbar.addEventListener('click', (event) => {
   const button = event.target.closest('button[data-view]');
   if (button) showView(button.dataset.view);
 });
@@ -236,6 +280,7 @@ form.addEventListener('submit', async (event) => {
     syncKind();
     status.className = 'is-ok';
     status.textContent = 'Saved.';
+    freshen(status);
     await refresh();
   } finally {
     submitting = false;
@@ -309,10 +354,22 @@ const MONTH_ABBR = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep
 
 const TRASH_ICON = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>`;
 
+// A CSS rule cannot see textContent change, so a fresh message says so.
+// Removed and re-added with a reflow between, or setting the same class twice
+// in a row does nothing and the second "Saved." never animates.
+function freshen(node) {
+  node.classList.remove('is-fresh');
+  void node.offsetWidth;
+  node.classList.add('is-fresh');
+}
+
 function showListStatus(message) {
   const status = document.getElementById('list-status');
+  // className is assigned wholesale here, so freshen has to run after it —
+  // the other order sets is-fresh and then throws it away.
   status.className = message ? 'budget-note__warning' : '';
   status.textContent = message;
+  if (message) freshen(status);
 }
 
 function renderList(txns) {

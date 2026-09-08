@@ -382,6 +382,36 @@ though it needs none at rest. Both are tinted from the tone's own foreground,
 never black. A black cast on peach reads grey and drains the hue out of the
 surface beneath it.
 
+## Motion
+
+Direction M2, "paper": a surface has weight and comes from somewhere. One
+curve for the whole app — `cubic-bezier(0.22, 1, 0.36, 1)`, a hard start
+decelerating to a stop. Deliberately not an overshoot: a budget bar that
+springs past its stop draws a number that is not true.
+
+Three durations, and every animation uses one of them.
+
+| Token | Value | For |
+| --- | --- | --- |
+| `--dur-fast` | 140ms | a control acknowledging a press (3% scale) |
+| `--dur` | 300ms | a surface arriving or leaving |
+| `--dur-slow` | 620ms | a value being drawn |
+
+- **Views slide with the tab order.** Right along the bar arrives from the
+  right, back arrives from the left. `VIEW_ORDER` in `app.js` is the source of
+  that direction, not the DOM.
+- **The tab marker is one element** moved by transform. A `::before` on the
+  current button cannot travel between elements, so it used to teleport while
+  the view slid.
+- **Charts animate on arrival, never on repaint.** The Summary re-renders
+  after every save; `is-entering` is added by `showView` and removed after a
+  second, so bars grow and slices land only when someone is looking.
+- **`body` clips `overflow-x`.** The slide translates a full-width section
+  26px sideways, which makes the document 401px wide on a 375px phone for the
+  length of the animation.
+- Everything is disabled under `prefers-reduced-motion: reduce` by the
+  existing global rule.
+
 ## Components
 
 **`title-bar`** — Sticky, `backdrop-filter: blur(12px)` over an 88%-opaque canvas, 1px bottom border. Flex row, `justify-content: space-between`, baseline aligned. The right slot hides itself when empty via `:empty`.
