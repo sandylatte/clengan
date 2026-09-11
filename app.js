@@ -27,6 +27,10 @@ import {
 // not left. Neither view moved — the page under both of them did.
 const scrollPositions = new Map();
 let currentView = 'add';
+// One timer, not one per view. Tapping through three tabs inside a second
+// used to leave three pending timeouts, and the first to fire stripped
+// is-entering from the view that was still arriving.
+let enteringTimer = 0;
 
 // Left to right, the order the tabs are actually in. A view entered by moving
 // right along the bar arrives from the right, and going back arrives from the
@@ -46,14 +50,17 @@ function showView(name) {
   }
   const entering = document.getElementById(`view-${name}`);
   entering.classList.toggle('is-back', back);
-  // The charts draw on arrival, not on every repaint: the Summary is
-  // re-rendered after every save, and re-growing the bars each time would
-  // animate a screen nobody is looking at. Cleared when it ends so the next
-  // arrival can start it again.
-  if (name === 'summary') {
-    entering.classList.add('is-entering');
-    setTimeout(() => entering.classList.remove('is-entering'), 1000);
-  }
+  // Every view now composes on arrival rather than only the Summary: its
+  // contents settle in reading order behind the slide, so a tab reads as a
+  // page being laid out instead of a finished block sliding sideways.
+  //
+  // On arrival ONLY, never on repaint. Each view re-renders after every save,
+  // and re-running the stagger there would animate a screen nobody is looking
+  // at — and worse, would restart mid-scroll on the List every time a row
+  // changed. Cleared when it ends so the next arrival can start it again.
+  entering.classList.add('is-entering');
+  clearTimeout(enteringTimer);
+  enteringTimer = setTimeout(() => entering.classList.remove('is-entering'), 1000);
 
   for (const button of document.querySelectorAll('.tabbar button')) {
     if (button.dataset.view === name) {
@@ -417,10 +424,27 @@ function renderList(txns) {
 
   // Date is written once per day rather than on every row, which is what
   // gives the transaction name back the width it was losing.
+  // The arrival stagger's index, set here because a month's length is only
+  // known at render time and headings and rows are interleaved siblings, which
+  // no nth-child can count separately. Capped at six for both: past that the
+  // last one would land after the reader had already started scrolling, and a
+  // sixty-row month would still be arriving two seconds in. The property is
+  // harmless when the view is not entering — nothing reads it.
+  const STAGGER_CAP = 5;
   const items = [];
+  let dayIndex = 0;
+  let rowIndex = 0;
   for (const day of groupByDay(rows)) {
-    items.push(dayHeading(day, searching));
-    for (const txn of day.rows) items.push(transactionRow(txn));
+    const heading = dayHeading(day, searching);
+    heading.style.setProperty('--n', Math.min(dayIndex, STAGGER_CAP));
+    dayIndex += 1;
+    items.push(heading);
+    for (const txn of day.rows) {
+      const row = transactionRow(txn);
+      row.style.setProperty('--n', Math.min(rowIndex, STAGGER_CAP));
+      rowIndex += 1;
+      items.push(row);
+    }
   }
   list.replaceChildren(...items);
 }

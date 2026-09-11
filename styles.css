@@ -655,6 +655,61 @@ button:active, .chip:active, .seg__button:active, summary:active { transform: sc
 .view.is-entering #pie > :nth-child(5) { animation-delay: 240ms; }
 .view.is-entering #pie > :nth-child(n+6) { animation-delay: 300ms; }
 
+/* A tab arrives as structure, then content. The dates of the month land first
+   and the money fills in underneath them — the screen composes rather than
+   sliding in finished. Every tab has the same two beats, over whatever plays
+   the part of a date: the step legends on Add, the tiles on Settings.
+
+   `backwards` on every one of these matters: without it an element sits at its
+   final opacity during its own delay, so a staggered set would flash into view
+   complete and then animate. */
+@keyframes settle-in {
+  from { opacity: 0; transform: translateY(8px); }
+}
+
+/* The second beat begins once the structure is essentially down. Everything
+   below is expressed against these two, so retiming the whole gesture is two
+   numbers rather than a dozen. */
+:root {
+  --arrive-step: 55ms;   /* between one piece of structure and the next */
+  --arrive-fill: 300ms;  /* structure done; content starts */
+  --arrive-drip: 40ms;   /* between one piece of content and the next */
+}
+
+.view.is-entering .dayhead,
+.view.is-entering #add-form > .node > legend,
+.view.is-entering .board > details > summary {
+  animation: settle-in var(--dur) var(--ease) backwards;
+}
+.view.is-entering .rows.spine > .swipe,
+.view.is-entering #add-form > .node > :not(legend),
+.view.is-entering .board > details > summary > .tile__state {
+  animation: settle-in var(--dur) var(--ease) backwards;
+  animation-delay: var(--arrive-fill);
+}
+
+/* The List is built at runtime and its length is unknown, so its stagger index
+   arrives from JavaScript already capped. The Add and Settings tabs have fixed
+   markup, so theirs is counted here — nth-child cannot count the List's
+   headings anyway, since headings and rows are interleaved siblings. */
+.view.is-entering .dayhead { animation-delay: calc(var(--n, 0) * var(--arrive-step)); }
+.view.is-entering .rows.spine > .swipe {
+  animation-delay: calc(var(--arrive-fill) + var(--n, 0) * var(--arrive-drip));
+}
+
+.view.is-entering #add-form > .node:nth-child(2) > legend { animation-delay: var(--arrive-step); }
+.view.is-entering #add-form > .node:nth-child(3) > legend { animation-delay: calc(var(--arrive-step) * 2); }
+.view.is-entering #add-form > .node:nth-child(4) > legend { animation-delay: calc(var(--arrive-step) * 3); }
+
+/* Nine tiles read as a grid, not as a line, so they arrive by row: the two in
+   a row land together and the next row follows. Counting each tile separately
+   made the last one land almost half a second after the first, which on a
+   board reads as stalling rather than as sequence. */
+.view.is-entering .board > details:nth-child(n+3) > summary { animation-delay: var(--arrive-step); }
+.view.is-entering .board > details:nth-child(n+5) > summary { animation-delay: calc(var(--arrive-step) * 2); }
+.view.is-entering .board > details:nth-child(n+7) > summary { animation-delay: calc(var(--arrive-step) * 3); }
+.view.is-entering .board > details:nth-child(n+9) > summary { animation-delay: calc(var(--arrive-step) * 4); }
+
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; animation: none !important; }
 }
