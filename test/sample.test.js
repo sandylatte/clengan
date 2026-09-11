@@ -172,7 +172,23 @@ test('the sample presets a colour for every category it spends in', () => {
   }
 });
 
-test('no two sample categories share a colour', () => {
-  const values = [...SAMPLE_COLOURS.values()];
-  assert.equal(new Set(values).size, values.length);
+// Uniqueness is enforced per kind, not across the whole set. The palette
+// holds ten colours and the sample uses twelve categories, so something has
+// to repeat. Income is where it costs least: the pie charts spending only, so
+// two categories never compete there, and in the List an income row is marked
+// by a credit-coloured signed amount before its rail is read.
+test('no two sample categories of the same kind share a colour', () => {
+  const rows = build().filter((r) => !r.transfer_id);
+  const earned = new Set(rows.filter((r) => r.amount > 0).map((r) => r.category));
+  for (const kind of [earned, new Set(rows.filter((r) => r.amount < 0).map((r) => r.category))]) {
+    const values = [...kind].map((name) => SAMPLE_COLOURS.get(name)).filter(Boolean);
+    assert.equal(new Set(values).size, values.length);
+  }
+});
+
+test('every sample income category is coloured too', () => {
+  const earned = new Set(build().filter((r) => r.amount > 0 && !r.transfer_id).map((r) => r.category));
+  for (const category of earned) {
+    assert.ok(SAMPLE_COLOURS.has(category), `${category} is earned but has no sample colour`);
+  }
 });
