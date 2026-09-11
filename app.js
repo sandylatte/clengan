@@ -433,27 +433,10 @@ function renderList(txns) {
 
   // Date is written once per day rather than on every row, which is what
   // gives the transaction name back the width it was losing.
-  // The arrival stagger's index, set here because a month's length is only
-  // known at render time and headings and rows are interleaved siblings, which
-  // no nth-child can count separately. Capped at six for both: past that the
-  // last one would land after the reader had already started scrolling, and a
-  // sixty-row month would still be arriving two seconds in. The property is
-  // harmless when the view is not entering — nothing reads it.
-  const STAGGER_CAP = 5;
   const items = [];
-  let dayIndex = 0;
-  let rowIndex = 0;
   for (const day of groupByDay(rows)) {
-    const heading = dayHeading(day, searching);
-    heading.style.setProperty('--n', Math.min(dayIndex, STAGGER_CAP));
-    dayIndex += 1;
-    items.push(heading);
-    for (const txn of day.rows) {
-      const row = transactionRow(txn);
-      row.style.setProperty('--n', Math.min(rowIndex, STAGGER_CAP));
-      rowIndex += 1;
-      items.push(row);
-    }
+    items.push(dayHeading(day, searching));
+    for (const txn of day.rows) items.push(transactionRow(txn));
   }
   list.replaceChildren(...items);
 }
