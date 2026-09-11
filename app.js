@@ -2,7 +2,7 @@ import * as db from './db.js';
 import { formatIDR, formatAmount, groupDigits, rupiahToCents, centsToRupiahDigits } from './money.js';
 import {
   filterMonth, monthlyTotals, spendingBreakdown, accountBalances, netTrend, bucketTotals, fundsByYear,
-  lastSixMonths, groupByDay, periodTotals, periodBuckets,
+  lastSixMonths, groupByDay, periodTotals, periodBuckets, searchTransactions,
 } from './rollup.js';
 import {
   BUCKETS, CATEGORY_KINDS, CATEGORY_COLOURS, DEFAULT_SPLIT, validateSplit, allocateFunds,
@@ -290,6 +290,11 @@ form.addEventListener('submit', async (event) => {
 
 const state = {
   month: new Date().toISOString().slice(0, 7),
+  // List-only, and deliberately not persisted: a search is a question being
+  // asked right now, not a setting. Reopening the app to yesterday's query
+  // and an apparently half-empty list is the failure this avoids.
+  query: '',
+  txns: [],
   categories: [], usedCategories: [], funds: [], split: DEFAULT_SPLIT, defaultAccount: '',
   // Chart-only. The month above is global; these narrow the spending chart
   // without touching the budget, which is always the whole month's income.
@@ -312,6 +317,14 @@ for (const input of monthInputs) {
     refresh();
   });
 }
+
+// `input`, not `change`: a search that only answers when you leave the field
+// is a form, and this is meant to narrow as you type. The data is already in
+// memory, so there is nothing to debounce.
+document.getElementById('list-search').addEventListener('input', (event) => {
+  state.query = event.target.value;
+  renderList(state.txns);
+});
 
 // One period control for the Summary. It used to live only on the spending
 // chart, which meant the balance, the budget and the funds silently stayed
@@ -373,11 +386,21 @@ function showListStatus(message) {
 }
 
 function renderList(txns) {
-  const rows = filterMonth(txns, state.month);
+  const searching = state.query.trim().length > 0;
+  const rows = searching ? searchTransactions(txns, state.query) : filterMonth(txns, state.month);
   const list = document.getElementById('list-rows');
-  document.getElementById('list-empty').hidden = rows.length > 0;
+  document.getElementById('list-empty').hidden = rows.length > 0 || searching;
+  // A search spans every month, so the month control no longer describes what
+  // is on screen. Disabling it says that without a sentence, and gives the
+  // month back the moment the query is cleared.
+  document.getElementById('list-month').disabled = searching;
+  document.getElementById('list-nomatch').hidden = !searching || rows.length > 0;
 
-  const { net } = monthlyTotals(txns, state.month);
+  // Searching, the header total is the net of the matches — the figure a
+  // reader wants after asking "how much did I spend on this".
+  const net = searching
+    ? rows.reduce((sum, txn) => (txn.transfer_id == null ? sum + txn.amount : sum), 0)
+    : monthlyTotals(txns, state.month).net;
   const total = document.getElementById('head-list-total');
   total.textContent = rows.length ? formatAmount(net) : '';
   total.classList.toggle('amount--in', net >= 0);
@@ -387,13 +410,13 @@ function renderList(txns) {
   // gives the transaction name back the width it was losing.
   const items = [];
   for (const day of groupByDay(rows)) {
-    items.push(dayHeading(day));
+    items.push(dayHeading(day, searching));
     for (const txn of day.rows) items.push(transactionRow(txn));
   }
   list.replaceChildren(...items);
 }
 
-function dayHeading({ date, net }) {
+function dayHeading({ date, net }, withYear = false) {
   const item = document.createElement('li');
   // A day is a node on the List's spine; the transactions under it hang off
   // the same line without nodes of their own, so the line reads as a sequence
@@ -404,7 +427,11 @@ function dayHeading({ date, net }) {
   // YYYY-MM-DD string lands on the previous day west of Greenwich.
   const [year, month, dayOfMonth] = date.split('-').map(Number);
   const weekday = WEEKDAY_ABBR[new Date(Date.UTC(year, month - 1, dayOfMonth)).getUTCDay()];
-  when.textContent = `${weekday} ${String(dayOfMonth).padStart(2, '0')} ${MONTH_ABBR[month - 1]}`;
+  // The year is normally noise — the month control above already fixes it.
+  // Search results span months, so there it is the only thing separating
+  // last March from this one.
+  const stamp = `${weekday} ${String(dayOfMonth).padStart(2, '0')} ${MONTH_ABBR[month - 1]}`;
+  when.textContent = withYear ? `${stamp} ${year}` : stamp;
   const rule = document.createElement('i');
   const sum = document.createElement('span');
   sum.className = `dayhead__net amount ${net > 0 ? 'amount--in' : ''}`;
@@ -922,6 +949,10 @@ async function refresh() {
   state.funds = [...funds].sort((a, b) => b.percent - a.percent || a.name.localeCompare(b.name));
   state.split = split;
   await fillPickers();
+  // Kept so the search can re-render the List without a database round trip.
+  // Narrowing as you type is six IndexedDB reads per keystroke otherwise, to
+  // fetch rows that have not changed since the previous letter.
+  state.txns = txns;
   renderList(txns);
 
   // The List view (renderList above) needs every row, including corrupt ones,

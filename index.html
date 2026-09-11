@@ -140,6 +140,8 @@
 </section>
 <section class="view" id="view-list" hidden>
   <h1><svg class="mark" aria-hidden="true"><use href="#mark"/></svg><span class="h1-name">List</span><span class="h1-meta amount" id="head-list-total"></span></h1>
+  <label for="list-search">Search</label>
+  <input type="search" id="list-search" placeholder="Name, category, account, note" autocomplete="off" enterkeyhint="search">
   <label for="list-month">Month</label>
   <input type="month" id="list-month">
   <p id="list-status" role="status"></p>
@@ -148,6 +150,11 @@
     <svg class="empty__mark" aria-hidden="true"><use href="#mark"/></svg>
     <p class="empty__title">Nothing recorded this month</p>
     <p class="empty__body">Anything you add on the Add tab shows up here, newest first.</p>
+  </div>
+  <div id="list-nomatch" class="empty" hidden>
+    <svg class="empty__mark" aria-hidden="true"><use href="#mark"/></svg>
+    <p class="empty__title">Nothing matches</p>
+    <p class="empty__body">Search covers every month, and looks at the name, category, account and note.</p>
   </div>
 </section>
 <section class="view" id="view-summary" hidden>

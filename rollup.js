@@ -13,6 +13,28 @@ export function filterMonth(txns, month) {
   return txns.filter((txn) => monthOf(txn.date) === month);
 }
 
+// Search deliberately ignores the month. The month control answers "what did
+// March look like"; search answers "where is that one payment", and a search
+// that could only see the month already on screen would never once answer it.
+// Every word must match somewhere in the row, in any field and any order, so
+// "grab jan" finds a January Grab ride without the user recalling which field
+// held which word.
+const SEARCH_MONTHS = ['jan', 'feb', 'mar', 'apr', 'may', 'jun',
+  'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+
+export function searchTransactions(txns, query) {
+  const words = String(query ?? '').toLowerCase().split(/\s+/).filter(Boolean);
+  if (!words.length) return [];
+  return txns.filter((txn) => {
+    // Both spellings of the date: the ISO string so "2026-03" works, and the
+    // month's name so "jan" does. A reader remembers the month, not the digit.
+    const named = SEARCH_MONTHS[Number(txn.date.slice(5, 7)) - 1] ?? '';
+    const hay = [txn.name, txn.category, txn.account, txn.note, txn.date, named]
+      .filter(Boolean).join(' ').toLowerCase();
+    return words.every((word) => hay.includes(word));
+  });
+}
+
 // The List groups rows under a date instead of repeating it on every row.
 // Each group carries that day's net, which is the figure a reader wants when
 // scanning: "what did this day cost me". Transfers are excluded from the net
