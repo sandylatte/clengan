@@ -1,5 +1,6 @@
 import { toCents, fromCents } from './money.js';
 import { parsePlannerGrid, monthFromSheetName } from './planner.js';
+import { normaliseColour } from './budget.js';
 
 // `name` and `bucket` sit beside category, not instead of it: the backup is
 // the only copy of this data that leaves the device, so a field missing here
@@ -118,16 +119,150 @@ export function sheetDataToAccounts(rows) {
   });
 }
 
+// Everything below restores the parts of the app that are NOT transactions.
+// Until these existed the export was not a backup: restoring it onto a fresh
+// device gave the ledger back with grey categories, no funds and a default
+// split, and nothing said so. A backup that loses settings loses them quietly,
+// which is the worst way to lose them.
+
+const CATEGORY_COLUMNS = ['name', 'kind', 'colour', 'position'];
+const FUND_COLUMNS = ['name', 'percent'];
+const SETTING_COLUMNS = ['key', 'value'];
+const RECURRING_COLUMNS = ['id', 'name', 'amount', 'account', 'category', 'bucket',
+  'day', 'last_run', 'active', 'note'];
+
+export function categoriesToSheetData(categories) {
+  return categories.map((category) => ({
+    name: category.name,
+    kind: category.kind === 'income' ? 'income' : 'expense',
+    colour: category.colour ?? '',
+    position: Number.isFinite(category.position) ? category.position : '',
+  }));
+}
+
+export function sheetDataToCategories(rows) {
+  return rows.map((row) => {
+    const name = String(row.name ?? '').trim();
+    if (!name) return null;
+    const position = Number(row.position);
+    return {
+      name,
+      kind: String(row.kind ?? '').trim().toLowerCase() === 'income' ? 'income' : 'expense',
+      // Through the same gate as every other source. A hand-edited hex that is
+      // not in the palette becomes "no colour" rather than a value the
+      // contrast of the whole set was never checked against.
+      colour: normaliseColour(row.colour),
+      position: Number.isFinite(position) ? position : undefined,
+    };
+  }).filter(Boolean);
+}
+
+export function fundsToSheetData(funds) {
+  return funds.map((fund) => ({ name: fund.name, percent: fund.percent }));
+}
+
+export function sheetDataToFunds(rows) {
+  return rows.map((row, index) => {
+    const name = String(row.name ?? '').trim();
+    if (!name) return null;
+    const percent = Number(row.percent);
+    if (!Number.isFinite(percent) || percent < 0) {
+      throw new Error(`funds row ${index + 2}: percent is not a number at or above zero: "${row.percent}"`);
+    }
+    return { name, percent };
+  }).filter(Boolean);
+}
+
+// Settings hold objects (the split is three numbers), and a spreadsheet cell
+// holds text. JSON in the cell keeps the sheet honest about that rather than
+// flattening a structure into three columns nothing else uses.
+export function settingsToSheetData(settings) {
+  return settings.map(({ key, value }) => ({ key, value: JSON.stringify(value) }));
+}
+
+export function sheetDataToSettings(rows) {
+  return rows.map((row, index) => {
+    const key = String(row.key ?? '').trim();
+    if (!key) return null;
+    try {
+      return { key, value: JSON.parse(String(row.value ?? '')) };
+    } catch {
+      throw new Error(`settings row ${index + 2}: "${key}" is not readable JSON: "${row.value}"`);
+    }
+  }).filter(Boolean);
+}
+
+export function recurringToSheetData(rules) {
+  return rules.map((rule) => ({
+    id: rule.id,
+    name: rule.name ?? '',
+    amount: fromCents(rule.amount),
+    account: rule.account ?? '',
+    category: rule.category ?? '',
+    bucket: rule.bucket ?? '',
+    day: rule.day,
+    last_run: rule.last_run ?? '',
+    active: rule.active === false ? 'no' : 'yes',
+    note: rule.note ?? '',
+  }));
+}
+
+export function sheetDataToRecurring(rows) {
+  return rows.map((row, index) => {
+    const where = `recurring row ${index + 2}`;
+    const id = String(row.id ?? '').trim();
+    if (!id) return null;
+    let amount;
+    try {
+      amount = toCents(row.amount);
+    } catch {
+      throw new Error(`${where}: amount is not a number: "${row.amount}"`);
+    }
+    const day = Number(row.day);
+    if (!Number.isInteger(day) || day < 1 || day > 31) {
+      throw new Error(`${where}: day must be a whole number from 1 to 31, got "${row.day}"`);
+    }
+    const rawBucket = String(row.bucket ?? '').trim().toLowerCase();
+    const lastRun = String(row.last_run ?? '').trim();
+    if (lastRun && !/^\d{4}-\d{2}$/.test(lastRun)) {
+      throw new Error(`${where}: last_run must be YYYY-MM, got "${row.last_run}"`);
+    }
+    return {
+      id,
+      name: String(row.name ?? '').trim(),
+      amount,
+      account: String(row.account ?? '').trim(),
+      category: String(row.category ?? '').trim(),
+      bucket: rawBucket === 'fixed' || rawBucket === 'flexible' ? rawBucket : null,
+      day,
+      last_run: lastRun || null,
+      // Anything but an explicit "no" stays active: a rule that quietly
+      // stopped firing because a cell was blank is a payment missed in silence.
+      active: String(row.active ?? '').trim().toLowerCase() !== 'no',
+      note: String(row.note ?? ''),
+    };
+  }).filter(Boolean);
+}
+
 // Browser-only below this line. XLSX is the global from vendor/xlsx.full.min.js,
 // loaded by a plain <script> tag in index.html.
-export function exportXlsx(txns, accounts) {
+export function exportXlsx(txns, accounts, extras = {}) {
+  const { categories = [], funds = [], settings = [], recurring = [] } = extras;
   const book = XLSX.utils.book_new();
-  const txSheet = XLSX.utils.json_to_sheet(rowsToSheetData(txns), { header: COLUMNS });
-  XLSX.utils.book_append_sheet(book, txSheet, 'transactions');
-  // The accounts sheet is what makes this a real backup — without it,
-  // opening balances are lost on restore (see Task 10 final review).
-  const accSheet = XLSX.utils.json_to_sheet(accountsToSheetData(accounts), { header: ACCOUNTS_COLUMNS });
-  XLSX.utils.book_append_sheet(book, accSheet, 'accounts');
+  const sheet = (name, data, header) => {
+    XLSX.utils.book_append_sheet(book, XLSX.utils.json_to_sheet(data, { header }), name);
+  };
+  sheet('transactions', rowsToSheetData(txns), COLUMNS);
+  // Every sheet below is written even when empty. A missing sheet is
+  // indistinguishable from an older backup that never had one, and the import
+  // has to treat that as "leave what is here alone" — so an empty fund list
+  // that arrived as a missing sheet would silently fail to clear anything.
+  // Present-and-empty says what happened.
+  sheet('accounts', accountsToSheetData(accounts), ACCOUNTS_COLUMNS);
+  sheet('categories', categoriesToSheetData(categories), CATEGORY_COLUMNS);
+  sheet('funds', fundsToSheetData(funds), FUND_COLUMNS);
+  sheet('settings', settingsToSheetData(settings), SETTING_COLUMNS);
+  sheet('recurring', recurringToSheetData(recurring), RECURRING_COLUMNS);
   const stamp = new Date().toISOString().slice(0, 10);
   XLSX.writeFile(book, `clengan-${stamp}.xlsx`);
 }
@@ -193,11 +328,20 @@ export async function importXlsx(file) {
 
   // A file with no "accounts" sheet is a legacy backup (or one written by
   // an older version of this app) and must still import exactly as before.
-  let accounts = [];
-  if (book.SheetNames.includes('accounts')) {
-    const accRows = XLSX.utils.sheet_to_json(book.Sheets.accounts, { raw: false, defval: '' });
-    accounts = sheetDataToAccounts(accRows);
-  }
+  // The same holds for every sheet added since: absent means "this file has
+  // nothing to say about that", and the caller leaves what is on the device
+  // alone. Only a sheet that is present speaks.
+  const read = (name, parse) => (book.SheetNames.includes(name)
+    ? parse(XLSX.utils.sheet_to_json(book.Sheets[name], { raw: false, defval: '' }))
+    : null);
 
-  return { rows: txns, accounts, sheetName };
+  return {
+    rows: txns,
+    sheetName,
+    accounts: read('accounts', sheetDataToAccounts) ?? [],
+    categories: read('categories', sheetDataToCategories),
+    funds: read('funds', sheetDataToFunds),
+    settings: read('settings', sheetDataToSettings),
+    recurring: read('recurring', sheetDataToRecurring),
+  };
 }

@@ -1000,8 +1000,19 @@ const ioStatus = document.getElementById('io-status');
 
 document.getElementById('export-button').addEventListener('click', async () => {
   try {
-    const [txns, accounts] = await Promise.all([db.allTransactions(), db.allAccounts()]);
-    exportXlsx(txns, accounts);
+    const [txns, accounts, categories, funds, recurring, split, defaultAccount] = await Promise.all([
+      db.allTransactions(), db.allAccounts(), db.allCategories(), db.allFunds(),
+      db.allRecurring(), db.getSetting('split', DEFAULT_SPLIT),
+      db.getSetting('default-account', ''),
+    ]);
+    // Named one by one rather than dumped from the settings store, so a key
+    // that exists only as a device preference cannot ride along into a file
+    // the user shares or restores onto another phone.
+    const settings = [
+      { key: 'split', value: split },
+      { key: 'default-account', value: defaultAccount },
+    ];
+    exportXlsx(txns, accounts, { categories, funds, settings, recurring });
     const unreadable = txns.filter((t) => !Number.isInteger(t.amount)).length;
     ioStatus.className = 'is-ok';
     ioStatus.textContent = unreadable
@@ -1021,7 +1032,7 @@ document.getElementById('import-input').addEventListener('change', async (event)
   const [file] = event.target.files;
   if (!file) return;
   try {
-    const { rows, accounts, sheetName } = await importXlsx(file);
+    const { rows, accounts, sheetName, categories, funds, settings, recurring } = await importXlsx(file);
     // Write accounts named in the file BEFORE writing transactions, with
     // their real opening balances. Account creation is additive and carries
     // no money by itself, so if it fails nothing about the ledger has
@@ -1042,14 +1053,44 @@ document.getElementById('import-input').addEventListener('change', async (event)
     for (const row of rows) {
       row.account = await db.ensureAccount(row.account, 0);
     }
+
+    // Everything that is not money, restored before the ledger and only where
+    // the file actually carried a sheet for it. A null means the file is older
+    // than that sheet and has nothing to say, so what is on the device stands.
+    // These are all additive puts: restoring onto a populated device adopts
+    // what the file names and leaves the rest, rather than quietly deleting
+    // categories or funds the backup predates.
+    const restored = [];
+    if (categories) {
+      for (const category of categories) {
+        const { name, ...changes } = category;
+        if (changes.position === undefined) delete changes.position;
+        await db.putCategory(name, changes);
+      }
+      restored.push(countOf(categories.length, 'category', 'categories'));
+    }
+    if (funds) {
+      for (const fund of funds) await db.putFund(fund.name, fund.percent);
+      restored.push(countOf(funds.length, 'fund'));
+    }
+    if (settings) {
+      for (const setting of settings) await db.putSetting(setting.key, setting.value);
+      restored.push(countOf(settings.length, 'setting'));
+    }
+    if (recurring) {
+      for (const rule of recurring) await db.putRecurring(rule);
+      restored.push(countOf(recurring.length, 'rule'));
+    }
+
     await db.putTransactions(rows);
     ioStatus.className = 'is-ok';
     // 0 rows is valid (an empty database backs up to an empty sheet), but
     // naming the sheet makes it obvious if the user actually picked the
     // wrong file or the data sits on a different sheet than expected.
+    const alongside = restored.length ? `, plus ${restored.join(', ')}` : '';
     ioStatus.textContent = rows.length === 0
-      ? `Imported 0 transactions from sheet "${sheetName}".`
-      : `Imported ${rows.length} transactions.`;
+      ? `Imported 0 transactions from sheet "${sheetName}"${alongside}.`
+      : `Imported ${rows.length} transactions${alongside}.`;
     await refresh();
   } catch (error) {
     ioStatus.className = 'budget-note__warning';
