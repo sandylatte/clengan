@@ -94,12 +94,21 @@ function moveTabMarker(button) {
 const tabbar = document.querySelector('.tabbar');
 tabbar.append(tabMarker);
 moveTabMarker(tabbar.querySelector('button[aria-current="page"]'));
-// The marker is positioned from measured boxes, so it has to be re-placed
-// when those boxes change — a rotation or a split-screen resize.
-window.addEventListener('resize', () => {
+
+// The marker holds a pixel position measured from the boxes as they were, so
+// it goes stale the moment they move and nothing tells it. A window `resize`
+// listener only heard some of those moments: the buttons are flex:1 but capped
+// at 155px inside a centred bar, so their positions shift with the leftover
+// space — and the bar itself also moves for the on-screen keyboard, a safe-area
+// change and browser zoom, none of which reliably fire `resize`. The marker
+// then sat pointing at the tab beside the one that was actually current.
+//
+// Observing the bar catches all of it, because every one of those cases
+// changes the box being measured against.
+new ResizeObserver(() => {
   const active = tabbar.querySelector('button[aria-current="page"]');
   if (active) moveTabMarker(active);
-});
+}).observe(tabbar);
 
 tabbar.addEventListener('click', (event) => {
   const button = event.target.closest('button[data-view]');
