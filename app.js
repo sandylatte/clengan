@@ -14,6 +14,7 @@ import { attachSwipe, closeOpenRow } from './swipe.js';
 import { editTransaction } from './editor.js';
 import { exportXlsx, importXlsx, importPlanner } from './xlsx-io.js';
 import { attachCalendar, toISO } from './calendar.js';
+import { dueOccurrences, occurrenceToRow, runStamps } from './recurring.js';
 import { confirmDialog, alertDialog, pickColour, promptDialog } from './dialog.js';
 import {
   SAMPLE_ACCOUNTS, SAMPLE_COLOURS, SAMPLE_NOTE, sampleMonths, sampleTransactions,
@@ -181,6 +182,14 @@ async function fillPickers() {
     addAccount.value = state.defaultAccount;
   }
   syncCategoryOptions();
+  fillSelect(document.getElementById('recurring-account'), names, 'Choose an account');
+  fillSelect(
+    document.getElementById('recurring-category'),
+    categoryOptions(state.categories, state.usedCategories,
+      document.getElementById('recurring-kind').value),
+    'No category',
+    { optional: true },
+  );
 
   // Without an account nothing can be saved at all, and an empty select with
   // no explanation is a dead end. Name the way out.
@@ -970,7 +979,9 @@ async function refresh() {
     renderDefaultAccount(accounts);
     renderFundList(funds);
     renderSplit(split);
-    renderTileStates(accounts, categories, funds, split);
+    const rules = await db.allRecurring();
+    renderRecurringList(rules);
+    renderTileStates(accounts, categories, funds, split, rules);
   } catch (error) {
     // A render failure used to fail silently (an unhandled rejection with
     // nothing on screen). Surface it instead of leaving a half-painted or
@@ -1126,7 +1137,7 @@ const setTileState = (id, text) => {
 
 const countOf = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
-function renderTileStates(accounts, categories, funds, split) {
+function renderTileStates(accounts, categories, funds, split, rules = []) {
   setTileState('state-accounts', accounts.length === 0
     ? 'None yet — add one first'
     : countOf(accounts.length, 'account'));
@@ -1137,6 +1148,9 @@ function renderTileStates(accounts, categories, funds, split) {
     ? 'None yet'
     : countOf(funds.length, 'fund'));
   setTileState('state-split', `${split.fixed} / ${split.flexible} / ${split.savings}`);
+  setTileState('state-recurring', rules.length === 0
+    ? 'None yet'
+    : countOf(rules.length, 'rule'));
   renderToneState();
 }
 
@@ -1209,6 +1223,141 @@ document.getElementById('fund-form').addEventListener('submit', async (event) =>
   event.target.reset();
   await refresh();
 });
+
+const recurringStatus = document.getElementById('recurring-status');
+
+document.getElementById('recurring-kind').addEventListener('change', () => {
+  fillSelect(
+    document.getElementById('recurring-category'),
+    categoryOptions(state.categories, state.usedCategories,
+      document.getElementById('recurring-kind').value),
+    'No category',
+    { optional: true },
+  );
+});
+
+document.getElementById('recurring-form').addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const name = document.getElementById('recurring-name').value.trim();
+  const magnitude = rupiahToCents(document.getElementById('recurring-amount').value);
+  const account = document.getElementById('recurring-account').value;
+  const day = Number(document.getElementById('recurring-day').value);
+  if (!name) return;
+  if (magnitude <= 0) {
+    recurringStatus.className = 'budget-note__warning';
+    recurringStatus.textContent = 'Enter an amount above zero.';
+    return;
+  }
+  if (!account) {
+    recurringStatus.className = 'budget-note__warning';
+    recurringStatus.textContent = 'Choose the account this comes from.';
+    return;
+  }
+  const kind = document.getElementById('recurring-kind').value;
+  try {
+    await db.putRecurring({
+    id: crypto.randomUUID(),
+    name,
+    // Signed at rest, the same as a transaction. Storing a magnitude plus a
+    // kind would mean two places deciding the sign, and the ledger only
+    // survives because exactly one does.
+    amount: kind === 'income' ? magnitude : -magnitude,
+    account,
+    category: document.getElementById('recurring-category').value,
+    // No bucket: the row falls back to its category's, the same as a row
+    // typed by hand with the bucket left alone.
+    bucket: null,
+    note: '',
+      day: Math.min(31, Math.max(1, day)),
+      // Never null on a new rule. A null would read as "has never run" and
+      // make this month immediately due, filing a payment the moment the rule
+      // is saved — exactly the surprise the confirm step exists to stop. The
+      // current month is already accounted for; the next one is the first.
+      last_run: new Date().toISOString().slice(0, 7),
+      active: true,
+    });
+  } catch (error) {
+    // A rejected write used to leave the form looking untouched: no row, no
+    // message, nothing to retry. Silence is the worst answer a save can give.
+    recurringStatus.className = 'budget-note__warning';
+    recurringStatus.textContent = `The rule was not saved: ${error.message}`;
+    return;
+  }
+  event.target.reset();
+  recurringStatus.className = 'is-ok';
+  recurringStatus.textContent = `Saved. "${name}" is offered from next month.`;
+  await refresh();
+});
+
+function renderRecurringList(rules) {
+  const list = document.getElementById('recurring-list');
+  list.replaceChildren(...rules.map((rule) => {
+    const item = document.createElement('li');
+    item.className = 'row';
+    const main = document.createElement('div');
+    main.className = 'row__main';
+    const title = document.createElement('span');
+    title.className = 'row__title';
+    title.textContent = rule.name;
+    const meta = document.createElement('span');
+    meta.className = 'row__meta';
+    meta.textContent = [`Day ${rule.day}`, rule.account, rule.category].filter(Boolean).join(' · ');
+    main.append(title, meta);
+
+    const amount = document.createElement('span');
+    amount.className = `amount ${rule.amount > 0 ? 'amount--in' : 'amount--out'}`;
+    amount.textContent = formatAmount(rule.amount);
+
+    const remove = document.createElement('button');
+    remove.type = 'button';
+    remove.className = 'ghost';
+    remove.textContent = 'Delete';
+    remove.setAttribute('aria-label', `Delete the rule ${rule.name}`);
+    remove.addEventListener('click', async () => {
+      const ok = await confirmDialog({
+        title: `Delete "${rule.name}"`,
+        body: 'The rule stops being offered. Transactions it already filed stay '
+          + 'exactly where they are — they are ordinary rows now.',
+        confirmLabel: 'Delete',
+      });
+      if (!ok) return;
+      await db.deleteRecurring(rule.id);
+      await refresh();
+    });
+
+    item.append(main, amount, remove);
+    return item;
+  }));
+}
+
+// Runs once per load, after the first refresh has filled state. Everything it
+// would file is put in front of the user first: a rule is a standing intention,
+// not a standing authorisation to write to the ledger.
+let askedAboutDue = false;
+async function offerDueRecurring() {
+  if (askedAboutDue) return;
+  askedAboutDue = true;
+  const rules = await db.allRecurring();
+  const due = dueOccurrences(rules, new Date().toISOString().slice(0, 10));
+  if (due.length === 0) return;
+
+  const lines = due.map(({ rule, date }) => `${date}  ${rule.name}  ${formatAmount(rule.amount)}`);
+  const ok = await confirmDialog({
+    title: due.length === 1 ? '1 recurring payment is due' : `${due.length} recurring payments are due`,
+    body: `${lines.join('\n')}\n\nAdding these files them as ordinary transactions, `
+      + 'which you can edit or delete afterwards. Skipping changes nothing, and '
+      + 'they are offered again next time.',
+    confirmLabel: 'Add them',
+  });
+  if (!ok) return;
+
+  // Rows first, stamps second, never the reverse. A failure between the two
+  // offers the same month again — a duplicate the user can see and delete.
+  // Stamping first would swallow the payment with nothing to show for it.
+  await db.putTransactions(due.map((occurrence) => occurrenceToRow(occurrence, crypto.randomUUID())));
+  await db.markRecurringRun(runStamps(due));
+  await refresh();
+}
 
 // The running total is the whole point of this list: a fund set only pays
 // out at exactly 100%, and the user gets there by editing one row at a time.
@@ -1814,6 +1963,9 @@ const addDate = attachCalendar({
 addDate.set(toISO(new Date()));
 syncKind();
 await refresh();
+// After the first refresh, so the dialog opens over a painted app rather than
+// over an empty one, and so a failure here cannot stop the app from rendering.
+offerDueRecurring().catch(() => {});
 
 if ('serviceWorker' in navigator) {
   // updateViaCache: 'none' stops the browser answering the sw.js update check

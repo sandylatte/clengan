@@ -8,7 +8,7 @@ import {
 // a user's ledger is not migrated, it is simply no longer found. The name is
 // internal and nobody sees it, so there is nothing to gain by touching it.
 const DB_NAME = 'moneytrack';
-const DB_VERSION = 6;
+const DB_VERSION = 7;
 
 let dbPromise = null;
 
@@ -62,6 +62,12 @@ export function openDb(name = DB_NAME) {
       }
       if (event.oldVersion < 6) {
         stampPositions(request.transaction);
+      }
+      if (event.oldVersion < 7) {
+        // Seeded empty. A recurring rule describes a commitment only the user
+        // knows about, so guessing one — even a plausible "Rent" — would put a
+        // payment they never agreed to in front of them to approve.
+        database.createObjectStore('recurring', { keyPath: 'id' });
       }
     };
     request.onsuccess = () => resolve(request.result);
@@ -173,6 +179,43 @@ export const allTransactions = () => readAll('transactions');
 export const allAccounts = () => readAll('accounts');
 export const allCategories = () => readAll('categories');
 export const allFunds = () => readAll('funds');
+export const allRecurring = () => readAll('recurring');
+
+export function putRecurring(rule) {
+  return run('recurring', 'readwrite', (store) => {
+    store.put(rule);
+    return { value: undefined };
+  });
+}
+
+export function deleteRecurring(id) {
+  return run('recurring', 'readwrite', (store) => {
+    store.delete(id);
+    return { value: undefined };
+  });
+}
+
+// Stamped only after the rows are safely written. Doing it in the same call
+// that files them would mean a failure between the two silently swallowing an
+// occurrence — the rule would believe the month was handled and never offer
+// it again, and the payment would be missing with nothing to say so.
+//
+// Each rule is stamped with the month of ITS last filed occurrence, never with
+// a shared "now". A rule for the 25th, caught up on the 3rd, has been filed
+// only as far as last month; stamping it with this month would skip the 25th
+// silently.
+export function markRecurringRun(stamps) {
+  return run('recurring', 'readwrite', (store) => {
+    for (const [id, month] of stamps) {
+      const request = store.get(id);
+      request.onsuccess = () => {
+        const rule = request.result;
+        if (rule) store.put({ ...rule, last_run: month });
+      };
+    }
+    return { value: undefined };
+  });
+}
 
 export function putFund(name, percent) {
   return run('funds', 'readwrite', (store) => {
