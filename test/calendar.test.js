@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { toISO, fromISO, formatLong, monthGrid } from '../calendar.js';
+import { toISO, fromISO, formatDate, monthGrid } from '../calendar.js';
 
 test('toISO zero-pads month and day', () => {
   assert.equal(toISO(new Date(2026, 8, 1)), '2026-09-01');
@@ -55,9 +55,9 @@ test('fromISO rejects a day that does not exist in that month', () => {
   assert.ok(fromISO('2024-02-29'), 'leap year');
 });
 
-test('formatLong names the month', () => {
-  assert.equal(formatLong(fromISO('2026-09-01')), '1 September 2026');
-  assert.equal(formatLong(fromISO('2026-12-25')), '25 December 2026');
+test('formatDate names the month', () => {
+  assert.equal(formatDate(fromISO('2026-09-01')), '1 Sep 2026');
+  assert.equal(formatDate(fromISO('2026-12-25')), '25 Dec 2026');
 });
 
 // A grid that changes height as you page makes the buttons move under the

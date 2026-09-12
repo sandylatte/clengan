@@ -8,6 +8,10 @@
 const WEEKDAYS = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'];
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December'];
+// The trigger button is half a phone wide now, and "12 September 2026" wraps
+// to two lines there — taller than the select beside it. Three letters is
+// still unambiguous; the popup's own heading keeps the full name.
+const SHORT = MONTHS.map((month) => month.slice(0, 3));
 
 export const toISO = (date) => [
   date.getFullYear(),
@@ -26,8 +30,8 @@ export function fromISO(text) {
   return date.getMonth() === m - 1 ? date : null;
 }
 
-export function formatLong(date) {
-  return `${date.getDate()} ${MONTHS[date.getMonth()]} ${date.getFullYear()}`;
+export function formatDate(date) {
+  return `${date.getDate()} ${SHORT[date.getMonth()]} ${date.getFullYear()}`;
 }
 
 // Monday-first, and always six rows. A grid that changes height as you page
@@ -46,7 +50,7 @@ export function attachCalendar({ button, input, popup, onChange }) {
 
   const setValue = (date) => {
     input.value = toISO(date);
-    button.textContent = formatLong(date);
+    button.textContent = formatDate(date);
   };
 
   const close = () => {

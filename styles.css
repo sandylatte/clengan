@@ -53,13 +53,17 @@
   --color-border-strong: #313D37;
   color-scheme: dark;
 
-  --space-0: 4px;
-  --space-1: 8px;
-  --space-2: 12px;
-  --space-3: 16px;
-  --space-4: 24px;
-  --space-5: 32px;
-  --space-6: 40px;
+  /* A quarter off every step. The scale was drawn on a desktop window and
+     read as too zoomed-in on a phone: the Add form ran 1188px on a 812px
+     screen, so the Save button was always below the fold. Type is untouched —
+     it was the air between things that was oversized, not the words. */
+  --space-0: 3px;
+  --space-1: 6px;
+  --space-2: 9px;
+  --space-3: 12px;
+  --space-4: 18px;
+  --space-5: 24px;
+  --space-6: 30px;
 
   /* For marks small enough that 6px would round them into circles. */
   --radius-xs: 3px;
@@ -124,9 +128,18 @@
 
 * { box-sizing: border-box; }
 
+/* Any `display` rule outranks the [hidden] attribute's UA style, so the moment
+   an element is laid out the attribute silently stops hiding it. Both of the
+   List's empty states are display:flex and were painting under a full list,
+   1450px down where nobody scrolled. One guard rather than a patch per class. */
+[hidden] { display: none !important; }
+
 body {
   margin: 0;
-  padding: 0 0 76px;
+  /* Clearance for the fixed tab bar: its 49px plus a step of air. The old flat
+     76px both wasted 18px on every screen and ignored the inset, so on a
+     notched phone the last element tucked under the bar anyway. */
+  padding: 0 0 calc(58px + env(safe-area-inset-bottom));
   /* The view slide translates a full-width section 26px sideways, which makes
      the document 401px wide on a 375px phone for the length of the animation
      — a real horizontal scrollbar, and on a touch screen a page that can be
@@ -381,7 +394,6 @@ details.card > summary:focus-visible {
   grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
   gap: var(--space-2);
 }
-.pair > div[hidden] { display: none; }
 
 /* One step of air between fields, not two. */
 .view input + label,
@@ -407,6 +419,11 @@ details.card > summary:focus-visible {
 }
 .view:not([hidden]) { animation: view-in var(--dur) var(--ease); }
 .view:not([hidden]).is-back { animation-name: view-in-back; }
+
+/* Except the two you land on to DO something. Add and List are typed into and
+   scanned, not read, and 300ms of slide is 300ms before the first keystroke.
+   Summary and Settings keep the arrival; they are screens you look at. */
+#view-add:not([hidden]), #view-list:not([hidden]) { animation: none; }
 
 /* Vault: the screen is a tray of objects, not a continuous sheet. A section
    is a filled, rounded surface sitting on the canvas — which is the opposite
@@ -655,26 +672,18 @@ button:active, .chip:active, .seg__button:active, summary:active { transform: sc
 .view.is-entering #pie > :nth-child(5) { animation-delay: 240ms; }
 .view.is-entering #pie > :nth-child(n+6) { animation-delay: 300ms; }
 
-/* A tab arrives as structure, then content: the dates of the month appear, and
-   the money fills in underneath them. Two beats for the whole app — the step
-   legends play the part of the dates on Add, the tiles do on Settings.
-   No per-item stagger, and nothing translates: the Summary's figures grow and
-   fade in place, and a screen full of sliding rows was a different gesture
-   wearing the same timing. */
+/* Settings arrives as structure, then content: the tiles appear, and what each
+   one holds fills in underneath. Nothing translates — the Summary's figures
+   grow and fade in place, and a screen of sliding rows was a different gesture
+   wearing the same timing. Add and List opt out of arriving at all. */
 @keyframes settle-in { from { opacity: 0; } }
 
-.view.is-entering .dayhead,
-.view.is-entering #add-form > .node > legend,
 .view.is-entering .board > details > summary,
-.view.is-entering .rows.spine > .swipe,
-.view.is-entering #add-form > .node > :not(legend),
 .view.is-entering .board > details > summary > .tile__state {
   animation: settle-in var(--dur) var(--ease) backwards;
 }
 /* The content waits for the structure. `backwards` above is what holds it at
    zero through the delay rather than letting it paint and then animate. */
-.view.is-entering .rows.spine > .swipe,
-.view.is-entering #add-form > .node > :not(legend),
 .view.is-entering .board > details > summary > .tile__state {
   animation-delay: 140ms;
 }
@@ -732,6 +741,9 @@ button:active, .chip:active, .seg__button:active, summary:active { transform: sc
    a control added later cannot reintroduce the blue. */
 :root { accent-color: var(--color-active); }
 #add-status { min-height: 24px; font-size: 14px; color: var(--color-accent); }
+/* Nothing sits below it, so reserving 24px of blank stabilises nothing — it
+   only pushes Save off the bottom of a phone. Collapsed until it speaks. */
+#add-status:empty { min-height: 0; margin: 0; }
 
 .rows { list-style: none; margin: 0; padding: 0; }
 
@@ -827,7 +839,7 @@ button:active, .chip:active, .seg__button:active, summary:active { transform: sc
                            the two-column .pair inside it at 375px */
   border: 0;
   margin: 0;
-  padding: var(--space-2) 0 var(--space-3);
+  padding: var(--space-1) 0 var(--space-2);
 }
 .spine > fieldset.node + fieldset.node { border-top: 1px solid var(--color-border); }
 .spine > fieldset.node > legend {
@@ -1483,6 +1495,20 @@ label + .hint { margin-top: 0; }
 /* The native date popup is browser chrome that ignores the field's width and
    takes no styling. This one is ours, so it matches every other picker. */
 .datefield { position: relative; margin-bottom: var(--space-3); }
+/* In a .pair the field is half a phone wide, and a seven-column month inside
+   161px is unusable. The popup keeps a real width and hangs off the right edge
+   of its column instead of matching it — and opens upward, because the paired
+   field is the last row of the form and downward is off the bottom of a phone
+   with nothing below to scroll to. */
+.pair .datefield { margin-bottom: 0; }
+.pair .datefield > .calendar {
+  left: auto;
+  right: 0;
+  width: auto;
+  min-width: 280px;
+  top: auto;
+  bottom: calc(100% + var(--space-0));
+}
 .datefield > button {
   width: 100%;
   min-height: 44px;
@@ -1631,3 +1657,6 @@ label + .hint { margin-top: 0; }
 
 #trend { width: 100%; height: auto; overflow: visible; }
 #summary-status, #list-status { min-height: 20px; font-size: 14px; color: var(--color-subtle); }
+/* Same as #add-status: 48px of reserved blank between the month picker and the
+   first day, holding a place for a line that is usually not there. */
+#summary-status:empty, #list-status:empty { min-height: 0; margin: 0; }

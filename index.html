@@ -120,18 +120,23 @@
 
     <fieldset class="node">
       <legend>From where, and when</legend>
+      <!-- Date sits in the pair rather than on its own row. On an expense the
+           second column was empty anyway, and that row was the difference
+           between the Save button being on the screen and below it. On a
+           transfer the third field wraps, which is the rarer case. -->
       <div class="pair">
         <div><label for="add-account" id="add-account-label">Account</label>
           <select id="add-account" required></select></div>
         <div id="add-to-wrap" hidden><label for="add-to">To account</label>
           <select id="add-to"></select></div>
-      </div>
-
-      <label for="add-date">Date</label>
-      <div class="datefield">
-        <button type="button" id="add-date-button" aria-haspopup="dialog" aria-expanded="false"></button>
-        <input type="hidden" id="add-date">
-        <div class="calendar" id="add-date-popup" role="dialog" aria-label="Choose a date" hidden></div>
+        <div>
+          <label for="add-date">Date</label>
+          <div class="datefield">
+            <button type="button" id="add-date-button" aria-haspopup="dialog" aria-expanded="false"></button>
+            <input type="hidden" id="add-date">
+            <div class="calendar" id="add-date-popup" role="dialog" aria-label="Choose a date" hidden></div>
+          </div>
+        </div>
       </div>
     </fieldset>
 
@@ -243,7 +248,7 @@
        its form is full width. The tiles are a grid over the same markup. -->
   <div class="board">
 
-  <details class="card" open>
+  <details class="card">
     <summary><svg class="tile__icon" aria-hidden="true"><use href="#i-accounts"/></svg><h2>Accounts</h2><span class="tile__state" id="state-accounts"></span></summary>
     <p class="hint">Nothing can be recorded until an account exists. The balance you enter is the starting point; every transaction moves it from there.</p>
     <form id="account-form">
