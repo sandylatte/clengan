@@ -149,7 +149,7 @@ body {
   background: var(--color-background);
   color: var(--color-foreground);
   font-family: var(--font-ui);
-  font-size: 16px;
+  font-size: 15px;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
 }
@@ -170,7 +170,7 @@ h1 {
   padding: var(--space-2) var(--space-3);
   background: color-mix(in srgb, var(--color-background) 88%, transparent);
   backdrop-filter: blur(12px);
-  font-size: 17px;
+  font-size: 16px;
   font-weight: 600;
   line-height: 1.4;
   letter-spacing: -0.01em;
@@ -206,7 +206,7 @@ h1 {
 .h1-name { flex: 1; min-width: 0; }
 
 .h1-meta {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 400;
   letter-spacing: 0;
   color: var(--color-subtle);
@@ -220,7 +220,7 @@ h1 {
    two things at once — shouting at the thing it names, and costing height to
    do it. A section marker only has to be quieter than its content. */
 h2 {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
   letter-spacing: -0.005em;
   color: var(--color-subtle);
@@ -271,7 +271,7 @@ h2 {
   border-radius: var(--radius-xs);
   color: var(--color-subtle);
   font: inherit;
-  font-size: 13px;
+  font-size: 12px;
   cursor: pointer;
 }
 .seg__button[aria-pressed="true"] {
@@ -377,7 +377,7 @@ details.card > summary:focus-visible {
    the state is the content, so the state takes the foreground and the name
    stays in the same quiet grey every other h2 uses. */
 .tile__state {
-  font-size: 14px;
+  font-size: 13px;
   color: var(--color-foreground);
   line-height: 1.3;
 }
@@ -518,7 +518,7 @@ details.card > summary:focus-visible {
 label {
   display: block;
   margin-bottom: var(--space-0);
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 400;
   color: var(--color-subtle);
 }
@@ -540,6 +540,11 @@ input, select {
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
   font: inherit;
+  /* Pinned, and it must not follow the body down. iOS Safari zooms the whole
+     page when a field smaller than 16px takes focus, and it does not zoom
+     back out — you finish the form at 1.3x with the tab bar off the screen.
+     This is the one place the type scale does not apply. */
+  font-size: 16px;
   transition: border-color 150ms ease;
 }
 
@@ -591,7 +596,7 @@ input[type="file"]::file-selector-button {
   border: 1px solid var(--color-border-strong);
   border-radius: var(--radius-sm);
   font: inherit;
-  font-size: 14px;
+  font-size: 13px;
   cursor: pointer;
 }
 
@@ -712,7 +717,7 @@ button:active, .chip:active, .seg__button:active, summary:active { transform: sc
   min-height: 34px;
   margin: 0;
   border-radius: var(--radius-sm);
-  font-size: 14px;
+  font-size: 13px;
   color: var(--color-subtle);
   cursor: pointer;
   transition: background 150ms ease, color 150ms ease;
@@ -740,7 +745,7 @@ button:active, .chip:active, .seg__button:active, summary:active { transform: sc
    picker's spinners, focus rings inside file inputs. Set once at the root so
    a control added later cannot reintroduce the blue. */
 :root { accent-color: var(--color-active); }
-#add-status { min-height: 24px; font-size: 14px; color: var(--color-accent); }
+#add-status { min-height: 24px; font-size: 13px; color: var(--color-accent); }
 /* Nothing sits below it, so reserving 24px of blank stabilises nothing — it
    only pushes Save off the bottom of a phone. Collapsed until it speaks. */
 #add-status:empty { min-height: 0; margin: 0; }
@@ -844,7 +849,7 @@ button:active, .chip:active, .seg__button:active, summary:active { transform: sc
 .spine > fieldset.node + fieldset.node { border-top: 1px solid var(--color-border); }
 .spine > fieldset.node > legend {
   padding: 0;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--color-subtle);
 }
@@ -879,7 +884,7 @@ button:active, .chip:active, .seg__button:active, summary:active { transform: sc
 
 .prompt__label { margin-top: var(--space-2); }
 .prompt__error:empty { display: none; }
-.prompt__error { margin: calc(var(--space-2) * -1) 0 var(--space-2); font-size: 13px; }
+.prompt__error { margin: calc(var(--space-2) * -1) 0 var(--space-2); font-size: 12px; }
 
 /* A transaction row: day, tag, name, amount over account, delete. Five things
    on one line at 375px, so every fixed part is measured and only the name is
@@ -903,9 +908,9 @@ button:active, .chip:active, .seg__button:active, summary:active { transform: sc
 }
 .dayhead.node::before { top: calc(var(--space-4) + 3px); }
 .dayhead.node:first-child::before { top: calc(var(--space-1) + 3px); }
-.dayhead b { font-size: 13px; font-weight: 600; letter-spacing: -0.005em; }
+.dayhead b { font-size: 12px; font-weight: 600; letter-spacing: -0.005em; }
 .dayhead i { flex: 1; }
-.dayhead__net { font-size: 12px; color: var(--color-subtle); }
+.dayhead__net { font-size: 11px; color: var(--color-subtle); }
 .dayhead:first-child { padding-top: var(--space-1); }
 /* .row's negative side margins let a row bleed past the card padding it was
    designed inside. Against the spine that bleed reaches back into the gutter
@@ -971,7 +976,7 @@ button:active, .chip:active, .seg__button:active, summary:active { transform: sc
   padding-right: var(--space-3);
   background: color-mix(in srgb, var(--color-destructive) 22%, var(--color-background));
   color: var(--color-destructive);
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
   cursor: pointer;
 }
@@ -1010,13 +1015,13 @@ button:active, .chip:active, .seg__button:active, summary:active { transform: sc
 .tag--plain { background: var(--color-input); color: var(--color-subtle); }
 
 .row--txn .row__title {
-  font-size: 15px;
+  font-size: 14px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.row--txn .row__meta { font-size: 12px; }
-.row--txn > .amount { font-size: 15px; font-weight: 500; white-space: nowrap; }
+.row--txn .row__meta { font-size: 11px; }
+.row--txn > .amount { font-size: 14px; font-weight: 500; white-space: nowrap; }
 
 /* An empty screen is still a screen. The mark plus a sentence that says what
    would fill it beats a bare line of grey text. */
@@ -1030,13 +1035,13 @@ button:active, .chip:active, .seg__button:active, summary:active { transform: sc
 }
 .empty--inline { padding: var(--space-5) var(--space-3); }
 .empty__mark { width: 40px; height: 40px; opacity: 0.55; margin-bottom: var(--space-1); }
-.empty__title { margin: 0; font-size: 15px; font-weight: 600; }
-.empty__body { margin: 0; font-size: 13px; color: var(--color-subtle); max-width: 34ch; }
+.empty__title { margin: 0; font-size: 14px; font-weight: 600; }
+.empty__body { margin: 0; font-size: 12px; color: var(--color-subtle); max-width: 34ch; }
 .row__title { display: block; }
-.row > .amount { font-size: 15px; font-weight: 500; white-space: nowrap; }
+.row > .amount { font-size: 14px; font-weight: 500; white-space: nowrap; }
 .row__meta {
   display: block;
-  font-size: 12px;
+  font-size: 11px;
   font-family: var(--font-num);
   color: var(--color-subtle);
 }
@@ -1083,12 +1088,12 @@ button:active, .chip:active, .seg__button:active, summary:active { transform: sc
 .stat { display: flex; flex-direction: column; gap: var(--space-0); }
 
 .stat__label {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 400;
   color: var(--color-subtle);
 }
 
-.stat .amount { font-size: 17px; font-weight: 400; }
+.stat .amount { font-size: 16px; font-weight: 400; }
 
 /* Explicit order rather than HTML order: balance leads, net follows full
    width, and income and spent pair off beneath. Three items in a two-column
@@ -1103,7 +1108,7 @@ button:active, .chip:active, .seg__button:active, summary:active { transform: sc
 
 .stat--balance .amount {
   font-family: var(--font-ui);
-  font-size: 40px;
+  font-size: 34px;
   font-weight: 300;
   line-height: 1;
   letter-spacing: -0.045em;
@@ -1117,7 +1122,7 @@ button:active, .chip:active, .seg__button:active, summary:active { transform: sc
   padding-bottom: var(--space-3);
   border-bottom: 1px solid var(--color-border);
 }
-.stat--net .amount { font-size: 20px; font-weight: 400; }
+.stat--net .amount { font-size: 18px; font-weight: 400; }
 
 /* S2. A labelled track per bucket: what is spent against what is budgeted,
    a bar for how far through, and the remainder underneath in words. */
@@ -1148,10 +1153,10 @@ button:active, .chip:active, .seg__button:active, summary:active { transform: sc
   display: flex;
   flex-direction: column;
   gap: 2px;
-  font-size: 13px;
+  font-size: 12px;
   margin-bottom: var(--space-2);
 }
-.track__figures { font-size: 15px; font-weight: 400; color: var(--color-foreground); }
+.track__figures { font-size: 14px; font-weight: 400; color: var(--color-foreground); }
 
 .track__rail {
   height: 8px;
@@ -1169,7 +1174,7 @@ button:active, .chip:active, .seg__button:active, summary:active { transform: sc
 
 .track__foot {
   margin-top: var(--space-1);
-  font-size: 12px;
+  font-size: 11px;
   color: var(--color-subtle);
 }
 
@@ -1185,7 +1190,7 @@ button:active, .chip:active, .seg__button:active, summary:active { transform: sc
   gap: var(--space-3);
   padding: var(--space-2);
   border-radius: var(--radius-sm);
-  font-size: 14px;
+  font-size: 13px;
 }
 .figures__row + .figures__row { border-top: 1px solid var(--color-border); }
 .figures__row:last-child { border-bottom: none; }
@@ -1215,7 +1220,7 @@ button:active, .chip:active, .seg__button:active, summary:active { transform: sc
 }
 
 #budget-note {
-  font-size: 13px;
+  font-size: 12px;
   line-height: 1.5;
   margin: var(--space-3) 0 0;
   color: var(--color-subtle);
@@ -1244,7 +1249,7 @@ button:active, .chip:active, .seg__button:active, summary:active { transform: sc
 /* Says a field can be left alone without the label having to grow a sentence.
    Quieter than the label it follows, because it is a permission, not a name. */
 .label-optional {
-  font-size: 13px;
+  font-size: 12px;
   color: var(--color-subtle);
   opacity: 0.7;
   margin-left: var(--space-0);
@@ -1256,7 +1261,7 @@ button:active, .chip:active, .seg__button:active, summary:active { transform: sc
 label + .hint { margin-top: 0; }
 
 .hint {
-  font-size: 13px;
+  font-size: 12px;
   line-height: 1.5;
   color: var(--color-subtle);
   margin: calc(var(--space-2) * -1) 0 var(--space-3);
@@ -1377,7 +1382,7 @@ label + .hint { margin-top: 0; }
 .swatch-button:hover { border-color: var(--color-foreground); }
 
 .group__heading {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--color-subtle);
   margin: var(--space-3) 0 var(--space-1);
@@ -1392,7 +1397,7 @@ label + .hint { margin-top: 0; }
   border-radius: var(--radius-md);
 }
 .group__empty {
-  font-size: 13px;
+  font-size: 12px;
   color: var(--color-subtle);
   margin: 0 0 var(--space-2);
 }
@@ -1402,7 +1407,7 @@ label + .hint { margin-top: 0; }
 .dialog--editor { max-height: 88vh; overflow-y: auto; }
 .editor__kind { margin-top: calc(var(--space-1) * -1); }
 .editor__error:empty { display: none; }
-.editor__error { margin: 0 0 var(--space-2); font-size: 13px; }
+.editor__error { margin: 0 0 var(--space-2); font-size: 12px; }
 .editor__actions { display: flex; gap: var(--space-1); align-items: center; }
 .editor__delete {
   margin-right: auto;
@@ -1435,7 +1440,7 @@ label + .hint { margin-top: 0; }
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
   font: inherit;
-  font-size: 14px;
+  font-size: 13px;
   text-align: left;
   cursor: pointer;
 }
@@ -1485,7 +1490,7 @@ label + .hint { margin-top: 0; }
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
   font: inherit;
-  font-size: 13px;
+  font-size: 12px;
   cursor: pointer;
 }
 .chip:hover { border-color: var(--color-border-strong); background: var(--color-muted); }
@@ -1544,14 +1549,14 @@ label + .hint { margin-top: 0; }
   justify-content: space-between;
   margin-bottom: var(--space-2);
 }
-.calendar__label { font-size: 14px; font-weight: 500; }
+.calendar__label { font-size: 13px; font-weight: 500; }
 .calendar__nav {
   width: 32px;
   height: 32px;
   background: none;
   border: none;
   color: var(--color-foreground);
-  font-size: 20px;
+  font-size: 18px;
   cursor: pointer;
   border-radius: var(--radius-sm);
 }
@@ -1578,7 +1583,7 @@ label + .hint { margin-top: 0; }
   color: var(--color-foreground);
   font: inherit;
   font-family: var(--font-num);
-  font-size: 13px;
+  font-size: 12px;
   cursor: pointer;
 }
 .calendar__day:hover { background: var(--color-input); }
@@ -1598,7 +1603,7 @@ label + .hint { margin-top: 0; }
   border-radius: var(--radius-sm);
   color: var(--color-foreground);
   font: inherit;
-  font-size: 13px;
+  font-size: 12px;
   cursor: pointer;
 }
 .calendar__today:hover { background: var(--color-input); }
@@ -1618,13 +1623,13 @@ label + .hint { margin-top: 0; }
 .dialog::backdrop { background: var(--color-scrim); backdrop-filter: blur(2px); }
 .dialog__title {
   margin: 0 0 var(--space-2);
-  font-size: 17px;
+  font-size: 16px;
   font-weight: 600;
   letter-spacing: -0.01em;
 }
 .dialog__body {
   margin: 0 0 var(--space-4);
-  font-size: 14px;
+  font-size: 13px;
   line-height: 1.5;
   color: var(--color-subtle);
 }
@@ -1656,7 +1661,7 @@ label + .hint { margin-top: 0; }
 .is-ok { color: var(--color-accent); }
 
 #trend { width: 100%; height: auto; overflow: visible; }
-#summary-status, #list-status { min-height: 20px; font-size: 14px; color: var(--color-subtle); }
+#summary-status, #list-status { min-height: 20px; font-size: 13px; color: var(--color-subtle); }
 /* Same as #add-status: 48px of reserved blank between the month picker and the
    first day, holding a place for a line that is usually not there. */
 #summary-status:empty, #list-status:empty { min-height: 0; margin: 0; }

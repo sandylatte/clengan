@@ -1,7 +1,7 @@
 ---
 version: alpha
 name: Clengan
-description: "A phone-first local-only money tracker, shipped as an installable PWA with no build step. Two user-switchable tones share one token vocabulary: Tone A is carbon and volt, a true-black AMOLED canvas (#000000) carrying a high-chroma green accent (#00EB62); Tone B is peach room, a warm light canvas (#F3CEC2) built from a photographic reference where the frame interior reads brighter than the wall. Type is Fira Sans for UI and Fira Code for every figure, so digits stay in tabular columns. The system is an app UI, not a marketing canvas: the tallest step in the ramp is the amount field at 34px, headings sit at 17px and below, and depth comes from a three-step surface ladder plus hairline borders. Colour carries meaning only — green for income, red for spending, the accent for the primary action and the active tab. Nothing is decorative."
+description: "A phone-first local-only money tracker, shipped as an installable PWA with no build step. Two user-switchable tones share one token vocabulary: Tone A is carbon and volt, a true-black AMOLED canvas (#000000) carrying a high-chroma green accent (#00EB62); Tone B is peach room, a warm light canvas (#F3CEC2) built from a photographic reference where the frame interior reads brighter than the wall. Type is Fira Sans for UI and Fira Code for every figure, so digits stay in tabular columns. The system is an app UI, not a marketing canvas: the tallest step in the ramp is the amount field at 34px, headings sit at 16px and below, and depth comes from a three-step surface ladder plus hairline borders. Colour carries meaning only — green for income, red for spending, the accent for the primary action and the active tab. Nothing is decorative."
 
 colors:
   primary: "#00EB62"
@@ -51,43 +51,43 @@ typography:
     letterSpacing: -0.045em
   stat-hero:
     fontFamily: Fira Sans
-    fontSize: 40px
+    fontSize: 34px
     fontWeight: 300
     lineHeight: 1
     letterSpacing: -0.045em
   stat-net:
     fontFamily: Fira Code
-    fontSize: 20px
+    fontSize: 18px
     fontWeight: 400
     lineHeight: 1.2
     letterSpacing: 0
   stat-value:
     fontFamily: Fira Code
-    fontSize: 17px
+    fontSize: 16px
     fontWeight: 500
     lineHeight: 1.2
     letterSpacing: 0
   title-bar:
     fontFamily: Fira Sans
-    fontSize: 17px
+    fontSize: 16px
     fontWeight: 600
     lineHeight: 1.4
     letterSpacing: -0.01em
   body:
     fontFamily: Fira Sans
-    fontSize: 16px
+    fontSize: 15px
     fontWeight: 400
     lineHeight: 1.5
     letterSpacing: 0
   row-amount:
     fontFamily: Fira Code
-    fontSize: 15px
+    fontSize: 14px
     fontWeight: 500
     lineHeight: 1.4
     letterSpacing: 0
   control:
     fontFamily: Fira Sans
-    fontSize: 14px
+    fontSize: 13px
     fontWeight: 400
     lineHeight: 1.4
     letterSpacing: 0
@@ -99,13 +99,13 @@ typography:
     letterSpacing: 0.14em
   supporting:
     fontFamily: Fira Sans
-    fontSize: 13px
+    fontSize: 12px
     fontWeight: 400
     lineHeight: 1.5
     letterSpacing: 0
   row-meta:
     fontFamily: Fira Sans
-    fontSize: 12px
+    fontSize: 11px
     fontWeight: 400
     lineHeight: 1.4
     letterSpacing: 0
@@ -141,13 +141,13 @@ rounded:
   lg: 12px
 
 spacing:
-  space-0: 4px
-  space-1: 8px
-  space-2: 12px
-  space-3: 16px
-  space-4: 24px
-  space-5: 32px
-  space-6: 48px
+  space-0: 3px
+  space-1: 6px
+  space-2: 9px
+  space-3: 12px
+  space-4: 18px
+  space-5: 24px
+  space-6: 30px
 
 components:
   title-bar:
@@ -319,21 +319,24 @@ Both are in the service worker shell, so the app renders in its own type offline
 
 This is an app ramp, not a marketing ramp. The largest step belongs to a data figure, not a heading.
 
+Every step moved down one notch when the app read as too zoomed-in on a phone. The two heroes met at 34px in the process and were left there rather than invented apart: the balance and the amount field never share a screen, so nothing is comparing them.
+
+**One step does not scale: a form field stays at 16px.** iOS Safari zooms the page when a field below 16px takes focus and does not zoom back out, so `input, select` overrides `{typography.control}` with an explicit size. That is why the control step reads 13px here and 16px in a field.
+
 | Token | Size | Weight | Tracking | Use |
 |---|---|---|---|---|
-| `{typography.stat-hero}` | 40px | 300 | -0.045em | The balance, the one number on the Summary fold |
+| `{typography.stat-hero}` | 34px | 300 | -0.045em | The balance, the one number on the Summary fold |
 | `{typography.amount-hero}` | 34px | 300 | -0.045em | The Add form's amount field |
-| `{typography.stat-value}` | 20px | 500 | 0 | Income and spent totals |
-| `{typography.title-bar}` | 17px | 600 | -0.01em | Sticky view title |
-| `{typography.body}` | 16px | 400 | 0 | Body, row titles, form values |
-| `{typography.row-amount}` | 15px | 500 | 0 | Amount on a ledger row |
-| `{typography.control}` | 14px | 400 | 0 | Inputs, buttons, status lines |
-| `{typography.section-heading}` | 13px | 500 | 0.06em | Card headings, uppercase |
-| `{typography.supporting}` | 13px | 400 | 0 | Hints, budget note, budget figures |
-| `{typography.row-meta}` | 12px | 400 | 0 | Date, account and note beneath a row title |
-| `{typography.stat-label}` | 12px | 500 | 0.08em | Stat labels, uppercase |
+| `{typography.stat-net}` | 18px | 400 | 0 | The month's net |
+| `{typography.stat-value}` | 16px | 500 | 0 | Income and spent totals |
+| `{typography.title-bar}` | 16px | 600 | -0.01em | Sticky view title |
+| `{typography.body}` | 15px | 400 | 0 | Body, row titles, form values |
+| `{typography.row-amount}` | 14px | 500 | 0 | Amount on a ledger row |
+| `{typography.control}` | 13px | 400 | 0 | Buttons and status lines — but see the 16px field note above |
+| `{typography.supporting}` | 12px | 400 | 0 | Hints, budget note, budget figures |
+| `{typography.row-meta}` | 11px | 400 | 0 | Date, account and note beneath a row title |
+| `{typography.field-label}` | 11px | 600 | 0.08em | Form field labels |
 | `{typography.tab-label}` | 11px | 400 | 0.01em | Tab bar labels |
-| `{typography.column-heading}` | 11px | 500 | 0.04em | Budget table column headings, uppercase |
 
 ### Principles
 
