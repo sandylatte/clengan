@@ -409,6 +409,14 @@ Three durations, and every animation uses one of them.
 - **Charts animate on arrival, never on repaint.** The Summary re-renders
   after every save; `is-entering` is added by `showView` and removed after a
   second, so bars grow and slices land only when someone is looking.
+- **A Settings tile opens on one beat, not two.** `grid-column` is not an
+  animatable property, so a tile going half-width to full is a snap nothing can
+  cover. The body inside it therefore fades at `--dur-fast`, not `--dur`: the
+  surface did not arrive, it was already there, and 300ms only bought a second
+  beat landing after the first had finished. Board summaries also opt out of
+  the 3% press scale — the summary is relaid out from a centred column to a row
+  at the same instant, and a transform running through a layout change warps
+  the box.
 - **`body` clips `overflow-x`.** The slide translates a full-width section
   26px sideways, which makes the document 401px wide on a 375px phone for the
   length of the animation.

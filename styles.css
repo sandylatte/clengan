@@ -320,7 +320,9 @@ details.card > summary::after {
   border-right: 2px solid var(--color-subtle);
   border-bottom: 2px solid var(--color-subtle);
   transform: rotate(45deg) translate(-2px, -2px);
-  transition: transform 150ms ease;
+  /* No transition on the rotation: closed, the chevron is display:none (see
+     below), and an element arriving from display:none has no previous value to
+     interpolate from. The 150ms that used to sit here never once ran. */
 }
 details.card[open] > summary::after { transform: rotate(-135deg) translate(-2px, -2px); }
 details.card[open] > summary { margin-bottom: var(--space-3); }
@@ -630,6 +632,14 @@ button.primary:active { filter: brightness(0.92); }
 button, .chip, .seg__button, summary { transition: transform var(--dur-fast) var(--ease); }
 button:active, .chip:active, .seg__button:active, summary:active { transform: scale(0.97); }
 
+/* Except a board tile. The moment it opens its summary is relaid out from a
+   centred column to a row, and a transform still springing back from the press
+   warps the box on its way through that. A press acknowledgement is for a
+   control whose result is invisible or delayed; this one answers by doubling
+   in width. */
+.board > details.card > summary { transition: none; }
+.board > details.card > summary:active { transform: none; }
+
 /* A dialog is a surface arriving, so it rises and settles; the scrim behind
    it only fades, because a scrim is not an object. */
 @keyframes dialog-in {
@@ -640,12 +650,17 @@ button:active, .chip:active, .seg__button:active, summary:active { transform: sc
 .dialog[open] { animation: dialog-in var(--dur) var(--ease); }
 .dialog[open]::backdrop { animation: scrim-in var(--dur-fast) linear; }
 
-/* An opened tile expands from its own square rather than appearing whole. */
-@keyframes tile-open {
-  from { opacity: 0; transform: translateY(-6px); }
-  to   { opacity: 1; transform: none; }
-}
-.board > details.card[open] > :not(summary) { animation: tile-open var(--dur) var(--ease); }
+/* The box is already there by the time this runs. `grid-column` is not an
+   animatable property, so the tile going half-width to full is a snap no
+   keyframe can cover — and a 300ms fade underneath it was not covering the
+   snap, it was a second beat arriving after the first had finished. What is
+   left to animate is content becoming legible inside a box that already
+   exists, which is the press duration, not the arrival one.
+
+   Opacity only. The old keyframe translated 6px up, which is the one thing
+   the rest of the file says never happens here. */
+@keyframes tile-open { from { opacity: 0; } }
+.board > details.card[open] > :not(summary) { animation: tile-open var(--dur-fast) var(--ease); }
 
 /* "Saved." rises into place. The status line is the only confirmation the
    form gives, so it is worth the 300ms of attention. */
