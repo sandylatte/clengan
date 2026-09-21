@@ -82,9 +82,10 @@ data-corruption primitive handed to the party we are defending against.
 The store name (`transactions`, `accounts`, …) lives *inside* the ciphertext,
 not beside it. The server therefore cannot tell a category from a transfer.
 
-## Prerequisite: accounts need a stable id (schema v8)
+## Prerequisite: accounts need a stable id (schema v8) — done
 
-**This lands before any crypto is written.**
+**Shipped.** What follows is what was built; it diverges from the first draft
+of this section in two places, both noted below.
 
 Accounts are keyed by name today, and every transaction stores that name as a
 plain string. Locally that is survivable: `renameAccount` rewrites every row
@@ -95,19 +96,43 @@ entire ledger", and two devices renaming the same account while offline produce
 a conflict with no correct resolution — there is no identity underneath the
 name to reconcile them by.
 
-v8:
+What shipped:
 
-- `accounts` gains `id`, a UUID. `name` becomes an ordinary mutable field.
-- `transactions.account` becomes `account_id`.
-- `settings['default-account']` stores an id rather than a name.
-- `renameAccount` collapses from a three-store cursor walk to a single `put`.
+- `accounts` is keyed by `id`, a UUID, with `name` as a unique index. A keyPath
+  cannot be altered in place, so the store is read, dropped and rebuilt inside
+  the same versionchange transaction — if any step throws, the upgrade aborts
+  and the database stays on v7.
+- `transactions.account` became `account_id`, and the `account` index became
+  `account_id`.
+- `renameAccount` went from a cursor walk over every row in three stores to a
+  single `put`, which was the entire point.
 
-Cheap now: one migration, one pass over the rows, the same fall-through
-`onupgradeneeded` ladder every other version used. Expensive later: a
-coordinated re-key across every device that has already synced.
+**Divergence 1 — names do not disappear above `db.js`.** The draft had ids
+threaded through the whole app. In practice almost every consumer wants a name:
+the List renders one, the search box matches one, the Excel column holds one,
+the editor's select is built from them. So `allTransactions` hydrates each row
+with its account's current name and the write paths resolve a name back to an
+id. The translation lives at the storage boundary and nothing above it changed.
+On a write the name wins, because a row handed back from the editor carries the
+account the user just picked alongside the id it had before.
+
+**Divergence 2 — `settings['default-account']` still stores a name.** It is
+written into the Excel settings sheet, where a UUID means nothing to a reader,
+and it is compared against the values of a select built from names. A rename
+updates that one row, which is not the problem v8 existed to solve.
+
+Two consequences worth stating. The Excel `account` column is still a name, so
+backups written before v8 still import and exports stay readable. And writes now
+refuse an unknown account name rather than filing a row against nothing — a row
+with no account is money missing from every per-account total with nothing on
+screen to say so. The migration applies the same rule backwards: a row naming an
+account with no record gets one minted for it rather than a null id.
 
 The case-collision rule in `matchAccountName` stays. Two accounts differing
 only in casing are still one account to a reader, id or no id.
+
+Covered by `migration-test.html`, which builds a real v7 database — including a
+transfer pair and an orphan row — and runs the actual migration against it.
 
 ## Sync
 

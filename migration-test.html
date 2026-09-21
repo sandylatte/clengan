@@ -1,0 +1,105 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>v8 migration test</title>
+<style>body{font:14px/1.5 monospace;padding:1rem}.ok{color:#0a0}.bad{color:#c00}</style>
+<h1>v7 → v8 migration</h1>
+<div id="out"></div>
+<script type="module">
+// Builds a REAL v7 database, then lets db.js open it and run the actual v8
+// migration. openDb memoises on its first call, so this page must make that
+// call itself and must be the only thing on it.
+//
+// The database name is throwaway and is deleted at the end. It is never
+// 'moneytrack'.
+const NAME = 'moneytrack-migration-test';
+const out = document.getElementById('out');
+const results = [];
+const check = (label, condition) => {
+  results.push({ label, pass: !!condition });
+  out.innerHTML = results
+    .map((r) => `<div class="${r.pass ? 'ok' : 'bad'}">${r.pass ? 'pass' : 'FAIL'} — ${r.label}</div>`)
+    .join('');
+};
+
+await new Promise((resolve) => {
+  const wipe = indexedDB.deleteDatabase(NAME);
+  wipe.onsuccess = resolve;
+  wipe.onerror = resolve;
+  wipe.onblocked = resolve;
+});
+
+// The v7 schema, written out by hand: accounts keyed by name, transactions
+// carrying an `account` string and an index over it.
+const seeded = await new Promise((resolve, reject) => {
+  const request = indexedDB.open(NAME, 7);
+  request.onupgradeneeded = () => {
+    const database = request.result;
+    const txns = database.createObjectStore('transactions', { keyPath: 'id' });
+    txns.createIndex('date', 'date');
+    txns.createIndex('account', 'account');
+    txns.createIndex('transfer_id', 'transfer_id');
+    database.createObjectStore('accounts', { keyPath: 'name' });
+    database.createObjectStore('categories', { keyPath: 'name' });
+    database.createObjectStore('settings', { keyPath: 'key' });
+    database.createObjectStore('funds', { keyPath: 'name' });
+    database.createObjectStore('recurring', { keyPath: 'id' });
+  };
+  request.onsuccess = () => resolve(request.result);
+  request.onerror = () => reject(request.error);
+});
+
+await new Promise((resolve, reject) => {
+  const tx = seeded.transaction(['transactions', 'accounts', 'settings'], 'readwrite');
+  const accounts = tx.objectStore('accounts');
+  accounts.put({ name: 'Everyday', opening_balance: 100000, position: 0 });
+  accounts.put({ name: 'Savings', opening_balance: 500000, position: 1 });
+  const txns = tx.objectStore('transactions');
+  txns.put({ id: 'a', date: '2026-01-02', account: 'Everyday', amount: -1250, category: 'Food', bucket: 'flexible', transfer_id: null, note: '' });
+  txns.put({ id: 'b', date: '2026-01-03', account: 'Savings', amount: 900000, category: 'Salary', bucket: null, transfer_id: null, note: '' });
+  // A transfer pair, which must survive with both halves intact.
+  txns.put({ id: 'out', date: '2026-01-05', account: 'Everyday', amount: -25000, category: 'Transfer', bucket: null, transfer_id: 'in', note: '' });
+  txns.put({ id: 'in', date: '2026-01-05', account: 'Savings', amount: 25000, category: 'Transfer', bucket: null, transfer_id: 'out', note: '' });
+  // An orphan: a row naming an account with no record, as a hand-edited
+  // Excel import can produce. Its money must not vanish.
+  txns.put({ id: 'orphan', date: '2026-01-06', account: 'Ghost', amount: -4200, category: 'Food', bucket: 'fixed', transfer_id: null, note: '' });
+  tx.objectStore('settings').put({ key: 'default-account', value: 'Savings' });
+  tx.oncomplete = resolve;
+  tx.onerror = () => reject(tx.error);
+});
+seeded.close();
+
+const db = await import('./db.js');
+await db.openDb(NAME);
+
+const rows = await db.allTransactions();
+const accounts = await db.allAccounts();
+
+check('every account has a UUID id', accounts.length === 3 && accounts.every((a) => typeof a.id === 'string' && a.id.length === 36));
+check('the orphan account was minted rather than dropped', accounts.some((a) => a.name === 'Ghost'));
+check('opening balances survived', accounts.find((a) => a.name === 'Savings').opening_balance === 500000);
+check('positions survived', accounts.find((a) => a.name === 'Everyday').position === 0);
+
+check('all 5 rows survived', rows.length === 5);
+check('no row kept a stale `account` string on disk', rows.every((r) => typeof r.account_id === 'string'));
+check('rows hydrate back to their account name', rows.find((r) => r.id === 'a').account === 'Everyday');
+check('the orphan row kept its money and gained a real account', rows.find((r) => r.id === 'orphan').account === 'Ghost' && rows.find((r) => r.id === 'orphan').amount === -4200);
+check('amounts are untouched', rows.find((r) => r.id === 'b').amount === 900000);
+check('buckets are untouched', rows.find((r) => r.id === 'a').bucket === 'flexible');
+check('the transfer pair still points both ways', rows.find((r) => r.id === 'out').transfer_id === 'in' && rows.find((r) => r.id === 'in').transfer_id === 'out');
+check('the transfer pair still nets to zero', rows.find((r) => r.id === 'out').amount + rows.find((r) => r.id === 'in').amount === 0);
+check('the two transfer halves are on different accounts', rows.find((r) => r.id === 'out').account !== rows.find((r) => r.id === 'in').account);
+
+// The payoff: a rename must now leave every transaction row alone.
+const before = rows.find((r) => r.id === 'a').account_id;
+await db.renameAccount('Everyday', 'Daily');
+const after = await db.allTransactions();
+check('a rename leaves the row\'s account_id identical', after.find((r) => r.id === 'a').account_id === before);
+check('a rename is visible through the hydrated name', after.find((r) => r.id === 'a').account === 'Daily');
+check('a rename followed the default-account setting only when it matched', await db.getSetting('default-account', '') === 'Savings');
+await db.renameAccount('Savings', 'Vault');
+check('a rename DOES follow default-account when it matches', await db.getSetting('default-account', '') === 'Vault');
+
+const passed = results.filter((r) => r.pass).length;
+out.innerHTML += `<h2 class="${passed === results.length ? 'ok' : 'bad'}">${passed}/${results.length}</h2>`;
+window.__migration = { passed, total: results.length, failures: results.filter((r) => !r.pass).map((r) => r.label) };
+</script>

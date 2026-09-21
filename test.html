@@ -46,8 +46,18 @@ const tests = [];
 const test = (name, fn) => tests.push({ name, fn });
 const results = document.getElementById('results');
 
-test('addFlow stores one row with a derived-expense sign', async () => {
+// Since v8 a transaction references its account by id, so the account has to
+// exist before a row can be filed against it — addFlow refuses an unknown name
+// rather than writing a row with a null account. clearAll empties the accounts
+// store too, so any test that writes rows seeds the accounts it uses first.
+const reset = async (...names) => {
   await db.clearAll();
+  for (const name of names) await db.putAccount(name, 0);
+};
+
+
+test('addFlow stores one row with a derived-expense sign', async () => {
+  await reset('Bank', 'Savings', 'Bank BCA');
   const id = await db.addFlow({ date: '2026-08-03', account: 'Bank', amount: -4500, category: 'Food', note: '' });
   const rows = await db.allTransactions();
   if (rows.length !== 1) throw new Error(`expected 1 row, got ${rows.length}`);
@@ -57,7 +67,7 @@ test('addFlow stores one row with a derived-expense sign', async () => {
 });
 
 test('addTransfer writes two rows pointing at each other', async () => {
-  await db.clearAll();
+  await reset('Bank', 'Savings', 'Bank BCA');
   const [fromId, toId] = await db.addTransfer({ date: '2026-08-06', from: 'Bank', to: 'Savings', amount: 20000, note: '' });
   const rows = await db.allTransactions();
   if (rows.length !== 2) throw new Error(`expected 2 rows, got ${rows.length}`);
@@ -69,7 +79,7 @@ test('addTransfer writes two rows pointing at each other', async () => {
 });
 
 test('addTransfer rejects a non-positive amount', async () => {
-  await db.clearAll();
+  await reset('Bank', 'Savings', 'Bank BCA');
   let threw = false;
   try {
     await db.addTransfer({ date: '2026-08-06', from: 'Bank', to: 'Savings', amount: -1, note: '' });
@@ -78,7 +88,7 @@ test('addTransfer rejects a non-positive amount', async () => {
 });
 
 test('addTransfer rejects a transfer to the same account', async () => {
-  await db.clearAll();
+  await reset('Bank', 'Savings', 'Bank BCA');
   let threw = false;
   try {
     await db.addTransfer({ date: '2026-08-06', from: 'Bank', to: 'Bank', amount: 100, note: '' });
@@ -87,7 +97,7 @@ test('addTransfer rejects a transfer to the same account', async () => {
 });
 
 test('deleting one side of a transfer deletes both', async () => {
-  await db.clearAll();
+  await reset('Bank', 'Savings', 'Bank BCA');
   const [fromId] = await db.addTransfer({ date: '2026-08-06', from: 'Bank', to: 'Savings', amount: 20000, note: '' });
   await db.deleteTransaction(fromId);
   const rows = await db.allTransactions();
@@ -95,7 +105,7 @@ test('deleting one side of a transfer deletes both', async () => {
 });
 
 test('deleting a flow leaves other rows untouched', async () => {
-  await db.clearAll();
+  await reset('Bank', 'Savings', 'Bank BCA');
   const keep = await db.addFlow({ date: '2026-08-01', account: 'Bank', amount: 300000, category: 'Salary', note: '' });
   const drop = await db.addFlow({ date: '2026-08-03', account: 'Bank', amount: -4500, category: 'Food', note: '' });
   await db.deleteTransaction(drop);
@@ -104,7 +114,7 @@ test('deleting a flow leaves other rows untouched', async () => {
 });
 
 test('putTransactions is idempotent on repeated import', async () => {
-  await db.clearAll();
+  await reset('Bank', 'Savings', 'Bank BCA');
   const rows = [
     { id: 'x1', date: '2026-08-01', account: 'Bank', amount: 1000, category: 'Salary', transfer_id: null, note: '' },
     { id: 'x2', date: '2026-08-02', account: 'Bank', amount: -250, category: 'Food', transfer_id: null, note: '' },
@@ -116,7 +126,7 @@ test('putTransactions is idempotent on repeated import', async () => {
 });
 
 test('putTransactions updates a row with a known id', async () => {
-  await db.clearAll();
+  await reset('Bank', 'Savings', 'Bank BCA');
   await db.putTransactions([{ id: 'x1', date: '2026-08-01', account: 'Bank', amount: 1000, category: 'Salary', transfer_id: null, note: '' }]);
   await db.putTransactions([{ id: 'x1', date: '2026-08-01', account: 'Bank', amount: 9999, category: 'Salary', transfer_id: null, note: 'edited' }]);
   const stored = await db.allTransactions();
@@ -125,7 +135,7 @@ test('putTransactions updates a row with a known id', async () => {
 });
 
 test('updating a transfer half amount cascades to the partner', async () => {
-  await db.clearAll();
+  await reset('Bank', 'Savings', 'Bank BCA');
   const [fromId, toId] = await db.addTransfer({ date: '2026-08-06', from: 'Bank', to: 'Savings', amount: 20000, note: '' });
   const rows = await db.allTransactions();
   const from = rows.find((r) => r.id === fromId);
@@ -139,7 +149,7 @@ test('updating a transfer half amount cascades to the partner', async () => {
 });
 
 test('updateTransaction rejects clearing a transfer half\'s transfer_id', async () => {
-  await db.clearAll();
+  await reset('Bank', 'Savings', 'Bank BCA');
   const [fromId] = await db.addTransfer({ date: '2026-08-06', from: 'Bank', to: 'Savings', amount: 20000, note: '' });
   const rows = await db.allTransactions();
   const from = rows.find((r) => r.id === fromId);
@@ -153,7 +163,7 @@ test('updateTransaction rejects clearing a transfer half\'s transfer_id', async 
 });
 
 test('updateTransaction still edits a plain flow normally', async () => {
-  await db.clearAll();
+  await reset('Bank', 'Savings', 'Bank BCA');
   const id = await db.addFlow({ date: '2026-08-03', account: 'Bank', amount: -4500, category: 'Food', note: '' });
   await db.updateTransaction({ id, date: '2026-08-03', account: 'Bank', amount: -5000, category: 'Food', transfer_id: null, note: 'edited' });
   const rows = await db.allTransactions();
@@ -162,7 +172,7 @@ test('updateTransaction still edits a plain flow normally', async () => {
 });
 
 test('updateTransaction allows editing note/date on a transfer half without disturbing the partner', async () => {
-  await db.clearAll();
+  await reset('Bank', 'Savings', 'Bank BCA');
   const [fromId, toId] = await db.addTransfer({ date: '2026-08-06', from: 'Bank', to: 'Savings', amount: 20000, note: '' });
   const rows = await db.allTransactions();
   const from = rows.find((r) => r.id === fromId);
@@ -275,7 +285,7 @@ test('reorder skips a name that is not there instead of resurrecting it', async 
 test('editing a transfer date moves BOTH halves', async () => {
   // Cascading only the amount left the money leaving one account a day
   // before it arrived in the other.
-  await db.clearAll();
+  await reset('Bank', 'Savings', 'Bank BCA');
   const [fromId] = await db.addTransfer({ date: '2026-08-06', from: 'Bank', to: 'Savings', amount: 20000, note: '' });
   const rows = await db.allTransactions();
   const half = rows.find((r) => r.id === fromId);
@@ -287,7 +297,7 @@ test('editing a transfer date moves BOTH halves', async () => {
 });
 
 test('editing a transfer amount keeps the pair netting to zero', async () => {
-  await db.clearAll();
+  await reset('Bank', 'Savings', 'Bank BCA');
   const [fromId] = await db.addTransfer({ date: '2026-08-06', from: 'Bank', to: 'Savings', amount: 20000, note: '' });
   const half = (await db.allTransactions()).find((r) => r.id === fromId);
   await db.updateTransaction({ ...half, amount: -75000 });

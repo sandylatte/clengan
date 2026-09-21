@@ -31,6 +31,18 @@ http://localhost:8000/test.html
 Open in a browser. Covers the IndexedDB layer (transaction/transfer-pair
 invariants, import idempotence) that can't be tested under plain Node.
 
+```
+http://localhost:8000/migration-test.html
+```
+
+Builds a real v7 database and runs the v8 account-id migration against it.
+Separate from `test.html` because `db.openDb` memoises its connection, so a
+migration test has to be the first thing on its own page.
+
+**Unregister the service worker before either of these.** It is cache-first,
+so it will happily serve the modules from before your edit and the suite will
+pass against code that is no longer on disk.
+
 ## Releasing a change
 
 - Both test suites above must pass first (`node --test` and `test.html`).

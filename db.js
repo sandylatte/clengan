@@ -8,7 +8,22 @@ import {
 // a user's ledger is not migrated, it is simply no longer found. The name is
 // internal and nobody sees it, so there is nothing to gain by touching it.
 const DB_NAME = 'moneytrack';
-const DB_VERSION = 7;
+const DB_VERSION = 8;
+
+// On disk a transaction references its account by `account_id`, a UUID that
+// never changes. In memory every row above this module carries `account`, the
+// account's current NAME, because that is what the List shows, what the search
+// box matches, what the Excel column holds and what the editor's select is
+// populated with.
+//
+// The translation happens here and only here. That is the whole point of v8:
+// renaming an account used to rewrite every transaction row, because the name
+// WAS the reference. Now it rewrites one row and every reader sees the new
+// name on its next read, for free.
+//
+// On a write the NAME wins. A row handed back from the editor carries a stale
+// `account_id` alongside the account the user just picked, so the id is
+// re-derived from the name rather than trusted.
 
 let dbPromise = null;
 
@@ -69,6 +84,13 @@ export function openDb(name = DB_NAME) {
         // payment they never agreed to in front of them to approve.
         database.createObjectStore('recurring', { keyPath: 'id' });
       }
+      // No `oldVersion >= 1` guard, unlike the v5 data migration above. This
+      // one changes the SHAPE of the store, so a fresh database needs it as
+      // much as an upgraded one — and running it on an empty store costs
+      // nothing while keeping every database on one path to the same schema.
+      if (event.oldVersion < 8) {
+        giveAccountsIds(database, request.transaction);
+      }
     };
     request.onsuccess = () => resolve(request.result);
     request.onerror = () => reject(request.error);
@@ -116,6 +138,60 @@ function stampPositions(transaction) {
   const kindRank = (row) => (row.kind === 'income' ? 1 : 0);
   assign('categories', (a, b) => kindRank(a) - kindRank(b) || a.name.localeCompare(b.name));
   assign('accounts', (a, b) => a.name.localeCompare(b.name));
+}
+
+// v8. Accounts were keyed by name and every transaction referenced that name
+// as a string, so there was no identity underneath a rename — `renameAccount`
+// had to rewrite every row across three stores to keep the ledger consistent.
+//
+// A keyPath cannot be altered in place, so the store is read, dropped and
+// rebuilt on `id` inside the same versionchange transaction. If any step
+// throws, the whole upgrade aborts and the database stays on v7: there is no
+// state where the accounts have ids and the rows still point at names.
+//
+// A row naming an account that has no record gets one minted for it rather
+// than a null id. Orphans should not exist — the Add form picks from a select
+// and both importers go through ensureAccount — but a hand-edited Excel file
+// can produce one, and nulling it would drop real money out of every
+// per-account total with nothing on screen to say so.
+function giveAccountsIds(database, transaction) {
+  const request = transaction.objectStore('accounts').getAll();
+  request.onsuccess = () => {
+    const rows = request.result;
+
+    database.deleteObjectStore('accounts');
+    const accounts = database.createObjectStore('accounts', { keyPath: 'id' });
+    // Names stay unique, now as an index rather than as the key. The
+    // case-insensitive rule in matchAccountName still sits above this; the
+    // index only catches an exact duplicate.
+    accounts.createIndex('name', 'name', { unique: true });
+
+    const idByName = new Map();
+    for (const row of rows) {
+      const id = crypto.randomUUID();
+      idByName.set(row.name, id);
+      accounts.put({ ...row, id });
+    }
+
+    const txns = transaction.objectStore('transactions');
+    txns.deleteIndex('account');
+    txns.createIndex('account_id', 'account_id');
+
+    const cursor = txns.openCursor();
+    cursor.onsuccess = () => {
+      const at = cursor.result;
+      if (!at) return;
+      const { account, ...rest } = at.value;
+      let id = idByName.get(account);
+      if (id === undefined) {
+        id = crypto.randomUUID();
+        idByName.set(account, id);
+        accounts.put({ name: account, opening_balance: 0, position: idByName.size - 1, id });
+      }
+      at.update({ ...rest, account_id: id });
+      at.continue();
+    };
+  };
 }
 
 function migrateBucketsOntoRows(transaction) {
@@ -175,7 +251,15 @@ function readAll(store) {
   });
 }
 
-export const allTransactions = () => readAll('transactions');
+// Hydrated: every row comes back carrying `account`, the account's current
+// name, alongside the `account_id` it is actually stored under. See the note
+// at the top of the file — the rest of the app works in names.
+export async function allTransactions() {
+  const [rows, accounts] = await Promise.all([readAll('transactions'), readAll('accounts')]);
+  const nameById = new Map(accounts.map((account) => [account.id, account.name]));
+  return rows.map((row) => ({ ...row, account: nameById.get(row.account_id) ?? '' }));
+}
+
 export const allAccounts = () => readAll('accounts');
 export const allCategories = () => readAll('categories');
 export const allFunds = () => readAll('funds');
@@ -286,7 +370,23 @@ function reorder(storeName, names) {
 }
 
 export const reorderCategories = (names) => reorder('categories', names);
-export const reorderAccounts = (names) => reorder('accounts', names);
+
+// Accounts cannot use `reorder` any more: it does store.get(name), and since
+// v8 the key is the id. The list the UI hands back is still names, because
+// that is what it displays.
+export function reorderAccounts(names) {
+  return run('accounts', 'readwrite', (store) => {
+    const all = store.getAll();
+    all.onsuccess = () => {
+      const rows = all.result;
+      names.forEach((name, index) => {
+        const current = rows.find((row) => row.name === name);
+        if (current) store.put({ ...current, position: index });
+      });
+    };
+    return { value: undefined };
+  });
+}
 
 // Deleting a category leaves its past rows alone. They keep the name they
 // were filed under and surface as `unbucketed` in the budget, which is the
@@ -333,6 +433,17 @@ export async function findAccount(name) {
   return matchAccountName(await allAccounts(), name);
 }
 
+// Every write path resolves the name the caller gave into the id the row is
+// stored under. Refusing an unknown name rather than writing a null id is
+// deliberate: a row filed under no account is money that disappears from every
+// per-account total. Both importers call ensureAccount first, so the name is
+// already real by the time it reaches here.
+async function idForAccount(name) {
+  const account = await findAccount(name);
+  if (!account) throw new Error(`there is no account named "${name}"`);
+  return account.id;
+}
+
 // Refuses to create a second casing of an account that already exists.
 // Returns the name actually written, which is the existing spelling when one
 // was found, so callers file rows against a single account.
@@ -343,21 +454,20 @@ export async function ensureAccount(name, openingBalance = 0) {
   return name;
 }
 
-// Renaming an account is a rename of a KEY. Accounts are keyed by name and
-// transactions reference that name as a string, so there is no id to change
-// underneath — every row has to be rewritten, and so does the default-account
-// setting if it points at the old name.
+// One row, since v8. The account's id is the reference and it does not change,
+// so no transaction is touched and nothing has to be kept consistent across
+// stores — which is what the whole v8 migration bought.
 //
-// All of it runs in ONE transaction across the three stores. Done as separate
-// writes, a failure halfway leaves rows pointing at an account that no longer
-// exists: money still in the ledger, filed under nothing, and invisible in
-// every per-account total. The abort path is why this is not three calls.
+// The default-account setting still stores a name, because it is written into
+// the Excel settings sheet where a UUID would mean nothing to a reader and it
+// is compared against the values of a select built from names. That is one
+// more row in the same transaction, not a walk over the ledger.
 export function renameAccount(from, to) {
   const wanted = String(to ?? '').trim();
   if (!wanted) return Promise.reject(new RangeError('an account needs a name'));
 
   return openDb().then((database) => new Promise((resolve, reject) => {
-    const transaction = database.transaction(['accounts', 'transactions', 'settings'], 'readwrite');
+    const transaction = database.transaction(['accounts', 'settings'], 'readwrite');
     const accounts = transaction.objectStore('accounts');
     let failure = null;
     const fail = (message) => { failure = new Error(message); transaction.abort(); };
@@ -370,33 +480,20 @@ export function renameAccount(from, to) {
 
       // Same rule as creating one: two accounts differing only in casing are
       // one account to a reader and unrecoverable once rows are split.
-      const clash = matchAccountName(rows.filter((row) => row.name !== from), wanted);
+      const clash = matchAccountName(rows.filter((row) => row.id !== current.id), wanted);
       if (clash) { fail(`"${clash.name}" already exists`); return; }
       if (wanted === from) { resolve(); return; }
 
-      // The new record keeps the position and the opening balance, so a
-      // rename does not move the account in the list or alter any balance.
-      accounts.delete(from);
+      // Keyed by id now, so this is a put over the same record rather than a
+      // delete plus an add. Position and opening balance ride along untouched.
       accounts.put({ ...current, name: wanted });
 
-      const txns = transaction.objectStore('transactions');
-      const cursor = txns.openCursor();
-      cursor.onsuccess = () => {
-        const at = cursor.result;
-        if (at) {
-          if (at.value.account === from) at.update({ ...at.value, account: wanted });
-          at.continue();
-          return;
+      const settings = transaction.objectStore('settings');
+      const preference = settings.get('default-account');
+      preference.onsuccess = () => {
+        if (preference.result && preference.result.value === from) {
+          settings.put({ key: 'default-account', value: wanted });
         }
-        // Only once every row has been walked: a default pointing at a name
-        // that no longer exists silently selects nothing on the Add form.
-        const settings = transaction.objectStore('settings');
-        const preference = settings.get('default-account');
-        preference.onsuccess = () => {
-          if (preference.result && preference.result.value === from) {
-            settings.put({ key: 'default-account', value: wanted });
-          }
-        };
       };
     };
 
@@ -423,7 +520,7 @@ export function putAccount(name, openingBalance) {
         store.put({ ...current, name, opening_balance: openingBalance });
         return;
       }
-      store.put({ name, opening_balance: openingBalance, position: nextPosition(rows) });
+      store.put({ id: crypto.randomUUID(), name, opening_balance: openingBalance, position: nextPosition(rows) });
     };
     return { value: undefined };
   });
@@ -432,15 +529,16 @@ export function putAccount(name, openingBalance) {
 // `bucket` is the row's own answer to fixed-or-flexible and overrides its
 // category's. Null means "no answer here", which sends the row back to the
 // category — the behaviour every row written before this field had.
-export function addFlow({ date, account, amount, name = '', category = '', bucket = null, note }) {
+export async function addFlow({ date, account, amount, name = '', category = '', bucket = null, note }) {
   if (!Number.isInteger(amount)) throw new TypeError('amount must be integer cents');
   if (amount === 0) throw new RangeError('amount must not be zero');
   if (bucket !== null && bucket !== 'fixed' && bucket !== 'flexible') {
     throw new RangeError('bucket must be fixed, flexible, or null');
   }
+  const accountId = await idForAccount(account);
   const id = crypto.randomUUID();
   return run('transactions', 'readwrite', (store) => {
-    store.add({ id, date, account, amount, name, category, bucket, transfer_id: null, note });
+    store.add({ id, date, account_id: accountId, amount, name, category, bucket, transfer_id: null, note });
     return { value: id };
   });
 }
@@ -448,15 +546,20 @@ export function addFlow({ date, account, amount, name = '', category = '', bucke
 // Both rows are written inside one IndexedDB transaction. If either put
 // fails the transaction aborts and neither row lands, so a transfer can
 // never exist as a single orphaned half.
-export function addTransfer({ date, from, to, amount, name = '', note }) {
+export async function addTransfer({ date, from, to, amount, name = '', note }) {
   if (!Number.isInteger(amount)) throw new TypeError('amount must be integer cents');
   if (amount <= 0) throw new RangeError('transfer amount must be positive');
   if (from === to) throw new RangeError('cannot transfer to the same account');
+  const [fromAccount, toAccount] = await Promise.all([idForAccount(from), idForAccount(to)]);
+  // Resolved names can collide where the raw strings did not: "bank" and
+  // "Bank" are one account, and a transfer from an account to itself is not a
+  // transfer, it is two rows that unbalance nothing and mean nothing.
+  if (fromAccount === toAccount) throw new RangeError('cannot transfer to the same account');
   const fromId = crypto.randomUUID();
   const toId = crypto.randomUUID();
   return run('transactions', 'readwrite', (store) => {
-    store.add({ id: fromId, date, account: from, amount: -amount, name, category: TRANSFER_CATEGORY, bucket: null, transfer_id: toId, note });
-    store.add({ id: toId, date, account: to, amount, name, category: TRANSFER_CATEGORY, bucket: null, transfer_id: fromId, note });
+    store.add({ id: fromId, date, account_id: fromAccount, amount: -amount, name, category: TRANSFER_CATEGORY, bucket: null, transfer_id: toId, note });
+    store.add({ id: toId, date, account_id: toAccount, amount, name, category: TRANSFER_CATEGORY, bucket: null, transfer_id: fromId, note });
     return { value: [fromId, toId] };
   });
 }
@@ -465,8 +568,15 @@ export function addTransfer({ date, from, to, amount, name = '', note }) {
 // detached from its partner (transfer_id changed/cleared), a plain flow
 // cannot be promoted into a transfer half, and an amount edit on one half
 // cascades to the partner so the pair keeps summing to zero.
-export function updateTransaction(txn) {
-  if (!Number.isInteger(txn.amount)) throw new TypeError('amount must be integer cents');
+export async function updateTransaction(row) {
+  if (!Number.isInteger(row.amount)) throw new TypeError('amount must be integer cents');
+  // The row came from allTransactions and then through the editor, so its
+  // `account` is whatever the user just picked and its `account_id` is what it
+  // was before. The name is the one the user chose, so the name wins.
+  const { account, ...rest } = row;
+  const txn = account === undefined
+    ? rest
+    : { ...rest, account_id: await idForAccount(account) };
   return openDb().then((database) => new Promise((resolve, reject) => {
     const transaction = database.transaction('transactions', 'readwrite');
     const store = transaction.objectStore('transactions');
@@ -528,9 +638,19 @@ export function deleteTransaction(id) {
   });
 }
 
-export function putTransactions(txns) {
+// Bulk, so the account list is read once rather than once per row — an import
+// is thousands of rows and findAccount reads every account each time.
+export async function putTransactions(txns) {
+  const accounts = await allAccounts();
+  const rows = txns.map((txn) => {
+    if (txn.account === undefined) return txn;
+    const { account, ...rest } = txn;
+    const found = matchAccountName(accounts, account);
+    if (!found) throw new Error(`there is no account named "${account}"`);
+    return { ...rest, account_id: found.id };
+  });
   return run('transactions', 'readwrite', (store) => {
-    for (const txn of txns) store.put(txn);
+    for (const row of rows) store.put(row);
     return { value: undefined };
   });
 }
