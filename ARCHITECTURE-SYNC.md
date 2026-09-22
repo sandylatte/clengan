@@ -239,7 +239,22 @@ Each step is verifiable before the next one starts.
    broken**, by deliberately breaking each one: collapsing the two derivations
    into one, dropping the record id from the AAD, and fixing the IV. A crypto
    test that cannot fail is decoration.
-3. **Backend** — the six endpoints against SQLite. Testable with `curl`.
+3. ~~**Backend**~~ — **done**, as `server/`. Stdlib rather than FastAPI: six
+   endpoints over SQLite do not need it, and `pip install` on a PEP 668
+   distribution means a venv to manage before anything runs. `Store` has no HTTP
+   in it, so the move to FastAPI stays mechanical if this ever needs to be
+   production-grade.
+
+   34 tests over real HTTP, plus `server/test_integration.mjs`, which spawns the
+   server and drives it with real `vault.js` keys — the only place the two
+   halves are proven to fit. A second "device" holding nothing but the password
+   pulls and decrypts; a password change re-reads the same rows and leaves the
+   recovery code working.
+
+   One route ordering worth keeping: the path is matched *before* the session is
+   checked, so an unknown endpoint is a 404 rather than a 401. The other order
+   hides nothing — the endpoint list is in the client's own source — and sends
+   anyone debugging a typo hunting a token problem.
 4. **Sync engine** — outbox, pull cursor, tombstones. Two browser profiles
    proving a record written in one appears in the other and the server log shows
    only ciphertext.

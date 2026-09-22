@@ -5,3 +5,10 @@
 # Never commit real planner workbooks — they are personal financial data.
 planner-fixture.xlsx
 *PLANNER*.xlsx
+
+# The sync server's database. Holds other people's ciphertext and their
+# session tokens; it is never a repo artifact.
+server/*.db
+server/*.db-wal
+server/*.db-shm
+__pycache__/
