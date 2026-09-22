@@ -51,6 +51,21 @@ A TWA must pass Digital Asset Links, which PWABuilder sets up by giving you an
 `assetlinks.json` to place at `/.well-known/assetlinks.json` on the host. If you
 skip it the app opens with a browser address bar visible, which looks broken.
 
+**That path is at the DOMAIN root, and this deployment cannot serve it.** Clengan
+is a project Pages site under `/clengan/`, so `sandylatte.github.io/clengan/.well-known/…`
+is the wrong URL and the right one is not ours to write — as of now
+`https://sandylatte.github.io/` is a 404 with no repository behind it. Fixing
+this means a second repository named `sandylatte.github.io` holding nothing but
+the asset links file and a `.nojekyll` (Jekyll drops dot-directories, so without
+it the file is committed and still 404s). Step by step in
+[twa/README.md](twa/README.md).
+
+Play also requires a privacy policy URL before a listing goes live.
+[privacy.html](privacy.html) is a draft describing the app as it ships — no
+account, no server, no third-party requests, verified against the source — and
+lands at `https://sandylatte.github.io/clengan/privacy.html`. It has one blank
+in it, a contact address, deliberately left for you to fill rather than guessed.
+
 ## Option 3 — Capacitor (both platforms, more control, more setup)
 
 Capacitor wraps the same HTML/CSS/JS in a native shell for both platforms and

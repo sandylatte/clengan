@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Clengan — Privacy</title>
+<style>
+  :root { color-scheme: dark; }
+  body {
+    margin: 0 auto; padding: 24px 18px 48px; max-width: 42rem;
+    background: #000; color: #D2D8D5;
+    font: 15px/1.6 "Fira Sans", system-ui, -apple-system, sans-serif;
+  }
+  /* The app's own ramp, not a second one invented for this page. 34 is the
+     hero step, and a section heading is deliberately SMALLER and quieter than
+     body text here exactly as it is in the app — the hierarchy is carried by
+     weight and colour, not by size alone. */
+  h1 { font-size: 34px; line-height: 1.15; margin: 0 0 6px; }
+  h2 {
+    font-size: 12px; font-weight: 600; letter-spacing: -0.005em;
+    margin: 30px 0 6px; color: #00EB62;
+  }
+  p, li { margin: 0 0 10px; }
+  ul { padding-left: 20px; }
+  .date { color: #7E938A; font-size: 12px; margin-bottom: 24px; }
+  .note {
+    border: 1px solid #1C2420; background: #0C100E; border-radius: 12px;
+    padding: 12px 14px; margin: 24px 0; font-size: 12px; color: #7E938A;
+  }
+  strong { color: #D2D8D5; font-weight: 600; }
+  a { color: #00EB62; }
+</style>
+</head>
+<body>
+
+<h1>Privacy</h1>
+<p class="date">Clengan · last updated 22 September 2026</p>
+
+<p><strong>Clengan does not collect anything.</strong> There is no account, no
+server, and no analytics. Your financial records never leave the device you
+typed them into, because there is nowhere for them to go.</p>
+
+<h2>Where your data lives</h2>
+<p>Everything you enter — transactions, accounts, categories, budget settings —
+is stored in your browser's own storage (IndexedDB) on your device. Your chosen
+colour theme is stored the same way. None of it is transmitted.</p>
+
+<h2>What is sent over the network</h2>
+<p>The app's own files, once, when you install or update it. That is all.
+Clengan makes no request to any third party: the spreadsheet library, the
+animation library and both fonts are bundled with the app rather than fetched
+from anyone else's server. There are no trackers, no advertising identifiers,
+no crash reporting and no usage statistics.</p>
+<p>After the first load the app works fully offline.</p>
+
+<h2>Exporting to Excel</h2>
+<p>The Backup feature writes a spreadsheet to your device when you ask it to.
+That file is yours and goes only where you send it. Clengan does not upload it
+anywhere, and cannot read it once it has been written.</p>
+<p>Because your data exists only on your device, <strong>an export is the only
+backup that exists.</strong> If you clear the browser's site data, uninstall the
+app, or lose the device, the records go with it.</p>
+
+<h2>Deleting your data</h2>
+<p>Uninstall the app, or clear site data for it in your browser settings. That
+removes everything immediately and permanently. Nobody needs to be asked,
+because nobody else has a copy.</p>
+
+<h2>Children</h2>
+<p>Clengan is not directed at children and collects no information from anyone,
+including children.</p>
+
+<h2>Changes</h2>
+<p>If a future version adds optional accounts or sync, that version will collect
+an email address and store encrypted data on a server, and this page will be
+updated before it ships. The version described here does neither.</p>
+
+<h2>Contact</h2>
+<p>Questions about this policy: <strong>[add your contact email here before
+publishing]</strong></p>
+
+<div class="note">
+  A note from the repository, not part of the policy: this draft was written by
+  reading the source, and every claim above was checked against it — the app
+  contains no external URLs and no network code beyond fetching its own files.
+  It is a starting point, not legal advice. Read it before you submit it
+  anywhere, and fill in the contact line.
+</div>
+
+</body>
+</html>
