@@ -1,6 +1,8 @@
 # Accounts and sync, end-to-end encrypted
 
-A design, not a built thing. Nothing in this document exists in the code yet.
+Steps 1 to 4 of the build order below are **built and tested**: the account-id
+migration, `vault.js`, `server/`, and `sync.js`. Nothing is wired into the app's
+UI, so no user can reach any of it yet. Step 5 is that wiring.
 
 Clengan today has no server, no account and no network call. That is not an
 omission — it is the reason the privacy story fits in one sentence, and it is a
@@ -79,8 +81,16 @@ reused under the same key — reuse in GCM is catastrophic, not merely weak.
 one record to another and the client will decrypt it happily, which is a silent
 data-corruption primitive handed to the party we are defending against.
 
-The store name (`transactions`, `accounts`, …) lives *inside* the ciphertext,
-not beside it. The server therefore cannot tell a category from a transfer.
+The store name (`transactions`, `accounts`, …) is **visible** in the address,
+and the record's key is not — see the sync id note under step 4. The server can
+therefore tell a category from a transaction, and cannot tell which category or
+what it is called. That split is deliberate: it needs something stable to
+address a blob by, and the store alone is structural rather than personal.
+
+An earlier draft of this paragraph claimed the store name was inside the
+ciphertext. It never was, and the claim is corrected rather than quietly
+dropped, because a security document that overstates what it hides is worse
+than one that admits a gap.
 
 ## Prerequisite: accounts need a stable id (schema v8) — done
 
@@ -213,8 +223,11 @@ marketing.
 - **A compromised device.** Decrypted data lives in IndexedDB on the device by
   design. Device encryption and screen lock are the defence, and neither is ours.
 - **Metadata.** The server knows an account exists, its email, when it syncs,
-  how often, how many records it holds and how large they are. Activity patterns
-  are visible even though content is not.
+  how often, how many records of each KIND it holds and how large they are.
+  Record keys are HMAC'd, so it does not learn which record is which or what any
+  name-keyed record is called — but it does see that you have, say, fourteen
+  categories and four accounts. Activity patterns are visible even though
+  content is not.
 - **A weak password.** Argon2id raises the cost per guess. It does not rescue
   a password that appears in a wordlist.
 - **Traffic analysis.** Sync timing and volume are observable to anyone on the
@@ -255,9 +268,33 @@ Each step is verifiable before the next one starts.
    checked, so an unknown endpoint is a 404 rather than a 401. The other order
    hides nothing — the endpoint list is in the client's own source — and sends
    anyone debugging a typo hunting a token problem.
-4. **Sync engine** — outbox, pull cursor, tombstones. Two browser profiles
-   proving a record written in one appears in the other and the server log shows
-   only ciphertext.
+4. ~~**Sync engine**~~ — **done**, as `sync.js` with `test/sync.test.js`.
+
+   **The outbox is derived, not maintained.** Each sync reads the local stores,
+   hashes every record, and compares against the hashes from last time: changed
+   or new goes up, present-then-missing becomes a tombstone. The alternative was
+   hooking the fifteen-odd write paths in `db.js`, where one missed hook means a
+   record that lives on one device forever with nothing on screen to say so. A
+   derived outbox cannot miss a write path because it does not know write paths
+   exist.
+
+   **Push before pull, always.** The server resolves last-write-wins as it
+   accepts a push, so pushing first means the pull that follows brings back the
+   merged truth rather than clobbering local edits that never left.
+
+   **The sync id is an HMAC, and the first version was a leak.** A record is
+   addressed as `store:key`, and `transactions` and `accounts` are keyed by
+   UUIDs that mean nothing — but `categories`, `funds` and `settings` are keyed
+   by NAME. The plain form put those names on the wire in clear text. A category
+   list is a sketch of someone's private life. The key is now HMAC'd under a
+   subkey derived from the DEK: HMAC rather than a bare hash because names come
+   from a small guessable space and `SHA-256("Groceries")` is the same value for
+   everyone. The store name is still visible and is intended to be — it is
+   structural, not the user's.
+
+   A consequence worth knowing: an HMAC cannot be reversed, so a tombstone has
+   to carry its store and key *inside* its own ciphertext. A receiving device
+   has no other way to learn which local record the grave is for.
 5. **UI** — signup, login, the recovery code screen, sync state. Not before
    the four steps above work.
 6. **Hardening** — rate limiting, account deletion, conflict behaviour under

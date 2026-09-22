@@ -17,6 +17,7 @@ import {
   KDFS, createIdentity, authVerifierFor, unlock, unlockWithRecoveryCode,
   changePassword, encryptRecord, decryptRecord,
 } from '../vault.js';
+import { Transport, runSync } from '../sync.js';
 
 // The real 600k KDF three times over is ~2s of nothing. The cost parameter is
 // tested in test/vault.test.js; this file is about the wiring.
@@ -172,6 +173,107 @@ check('a password change re-reads the same rows and touches no blob', async (sta
     ...session.identity, kdf: next.kdf,
   });
   assert.equal((await decryptRecord(viaCode, 'txn-1', pulled.records[0])).note, 'kopi');
+});
+
+// -- the sync engine against the real server ---------------------------------
+//
+// Everything above proves the crypto and the endpoints. This proves the engine
+// that drives them: two devices, one account, real ciphertext over real HTTP.
+
+const KEY_PATHS = { transactions: 'id', accounts: 'id', settings: 'key' };
+
+function device(initial = {}) {
+  const stores = { transactions: [], accounts: [], settings: [], ...initial };
+  const meta = {};
+  return {
+    stores,
+    readAll: async () => JSON.parse(JSON.stringify(stores)),
+    write: async (store, record) => {
+      const kp = KEY_PATHS[store];
+      const at = stores[store].findIndex((r) => r[kp] === record[kp]);
+      if (at >= 0) stores[store][at] = record; else stores[store].push(record);
+    },
+    remove: async (store, key) => {
+      const kp = KEY_PATHS[store];
+      stores[store] = stores[store].filter((r) => String(r[kp]) !== String(key));
+    },
+    getMeta: async (key, fallback) => (key in meta ? meta[key] : fallback),
+    setMeta: async (key, value) => { meta[key] = value; },
+  };
+}
+
+check('two devices converge through the real server', async (state) => {
+  const email = 'engine@example.com';
+  const made = await createIdentity('engine password', 'test-cheap');
+  const signup = new Transport(BASE);
+  const { token } = await signup.call('POST', '/signup', { email, identity: made.identity });
+  const dek = await unlock('engine password', made.identity);
+
+  const phone = new Transport(BASE, token);
+  const laptop = new Transport(BASE, token);
+
+  const a = device({
+    transactions: [{ id: 't1', date: '2026-09-22', amount: -125000, note: 'kopi' }],
+    accounts: [{ id: 'acc1', name: 'Bank BCA', opening_balance: 500000 }],
+  });
+  const first = await runSync({ io: a, transport: phone, dek, keyPaths: KEY_PATHS });
+  assert.equal(first.pushed, 2);
+
+  const b = device();
+  const second = await runSync({ io: b, transport: laptop, dek, keyPaths: KEY_PATHS });
+  assert.equal(second.applied, 2, 'the second device must receive both records');
+  assert.deepEqual(b.stores.transactions[0], a.stores.transactions[0]);
+  assert.deepEqual(b.stores.accounts[0], a.stores.accounts[0]);
+  state.engine = { dek, phone, laptop, a, b };
+});
+
+check('an edit on one device reaches the other and nothing else moves', async (state) => {
+  const { dek, phone, laptop, a, b } = state.engine;
+  a.stores.transactions[0].note = 'kopi susu';
+  const pushed = await runSync({ io: a, transport: phone, dek, keyPaths: KEY_PATHS });
+  assert.equal(pushed.pushed, 1, 'only the edited row should go up');
+
+  await runSync({ io: b, transport: laptop, dek, keyPaths: KEY_PATHS });
+  assert.equal(b.stores.transactions[0].note, 'kopi susu');
+  assert.equal(b.stores.accounts.length, 1);
+});
+
+check('a delete propagates and does not come back', async (state) => {
+  const { dek, phone, laptop, a, b } = state.engine;
+  a.stores.transactions = [];
+  await runSync({ io: a, transport: phone, dek, keyPaths: KEY_PATHS });
+  await runSync({ io: b, transport: laptop, dek, keyPaths: KEY_PATHS });
+  assert.deepEqual(b.stores.transactions, [], 'the row should be gone on the second device');
+
+  // And a further sync on either side must not resurrect it.
+  await runSync({ io: b, transport: laptop, dek, keyPaths: KEY_PATHS });
+  await runSync({ io: a, transport: phone, dek, keyPaths: KEY_PATHS });
+  assert.deepEqual(a.stores.transactions, []);
+  assert.deepEqual(b.stores.transactions, []);
+});
+
+check('a quiet sync sends nothing at all', async (state) => {
+  const { dek, phone, a } = state.engine;
+  const result = await runSync({ io: a, transport: phone, dek, keyPaths: KEY_PATHS });
+  assert.equal(result.pushed, 0);
+  assert.equal(result.tombstoned, 0);
+  assert.equal(result.applied, 0);
+});
+
+check('the server holds ciphertext for every record the engine sent', async (state) => {
+  const { laptop } = state.engine;
+  const { records } = await laptop.pull(0);
+  assert.ok(records.length > 0);
+  const wire = JSON.stringify(records);
+  for (const leak of ['kopi', 'Bank BCA', '125000', '500000']) {
+    assert.ok(!wire.includes(leak), `"${leak}" is readable on the server`);
+  }
+  // The store IS visible and that is the documented metadata cost: the server
+  // knows a transaction exists. The key is an HMAC under a key derived from the
+  // DEK, so it learns nothing about WHICH record, and for name-keyed stores it
+  // never sees the name.
+  assert.match(wire, /transactions:[0-9a-f]{32}/);
+  assert.ok(!wire.includes('transactions:t1'), 'the raw key must not be addressable');
 });
 
 await ready();

@@ -8,7 +8,22 @@ import {
 // a user's ledger is not migrated, it is simply no longer found. The name is
 // internal and nobody sees it, so there is nothing to gain by touching it.
 const DB_NAME = 'moneytrack';
-const DB_VERSION = 8;
+const DB_VERSION = 9;
+
+// The stores that sync, and the field each one is keyed by. A record's sync
+// identity is `store:key`, which is what the server addresses it as and what
+// is authenticated into its ciphertext.
+//
+// `sync` is deliberately absent. It holds this device's session token and pull
+// cursor, which are local facts about one device and must never be uploaded.
+export const SYNCABLE = {
+  transactions: 'id',
+  accounts: 'id',
+  categories: 'name',
+  funds: 'name',
+  settings: 'key',
+  recurring: 'id',
+};
 
 // On disk a transaction references its account by `account_id`, a UUID that
 // never changes. In memory every row above this module carries `account`, the
@@ -90,6 +105,12 @@ export function openDb(name = DB_NAME) {
       // nothing while keeping every database on one path to the same schema.
       if (event.oldVersion < 8) {
         giveAccountsIds(database, request.transaction);
+      }
+      if (event.oldVersion < 9) {
+        // Local sync bookkeeping: this device's pull cursor, the hash snapshot
+        // the outbox is derived from, the stored identity and its session
+        // token. None of it syncs — see SYNCABLE.
+        database.createObjectStore('sync', { keyPath: 'key' });
       }
     };
     request.onsuccess = () => resolve(request.result);
@@ -651,6 +672,51 @@ export async function putTransactions(txns) {
   });
   return run('transactions', 'readwrite', (store) => {
     for (const row of rows) store.put(row);
+    return { value: undefined };
+  });
+}
+
+// -- what sync needs ---------------------------------------------------------
+//
+// Raw records, exactly as stored. Not allTransactions(), which hydrates a row
+// with its account's current NAME for the UI — syncing that would put a
+// derived field on the wire and make a rename look like every row changed.
+
+export const readStoreRaw = (store) => readAll(store);
+
+export function putRaw(store, value) {
+  return run(store, 'readwrite', (objectStore) => {
+    objectStore.put(value);
+    return { value: undefined };
+  });
+}
+
+export function deleteRaw(store, key) {
+  return run(store, 'readwrite', (objectStore) => {
+    objectStore.delete(key);
+    return { value: undefined };
+  });
+}
+
+export function getSyncMeta(key, fallback = null) {
+  return run('sync', 'readonly', (store) => {
+    const result = { value: fallback };
+    const request = store.get(key);
+    request.onsuccess = () => { if (request.result) result.value = request.result.value; };
+    return result;
+  });
+}
+
+export function putSyncMeta(key, value) {
+  return run('sync', 'readwrite', (store) => {
+    store.put({ key, value });
+    return { value: undefined };
+  });
+}
+
+export function clearSyncMeta() {
+  return run('sync', 'readwrite', (store) => {
+    store.clear();
     return { value: undefined };
   });
 }
