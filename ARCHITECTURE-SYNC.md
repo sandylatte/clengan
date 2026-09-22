@@ -226,9 +226,19 @@ Each step is verifiable before the next one starts.
 
 1. **Schema v8** — account ids. No crypto, no network. Existing tests must pass
    and the migration gets its own.
-2. **Crypto core** — derive, wrap, encrypt, decrypt, rewrap on password change,
-   recover via recovery code. Roughly 200 lines and a test file, no UI, no
-   server. If this does not round-trip cleanly nothing after it matters.
+2. ~~**Crypto core**~~ — **done**, as `vault.js` with `test/vault.test.js`. It
+   talks to no server and no database, which is what lets it run under plain
+   `node --test` rather than only in a browser.
+
+   Two things worth keeping from building it. **Recovery gets its own salt.**
+   The first draft derived the recovery key from the password's salt, so a
+   password change silently invalidated the code the user wrote down at signup
+   — a failure they would discover on the one day it mattered. A password
+   change now rotates `salt` and leaves `recoverySalt` alone. **And the three
+   rules are each pinned by a test that was verified to fail when the rule is
+   broken**, by deliberately breaking each one: collapsing the two derivations
+   into one, dropping the record id from the AAD, and fixing the IV. A crypto
+   test that cannot fail is decoration.
 3. **Backend** — the six endpoints against SQLite. Testable with `curl`.
 4. **Sync engine** — outbox, pull cursor, tombstones. Two browser profiles
    proving a record written in one appears in the other and the server log shows
@@ -254,11 +264,15 @@ Not legal advice. Flags, not answers.
 
 ## Open decisions
 
-- **Argon2id or PBKDF2.** Argon2id is the correct choice and needs a WASM
-  library; the project currently has zero dependencies and no build step.
-  PBKDF2 is native to WebCrypto and structurally free, and meaningfully weaker
-  against an attacker holding stolen blobs. This trades a real property of the
-  repo against a real property of the security.
+- ~~**Argon2id or PBKDF2.**~~ **Settled, reversibly.** `vault.js` ships
+  PBKDF2-SHA256 at 600k iterations, because it is native to WebCrypto and costs
+  the project neither a dependency nor a build step. It is the honest weak
+  point of the design: PBKDF2 is cheap to attack on a GPU in a way Argon2id
+  deliberately is not, so it defends a stolen blob against a casual attacker
+  and not a funded one. The parameters are a *named set* stored on every
+  identity, and a password change carries the identity forward to whatever is
+  current, so adding Argon2id later is a new entry in `KDFS` rather than a
+  migration that locks anyone out. Revisit before real users exist.
 - **Email as the account identifier**, which means handling deliverability,
   verification and change-of-address. A username avoids all of it and loses
   password reset by email — though reset is already impossible here by design,
