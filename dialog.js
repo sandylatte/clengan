@@ -180,3 +180,49 @@ export function pickColour({ title, colours, current }) {
     dialog.querySelector('.palette__item').focus();
   });
 }
+
+// The recovery code, shown once and never again.
+//
+// This is the only dialog in the app that cannot be dismissed. Escape, the
+// backdrop and a cancel button are all absent on purpose, and the button stays
+// disabled until the box is ticked — the whole pattern the other dialogs
+// deliberately avoid, because the other dialogs are recoverable and this is
+// not. Someone who taps past this and later forgets their password has lost
+// their financial history, and nobody can give it back.
+//
+// It resolves only when acknowledged, so a caller can treat the return as
+// "they have seen it".
+let recoveryNode = null;
+
+export function showRecoveryCode({ code }) {
+  if (!recoveryNode) {
+    recoveryNode = document.createElement('dialog');
+    recoveryNode.className = 'dialog';
+    recoveryNode.innerHTML = `
+      <h2 class="dialog__title">Write this down now</h2>
+      <p class="dialog__body">This is the only other way into your records. It is shown once and cannot be shown again.</p>
+      <code class="recovery__code" id="recovery-code"></code>
+      <p class="recovery__warning">If you forget your password and lose this code, your records cannot be recovered — not by us, not by anyone. That is what makes them private.</p>
+      <label class="recovery__ack"><input type="checkbox" id="recovery-ack"> I have written it down somewhere safe</label>
+      <div class="dialog__actions">
+        <button type="button" class="dialog__confirm primary" disabled>Finish</button>
+      </div>`;
+    document.body.append(recoveryNode);
+  }
+  const dialog = recoveryNode;
+  dialog.querySelector('#recovery-code').textContent = code;
+  const tick = dialog.querySelector('#recovery-ack');
+  const finish = dialog.querySelector('.dialog__confirm');
+  tick.checked = false;
+  finish.disabled = true;
+
+  return new Promise((resolve) => {
+    tick.onchange = () => { finish.disabled = !tick.checked; };
+    finish.onclick = () => { dialog.close(); resolve(true); };
+    // No oncancel handler and no backdrop handler: preventDefault on cancel is
+    // what actually stops Escape closing it.
+    dialog.oncancel = (event) => event.preventDefault();
+    dialog.showModal();
+    tick.focus();
+  });
+}

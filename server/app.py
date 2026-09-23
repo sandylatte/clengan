@@ -40,6 +40,10 @@ AUTHENTICATED = {
 
 class Handler(BaseHTTPRequestHandler):
     server_version = "clengan-sync"
+    # HTTP/1.1 rather than the 1.0 default: keep-alive, and Content-Length is
+    # set on every response below, which is what 1.1 requires. Plain correctness
+    # for anything a browser talks to.
+    protocol_version = "HTTP/1.1"
     # The default logs every request line to stderr. Paths here carry an email
     # in a query string, so the access log would quietly become a list of who
     # has an account.

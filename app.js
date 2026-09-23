@@ -16,6 +16,7 @@ import { exportXlsx, importXlsx, importPlanner } from './xlsx-io.js';
 import { attachCalendar, toISO } from './calendar.js';
 import { dueOccurrences, occurrenceToRow, runStamps } from './recurring.js';
 import { confirmDialog, alertDialog, pickColour, promptDialog } from './dialog.js';
+import { initSyncUi } from './syncui.js';
 import {
   SAMPLE_ACCOUNTS, SAMPLE_COLOURS, SAMPLE_NOTE, sampleMonths, sampleTransactions,
 } from './sample.js';
@@ -2023,6 +2024,10 @@ await refresh();
 // After the first refresh, so the dialog opens over a painted app rather than
 // over an empty one, and so a failure here cannot stop the app from rendering.
 offerDueRecurring().catch(() => {});
+// Same reasoning, and the catch matters more here: sync is opt-in and most
+// installs will never use it, so nothing about it may be allowed to stop the
+// rest of Settings from working.
+initSyncUi().catch(() => {});
 
 if ('serviceWorker' in navigator) {
   // updateViaCache: 'none' stops the browser answering the sw.js update check

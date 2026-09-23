@@ -1,8 +1,9 @@
 # Accounts and sync, end-to-end encrypted
 
-Steps 1 to 4 of the build order below are **built and tested**: the account-id
-migration, `vault.js`, `server/`, and `sync.js`. Nothing is wired into the app's
-UI, so no user can reach any of it yet. Step 5 is that wiring.
+Steps 1 to 5 of the build order below are **built and tested**: the account-id
+migration, `vault.js`, `server/`, `sync.js`, and the Sync tile. Step 6 —
+hardening — is not done, and no server is hosted anywhere, so the tile is inert
+until someone points it at one they run.
 
 Clengan today has no server, no account and no network call. That is not an
 omission — it is the reason the privacy story fits in one sentence, and it is a
@@ -295,8 +296,29 @@ Each step is verifiable before the next one starts.
    A consequence worth knowing: an HMAC cannot be reversed, so a tombstone has
    to carry its store and key *inside* its own ciphertext. A receiving device
    has no other way to learn which local record the grave is for.
-5. **UI** — signup, login, the recovery code screen, sync state. Not before
-   the four steps above work.
+5. ~~**UI**~~ — **done**, as an eleventh Settings tile plus `syncui.js`.
+
+   The tile reads **Off** until someone chooses otherwise, and nothing about it
+   may stop the rest of Settings loading — `initSyncUi()` is called with a
+   `.catch()` for exactly that reason. No server address is shipped; the field
+   is blank and points at one you run.
+
+   **The recovery code gets a dialog that cannot be dismissed.** No Escape, no
+   backdrop, no cancel, and the button stays disabled until the box is ticked —
+   the opposite of every other dialog in the app, which are all recoverable.
+   This one is not: someone who taps past it and later forgets their password
+   has lost their financial history. It is shown BEFORE the first sync, so a
+   failure in between cannot leave an account whose only key the user never saw.
+
+   **There is no password reset and the tile says so**, rather than offering a
+   link that cannot work. Recovery needs a device already signed in, because the
+   wrapped key only comes back from a successful login.
+
+   A note for whoever verifies this next: the agent browser pane blocks GET to a
+   local server while allowing POST, so the pull half cannot be exercised there.
+   `curl` gets correct GETs with correct CORS headers from the same process, and
+   `server/test_integration.mjs` drives real pulls from node. Push, signup, the
+   dialog and every UI state are verifiable in the pane; pull is not.
 6. **Hardening** — rate limiting, account deletion, conflict behaviour under
    deliberate offline divergence.
 

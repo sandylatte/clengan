@@ -60,6 +60,7 @@
   <symbol id="i-planner" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z"/><path d="M14 3v5h5"/><path d="M9 13h6"/><path d="M9 17h4"/></symbol>
   <symbol id="i-recurring" viewBox="0 0 24 24"><path d="M17 2l4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/></symbol>
   <symbol id="i-sample" viewBox="0 0 24 24"><path d="m12 3 1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9Z"/><path d="M18 16v4"/><path d="M16 18h4"/></symbol>
+  <symbol id="i-sync" viewBox="0 0 24 24"><path d="M12 3a9 9 0 0 1 9 9"/><path d="M12 21a9 9 0 0 1-9-9"/><path d="M18 9h3V6"/><path d="M6 15H3v3"/><circle cx="12" cy="12" r="2.5"/></symbol>
   <symbol id="i-version" viewBox="0 0 24 24"><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/><path d="M3 21v-5h5"/></symbol>
 </svg>
 
@@ -380,6 +381,40 @@
     <p class="hint">Fills the app with three months of made-up transactions so every screen has something to show. Added alongside anything already here, never in place of it — and every row is labelled in its note so you can find and delete them.</p>
     <button type="button" class="primary" id="sample-button">Load sample data</button>
     <p id="sample-status" role="status"></p>
+  </details>
+
+  <!-- Off unless asked for. Every installed copy of this app has data and
+       never agreed to an account, so the tile reads "Off" until someone
+       chooses otherwise and the app works exactly as before if they never do. -->
+  <details class="card">
+    <summary><svg class="tile__icon" aria-hidden="true"><use href="#i-sync"/></svg><h2>Sync</h2><span class="tile__state" id="state-sync">Off</span></summary>
+    <p class="hint">Keep the same ledger on more than one device. Everything is encrypted on this device before it is sent, so the server stores what it cannot read.</p>
+
+    <div id="sync-signed-out">
+      <form id="sync-form">
+        <label for="sync-email">Email</label>
+        <input type="email" id="sync-email" autocomplete="username" required>
+        <label for="sync-password">Password</label>
+        <input type="password" id="sync-password" autocomplete="current-password" required>
+        <div class="pair">
+          <div><button type="submit" class="primary" id="sync-signin">Sign in</button></div>
+          <div><button type="button" id="sync-signup">Create account</button></div>
+        </div>
+      </form>
+      <p class="hint">There is no password reset. The password is what decrypts your records, so nobody — including whoever runs the server — can recover it for you. Creating an account gives you a recovery code; that code is the only other way in.</p>
+    </div>
+
+    <div id="sync-signed-in" hidden>
+      <p class="hint" id="sync-account"></p>
+      <button type="button" class="primary" id="sync-now">Sync now</button>
+      <button type="button" id="sync-signout">Sign out on this device</button>
+      <p class="hint">Signing out leaves every record on this device. It only forgets the account.</p>
+    </div>
+
+    <p id="sync-status" role="status"></p>
+    <label for="sync-server">Server</label>
+    <input type="url" id="sync-server" placeholder="https://…" autocomplete="off">
+    <p class="hint">No server is provided. Point this at one you run yourself — see <code>server/</code> in the repository.</p>
   </details>
 
   <details class="card">
