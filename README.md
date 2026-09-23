@@ -1,5 +1,9 @@
 # Clengan
 
+**Picking this up after a break?** [HANDOFF.md](HANDOFF.md) has the current
+state, the traps that have each cost real debugging time, and what is
+deliberately unfinished.
+
 A local-first PWA money tracker. All data lives in IndexedDB in the browser;
 there is no backend and no build step — it's plain HTML/CSS/JS served as
 static files.
