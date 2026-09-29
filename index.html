@@ -386,7 +386,8 @@
   <!-- Off unless asked for. Every installed copy of this app has data and
        never agreed to an account, so the tile reads "Off" until someone
        chooses otherwise and the app works exactly as before if they never do. -->
-  <details class="card">
+  <!-- Hidden until sync has a hosted server; remove `hidden` to bring it back. -->
+  <details class="card" hidden>
     <summary><svg class="tile__icon" aria-hidden="true"><use href="#i-sync"/></svg><h2>Sync</h2><span class="tile__state" id="state-sync">Off</span></summary>
     <p class="hint">Keep the same ledger on more than one device. Everything is encrypted on this device before it is sent, so the server stores what it cannot read.</p>
 
