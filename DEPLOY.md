@@ -27,7 +27,7 @@ Screen". Same result.
 The catch on iOS is real and worth knowing before you pick a path. Apple gives
 home-screen web apps a storage budget that the system may evict when the device
 is under pressure, and there is no way to opt out. **Export to Excel regularly**
-— that is exactly what the Backup card is for. On Android this is not a concern.
+— that is exactly what the Import & export card is for. On Android this is not a concern.
 
 You need a URL for this. See "Hosting" below.
 
