@@ -368,7 +368,7 @@
 
   <details class="card">
     <summary><svg class="tile__icon" aria-hidden="true"><use href="#i-planner"/></svg><h2>Import a planner</h2><span class="tile__state">One-off, adds rows</span></summary>
-    <p class="hint">Reads a FINANCIAL PLANNER workbook once: its ledger rows, and the fixed or flexible bucket each category was filed under. Adds to what is already here rather than replacing it.</p>
+    <p class="hint">Reads a spreadsheet once. Any table with a Category (or Item) column and an Amount (or Cost) column is found wherever it sits, with Date and Note if it has them. A table under a Fixed or Flexible heading keeps that bucket. Adds to what is already here rather than replacing it.</p>
     <label for="planner-account">File rows under account</label>
     <input type="text" id="planner-account" value="Imported" required>
     <label for="planner-input">Planner workbook</label>

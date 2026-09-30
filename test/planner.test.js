@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { parsePlannerGrid, monthFromSheetName, parseDate, parseAmount } from '../planner.js';
+import { parsePlannerGrid, parsePlannerSheet, parsePlannerBook, parseMonthLabel, monthFromSheetName, parseDate, parseAmount } from '../planner.js';
 
 // Mirrors the real workbook: a summary strip whose "Income" heading is
 // followed by a total, the real Income block below it, and two ledgers side
@@ -100,4 +100,122 @@ test('a sheet with no ledger blocks yields nothing rather than throwing', () => 
   const { rows, problems } = parsePlannerGrid([['TOTAL SAVINGS'], ['2026', 'Home Fund', '54036']], '2026-09');
   assert.deepEqual(rows, []);
   assert.deepEqual(problems, []);
+});
+
+// The layout moves. Everything below is a way the workbook has been, or
+// plausibly will be, rearranged by hand — each must still import.
+
+test('tab names are read however the month is written', () => {
+  assert.deepEqual(parseMonthLabel('September 2026'), { year: 2026, month: 9 });
+  assert.deepEqual(parseMonthLabel('2026-09'), { year: 2026, month: 9 });
+  assert.deepEqual(parseMonthLabel('Oct 26'), { year: 2026, month: 10 });
+  assert.deepEqual(parseMonthLabel('Sept'), { year: null, month: 9 });
+  assert.equal(parseMonthLabel('Sheet1'), null);
+  assert.equal(parseMonthLabel('Marketing'), null);
+  assert.equal(parseMonthLabel('Financial Summary', { strict: true }), null);
+});
+
+test('dates arrive as Excel serials, words, day-first or a bare day', () => {
+  const sep = { year: 2026, month: 9 };
+  assert.equal(parseDate(46266, null), '2026-09-01');
+  assert.equal(parseDate('1-Sep', null, sep), '2026-09-01');
+  assert.equal(parseDate('September 15, 2026', null), '2026-09-15');
+  assert.equal(parseDate('15/09/2026', null), '2026-09-15');
+  assert.equal(parseDate('03/09/2026', null, sep), '2026-09-03', 'the sheet month settles 3/9 vs 9/3');
+  assert.equal(parseDate(15, null, sep), '2026-09-15');
+  assert.equal(parseDate('2/30/2026', null), null, 'an impossible day is not a date');
+});
+
+test('amounts keep their peso signs, brackets and dashes', () => {
+  assert.equal(parseAmount('₱1,200.50'), 120050);
+  assert.equal(parseAmount('P 300'), 30000);
+  assert.equal(parseAmount('(500)'), -50000);
+  assert.equal(parseAmount(10.5), 1050);
+  assert.equal(parseAmount('-'), null);
+});
+
+test('renamed, reordered headings with an extra column still read', () => {
+  const { rows } = parsePlannerSheet([
+    ['Fixed'],
+    ['Item', 'Paid?', 'Cost (PHP)', 'Date Paid', 'Remarks'],
+    ['Rent', 'yes', 10000, 46266, 'sept'],
+    ['Total', '', 10000, '', ''],
+  ], '2026_SEPT');
+  assert.deepEqual(rows, [{ date: '2026-09-01', category: 'Rent', amount: -1000000, note: 'sept', bucket: 'fixed' }]);
+});
+
+test('tables stacked in the same columns stop at each other', () => {
+  const { rows } = parsePlannerSheet([
+    ['Fixed Expenses'],
+    ['Date', 'Category', 'Amount'],
+    [46266, 'Rent', 100],
+    [],
+    ['Flexible Expenses'],
+    ['Date', 'Category', 'Amount'],
+    [46267, 'Food', 20],
+  ], 'Sep 2026');
+  assert.deepEqual(rows.map((r) => [r.category, r.bucket]), [['Rent', 'fixed'], ['Food', 'flexible']]);
+});
+
+test('a savings table and a per-category summary are not spending', () => {
+  const { rows } = parsePlannerSheet([
+    ['Flexible Expenses', '', '', '', 'Savings'],
+    ['Date', 'Category', 'Amount', '', 'Category', 'Percent', 'Amount'],
+    [46266, 'Food', 20, '', 'Home Fund', 0.5, 5000],
+    [46267, 'Food', 30],
+    [],
+    ['Monthly Expenses'],
+    ['Category', 'Amount'],
+    ['Food', 50],
+  ], '2026_SEPT');
+  assert.deepEqual(rows.map((r) => r.amount), [-2000, -3000]);
+});
+
+test('one table with a Type column takes its bucket per row', () => {
+  const { rows } = parsePlannerSheet([
+    ['Date', 'Category', 'Type', 'Amount'],
+    ['9/1/2026', 'Rent', 'Fixed', '10,000'],
+    ['', 'Food', 'Flexible', '250'],
+    ['', 'Salary', 'Income', '30,000'],
+  ], '2026_SEPT');
+  assert.deepEqual(rows.map((r) => [r.category, r.bucket, r.amount]), [
+    ['Rent', 'fixed', -1000000], ['Food', 'flexible', -25000], ['Salary', null, 3000000],
+  ]);
+});
+
+test('an income table under an Income heading imports positive', () => {
+  const { rows } = parsePlannerSheet([
+    ['Income'],
+    ['Date', 'Source', 'Amount'],
+    [46266, 'Salary', 30000],
+  ], '2026_SEPT');
+  assert.deepEqual(rows, [{ date: '2026-09-01', category: 'Salary', amount: 3000000, note: '', bucket: null }]);
+});
+
+test('a tab that names no month takes it from its rows and moves nothing', () => {
+  const parsed = parsePlannerSheet([
+    ['Date', 'Category', 'Amount'],
+    ['9/30/2026', 'Food', 5],
+    ['10/1/2026', 'Food', 5],
+    ['10/2/2026', 'Food', 5],
+  ], 'Sheet1');
+  assert.equal(parsed.month, '2026-10');
+  assert.deepEqual(parsed.rows.map((r) => r.date), ['2026-09-30', '2026-10-01', '2026-10-02']);
+  assert.deepEqual(parsed.problems, []);
+});
+
+test('a tab without a year borrows it from the other tabs; empty tabs drop out', () => {
+  const ledger = [['Date', 'Category', 'Amount'], ['1-Oct', 'Food', 5]];
+  const sheets = parsePlannerBook([
+    { name: '2026_SEPT', grid: [['Date', 'Category', 'Amount'], [46266, 'Food', 5]] },
+    { name: 'October', grid: ledger },
+    { name: 'YEARLY_Savings', grid: [['TOTAL'], ['2026', 'Home Fund', 54036]] },
+  ]);
+  assert.deepEqual(sheets.map((s) => s.month), ['2026-09', '2026-10']);
+  assert.equal(sheets[1].rows[0].date, '2026-10-01');
+});
+
+test('a refiled date keeps inside the sheet month', () => {
+  const { rows } = parsePlannerSheet([['Date', 'Category', 'Amount'], ['1/31/2026', 'Food', 5]], '2026_FEB');
+  assert.equal(rows[0].date, '2026-02-28');
 });

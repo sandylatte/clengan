@@ -1,5 +1,5 @@
 import { toCents, fromCents } from './money.js';
-import { parsePlannerGrid, monthFromSheetName } from './planner.js';
+import { parsePlannerBook } from './planner.js';
 import { normaliseColour } from './budget.js';
 
 // `name` and `bucket` sit beside category, not instead of it: the backup is
@@ -273,20 +273,24 @@ export function exportXlsx(txns, accounts, extras = {}) {
 // are returned for the caller to confirm, never written here.
 export async function importPlanner(file, account) {
   const book = XLSX.read(await file.arrayBuffer(), { type: 'array' });
-  const months = book.SheetNames.map((name) => [name, monthFromSheetName(name)]).filter(([, m]) => m);
-  if (months.length === 0) {
-    throw new Error('no month sheets found — expected tabs named like "2026_SEPT"');
+  // raw: cells arrive as their values, not their display text. A "#,##0"
+  // format would otherwise hand over 10.50 as "11", and a "d-mmm" date would
+  // arrive without its year.
+  const sheets = parsePlannerBook(book.SheetNames.map((name) => ({
+    name,
+    grid: XLSX.utils.sheet_to_json(book.Sheets[name], { header: 1, raw: true, defval: '' }),
+  })));
+  if (sheets.length === 0) {
+    throw new Error('no expense tables found — a table needs a heading row with a Category (or Item) column and an Amount (or Cost) column');
   }
 
   const rows = [];
   const categories = new Map();
   const problems = [];
-  for (const [name, month] of months) {
-    const grid = XLSX.utils.sheet_to_json(book.Sheets[name], { header: 1, raw: false, defval: '' });
-    const parsed = parsePlannerGrid(grid, month);
+  for (const parsed of sheets) {
     problems.push(...parsed.problems);
     for (const [category, bucket] of parsed.categories) {
-      if (bucket && !categories.has(category)) categories.set(category, bucket);
+      if (!categories.has(category)) categories.set(category, bucket);
     }
     for (const row of parsed.rows) {
       rows.push({
@@ -306,7 +310,7 @@ export async function importPlanner(file, account) {
       });
     }
   }
-  return { rows, categories, problems, months: months.map(([, m]) => m) };
+  return { rows, categories, problems, months: [...new Set(sheets.map((s) => s.month))] };
 }
 
 export async function importXlsx(file) {
