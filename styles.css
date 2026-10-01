@@ -1680,3 +1680,12 @@ label + .hint { margin-top: 0; }
 /* Same as #add-status: 48px of reserved blank between the month picker and the
    first day, holding a place for a line that is usually not there. */
 #summary-status:empty, #list-status:empty { min-height: 0; margin: 0; }
+
+/* Per-month budget dialog. The mode switch reuses the period control, and the
+   two field sets swap in place so the dialog does not change height much. */
+#budget-plan { margin-top: var(--space-2); }
+.dialog .seg { margin-bottom: var(--space-3); }
+.plan__fields[hidden] { display: none; }
+.plan__fields input { margin-bottom: var(--space-2); }
+.plan__status { margin: var(--space-2) 0 var(--space-3); }
+.dialog__actions .plan__reset { margin-right: auto; }

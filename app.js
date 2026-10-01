@@ -7,7 +7,7 @@ import {
 import {
   BUCKETS, CATEGORY_KINDS, CATEGORY_COLOURS, DEFAULT_SPLIT, validateSplit, allocateFunds,
   splitBalance, categoryOptions, sortByPosition, normaliseColour, moveTo, UNCATEGORISED,
-  categoryCodes, TRANSFER_CATEGORY,
+  categoryCodes, TRANSFER_CATEGORY, MONTH_PLANS_KEY, validateMonthPlan, planBalance,
 } from './budget.js';
 import { reorderButtons, dragHandle, attachDragReorder } from './reorder.js';
 import { attachSwipe, closeOpenRow } from './swipe.js';
@@ -15,7 +15,7 @@ import { editTransaction } from './editor.js';
 import { exportXlsx, importXlsx, importPlanner } from './xlsx-io.js';
 import { attachCalendar, toISO } from './calendar.js';
 import { dueOccurrences, occurrenceToRow, runStamps } from './recurring.js';
-import { confirmDialog, alertDialog, pickColour, promptDialog } from './dialog.js';
+import { confirmDialog, alertDialog, pickColour, promptDialog, monthPlanDialog } from './dialog.js';
 import { initSyncUi } from './syncui.js';
 import {
   SAMPLE_ACCOUNTS, SAMPLE_COLOURS, SAMPLE_NOTE, sampleMonths, sampleTransactions,
@@ -237,7 +237,9 @@ for (const input of document.querySelectorAll('.moneyfield')) attachMoneyInput(i
 // safe in one direction, so nothing here can drive the field negative and
 // contradict the expense/income control.
 document.addEventListener('click', (event) => {
-  const chip = event.target.closest('.chip');
+  // Only chips that name a field. A chip that is just a small button (the
+  // budget card's month-plan one) has neither, and is handled elsewhere.
+  const chip = event.target.closest('.chip[data-target], .chip[data-clear]');
   if (!chip) return;
   if (chip.dataset.clear) {
     const target = document.getElementById(chip.dataset.clear);
@@ -316,6 +318,8 @@ form.addEventListener('submit', async (event) => {
 
 const state = {
   month: new Date().toISOString().slice(0, 7),
+  // Month -> its own budget plan. Loaded on every refresh.
+  plans: {},
   // List-only, and deliberately not persisted: a search is a question being
   // asked right now, not a setting. Reopening the app to yesterday's query
   // and an apparently half-empty list is the failure this avoids.
@@ -582,7 +586,7 @@ async function openEditor(txn) {
 const BUCKET_LABELS = { fixed: 'Fixed', flexible: 'Flexible' };
 
 function renderBudget(txns) {
-  const t = periodBuckets(txns, state.filter.period, state.month, state.split);
+  const t = periodBuckets(txns, state.filter.period, state.month, state.split, state.plans);
 
   // Tracks, not a four-column table. The table had to shrink its type to fit
   // "Budget / Spent / Left" on a 375px screen, and the reader still had to do
@@ -655,7 +659,10 @@ function renderBudget(txns) {
   if (t.income === 0) {
     parts.push('No income recorded this month, so every budget is zero.');
   } else {
-    parts.push(`Split from ${formatIDR(t.income)} income.`);
+    const own = state.filter.period === 'month' && state.plans[state.month];
+    parts.push(own
+      ? `This month has its own budget, against ${formatIDR(t.income)} income.`
+      : `Split from ${formatIDR(t.income)} income.`);
     if (t.savings.unspent > 0) parts.push(`Savings includes ${formatIDR(t.savings.unspent)} rolled over from budget you did not spend.`);
     else if (t.savings.unspent < 0) parts.push(`Overspending of ${formatIDR(-t.savings.unspent)} comes out of savings.`);
   }
@@ -670,7 +677,41 @@ function renderBudget(txns) {
     children.push(warning);
   }
   document.getElementById('budget-note').replaceChildren(...children);
+
+  // A plan belongs to one month, so the control only appears when one month
+  // is on screen. In the year view it would have to guess which month.
+  const planButton = document.getElementById('budget-plan');
+  planButton.hidden = state.filter.period !== 'month';
+  planButton.textContent = state.plans[state.month]
+    ? `Edit ${monthName(state.month)} budget`
+    : `Set a budget for ${monthName(state.month)}`;
 }
+
+const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December'];
+const monthName = (month) => `${MONTH_NAMES[Number(month.slice(5, 7)) - 1]} ${month.slice(0, 4)}`;
+
+document.getElementById('budget-plan').addEventListener('click', async () => {
+  const month = state.month;
+  const { income } = monthlyTotals(state.txns.filter((t) => Number.isInteger(t.amount)), month);
+  const result = await monthPlanDialog({
+    monthLabel: monthName(month),
+    plan: state.plans[month],
+    split: state.split,
+    income,
+    toCents: rupiahToCents,
+    group: groupDigits,
+    validate: (draft) => planBalance(draft, income, formatIDR),
+  });
+  if (result === undefined) return;
+  // Read fresh rather than from state: the stored map is the source of
+  // truth, and writing back a copy from before an import would undo it.
+  const plans = { ...(await db.getSetting(MONTH_PLANS_KEY, {})) };
+  if (result === null) delete plans[month];
+  else plans[month] = validateMonthPlan(result);
+  await db.putSetting(MONTH_PLANS_KEY, plans);
+  await refresh();
+});
 
 // Funds are edited one at a time, so the set is routinely mid-edit and not
 // totalling 100. That is a state to report, not to throw on: allocateFunds
@@ -691,8 +732,8 @@ function renderFunds(txns) {
 
   // Follows the period too, so the funds card cannot describe a different
   // span from the budget card sitting directly above it.
-  const month = periodBuckets(txns, state.filter.period, state.month, state.split).savings.projected;
-  const year = fundsByYear(txns, state.split, state.funds, Number(state.month.slice(0, 4)));
+  const month = periodBuckets(txns, state.filter.period, state.month, state.split, state.plans).savings.projected;
+  const year = fundsByYear(txns, state.split, state.funds, Number(state.month.slice(0, 4)), state.plans);
   const monthly = new Map(allocateFunds(month, state.funds).map((f) => [f.name, f.amount]));
   const yearly = new Map(year.funds.map((f) => [f.name, f.amount]));
 
@@ -960,6 +1001,10 @@ async function refresh() {
     db.allTransactions(), db.allAccounts(), db.allCategories(), db.allFunds(),
     db.getSetting('split', DEFAULT_SPLIT), db.getSetting('default-account', ''),
   ]);
+  // Absent on every device that predates per-month budgets, and that is the
+  // whole migration: no plans means every month uses the split, as before.
+  state.plans = await db.getSetting(MONTH_PLANS_KEY, {});
+  if (!state.plans || typeof state.plans !== 'object') state.plans = {};
   state.defaultAccount = defaultAccount;
   state.categories = categories;
   // Derived once per refresh, over the user's own category order plus the
@@ -1028,6 +1073,7 @@ document.getElementById('export-button').addEventListener('click', async () => {
     const settings = [
       { key: 'split', value: split },
       { key: 'default-account', value: defaultAccount },
+      { key: MONTH_PLANS_KEY, value: await db.getSetting(MONTH_PLANS_KEY, {}) },
     ];
     exportXlsx(txns, accounts, { categories, funds, settings, recurring });
     const unreadable = txns.filter((t) => !Number.isInteger(t.amount)).length;

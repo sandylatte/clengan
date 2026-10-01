@@ -267,3 +267,65 @@ export function categoryCodes(names) {
 // category anyone creates, so it must never be offered as one — a spend
 // filed under it would look like a transfer to every reader of the list.
 export const TRANSFER_CATEGORY = 'Transfer';
+
+// A month can carry its own plan instead of the default split. Two kinds:
+//
+//   { mode: 'percent', fixed, flexible, savings }  shares of that month's income
+//   { mode: 'amount', fixed, flexible }            rupiah caps, in cents
+//
+// An amount plan names only the two spending buckets. Savings is still
+// "what income leaves after them", because that is what savings already means
+// everywhere else here; naming a third amount would let the three disagree
+// with the income actually recorded. A thin month therefore shows a negative
+// savings target rather than a plan that quietly does not add up.
+//
+// Plans are keyed by month and stored as ONE setting, so a default-split
+// change moves only the months that never got their own plan.
+export const MONTH_PLANS_KEY = 'month-budgets';
+
+export function validateMonthPlan(plan) {
+  if (plan?.mode === 'percent') {
+    validateSplit(plan);
+    return plan;
+  }
+  if (plan?.mode === 'amount') {
+    if (![plan.fixed, plan.flexible].every((v) => Number.isInteger(v) && v >= 0)) {
+      throw new RangeError('each amount must be a whole rupiah value of zero or more');
+    }
+    return plan;
+  }
+  throw new RangeError('a month plan is either percent or amount');
+}
+
+// Anything unreadable falls back to the default split rather than throwing:
+// the Summary renders from this on every refresh, and one bad plan restored
+// from a hand-edited backup must not take the whole screen down.
+export function monthBudget(incomeCents, split, plan) {
+  try {
+    if (plan) validateMonthPlan(plan);
+  } catch {
+    plan = null;
+  }
+  if (plan?.mode === 'amount') {
+    return { fixed: plan.fixed, flexible: plan.flexible, savings: incomeCents - plan.fixed - plan.flexible };
+  }
+  return splitBudget(incomeCents, plan?.mode === 'percent' ? plan : split);
+}
+
+// The live line under the month-plan fields, and whether Save is allowed.
+// Percent plans reuse the split's own check. An amount plan is always
+// saveable: spending caps above income are a real choice someone can make,
+// so it is named rather than refused.
+export function planBalance(plan, incomeCents, format) {
+  if (plan.mode === 'percent') return splitBalance(plan);
+  if (![plan.fixed, plan.flexible].every((v) => Number.isInteger(v) && v >= 0)) {
+    return { ok: false, message: 'Enter whole rupiah amounts of zero or more.' };
+  }
+  const left = incomeCents - plan.fixed - plan.flexible;
+  if (incomeCents === 0) {
+    return { ok: true, message: 'No income recorded this month yet. Savings is whatever income leaves after these two.' };
+  }
+  return left >= 0
+    ? { ok: true, message: `Leaves ${format(left)} of this month's income for savings.` }
+    : { ok: true, message: `That is ${format(-left)} more than this month's income. It will come out of savings.` };
+}

@@ -1,4 +1,4 @@
-import { splitBudget, resolveBucket, allocateFunds, UNCATEGORISED } from './budget.js';
+import { monthBudget, resolveBucket, allocateFunds, UNCATEGORISED } from './budget.js';
 
 // A transfer moves money between the user's own accounts. It is neither
 // income nor spending, and both of its rows must be excluded from every
@@ -107,9 +107,12 @@ export function spendingBreakdown(txns, filter) {
 // named one we do not know) is returned as `unbucketed` rather than being
 // folded into either budget. Silently charging it to "flexible" would make a
 // remaining figure the user cannot reconcile against their own rows.
-export function bucketTotals(txns, month, split) {
+//
+// `plans` maps a month to its own plan (see monthBudget). A month without one
+// uses the default split, which is every month for anyone who never set one.
+export function bucketTotals(txns, month, split, plans = {}) {
   const { income } = monthlyTotals(txns, month);
-  const budget = splitBudget(income, split);
+  const budget = monthBudget(income, split, plans[month]);
 
   const spent = { fixed: 0, flexible: 0 };
   let unbucketed = 0;
@@ -162,13 +165,13 @@ export function periodTotals(txns, period, month) {
 // one go. They are not the same number: each month's split comes from that
 // month's own income, so a year with uneven earnings budgets differently month
 // by month, and totalling the months is the only honest answer.
-export function periodBuckets(txns, period, month, split) {
+export function periodBuckets(txns, period, month, split, plans = {}) {
   const months = monthsInPeriod(period, month);
-  if (months.length === 1) return bucketTotals(txns, months[0], split);
+  if (months.length === 1) return bucketTotals(txns, months[0], split, plans);
 
   const zero = { budget: 0, spent: 0, remaining: 0 };
   return months.reduce((sum, each) => {
-    const t = bucketTotals(txns, each, split);
+    const t = bucketTotals(txns, each, split, plans);
     const add = (a, b) => ({ budget: a.budget + b.budget, spent: a.spent + b.spent,
       remaining: a.remaining + b.remaining });
     return {
@@ -197,11 +200,11 @@ export function monthsOfYear(year) {
 // Each month allocates that month's own projected savings, so a month that
 // overspent contributes negative shares and pulls the year total down. That
 // is the honest reading: the year is what actually accumulated.
-export function fundsByYear(txns, split, funds, year) {
+export function fundsByYear(txns, split, funds, year, plans = {}) {
   const totals = new Map(funds.map((f) => [f.name, 0]));
   const months = [];
   for (const month of monthsOfYear(year)) {
-    const { savings, income } = bucketTotals(txns, month, split);
+    const { savings, income } = bucketTotals(txns, month, split, plans);
     if (income === 0) continue;
     months.push({ month, projected: savings.projected });
     for (const { name, amount } of allocateFunds(savings.projected, funds)) {

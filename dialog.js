@@ -226,3 +226,100 @@ export function showRecoveryCode({ code }) {
     tick.focus();
   });
 }
+
+// One month's own budget. Resolves to a plan to save, to null for "go back to
+// the default split", or to undefined when dismissed. Those three must stay
+// distinct: dismissing is not the same as resetting.
+let planNode = null;
+
+export function monthPlanDialog({ monthLabel, plan, split, income, toCents, group, validate }) {
+  if (!planNode) {
+    planNode = document.createElement('dialog');
+    planNode.className = 'dialog';
+    planNode.innerHTML = `
+      <h2 class="dialog__title"></h2>
+      <p class="dialog__body"></p>
+      <div class="seg" role="group" aria-label="Budget by">
+        <button type="button" class="seg__button" data-mode="percent">Percent</button>
+        <button type="button" class="seg__button" data-mode="amount">Amount</button>
+      </div>
+      <div class="plan__fields" data-for="percent">
+        <label for="plan-fixed-pct">Fixed %</label>
+        <input type="number" id="plan-fixed-pct" min="0" max="100" step="1">
+        <label for="plan-flexible-pct">Flexible %</label>
+        <input type="number" id="plan-flexible-pct" min="0" max="100" step="1">
+        <label for="plan-savings-pct">Savings %</label>
+        <input type="number" id="plan-savings-pct" min="0" max="100" step="1">
+      </div>
+      <div class="plan__fields" data-for="amount">
+        <label for="plan-fixed-amt">Fixed (Rp)</label>
+        <input type="text" id="plan-fixed-amt" class="moneyfield" inputmode="numeric" autocomplete="off">
+        <label for="plan-flexible-amt">Flexible (Rp)</label>
+        <input type="text" id="plan-flexible-amt" class="moneyfield" inputmode="numeric" autocomplete="off">
+      </div>
+      <p class="plan__status hint" role="status"></p>
+      <div class="dialog__actions">
+        <button type="button" class="dialog__cancel plan__reset">Use default</button>
+        <button type="button" class="dialog__cancel plan__close">Cancel</button>
+        <button type="button" class="dialog__confirm primary">Save</button>
+      </div>`;
+    document.body.append(planNode);
+    for (const field of planNode.querySelectorAll('.moneyfield')) {
+      field.addEventListener('input', () => { field.value = group(field.value); });
+    }
+  }
+  const dialog = planNode;
+  const $ = (selector) => dialog.querySelector(selector);
+  $('.dialog__title').textContent = `Budget for ${monthLabel}`;
+  $('.dialog__body').textContent = plan
+    ? 'This month has its own budget. Other months are not affected.'
+    : `This month uses the default split (${split.fixed} / ${split.flexible} / ${split.savings}). Changes here apply to this month only.`;
+  $('.plan__reset').hidden = !plan;
+
+  const percentSource = plan?.mode === 'percent' ? plan : split;
+  $('#plan-fixed-pct').value = percentSource.fixed;
+  $('#plan-flexible-pct').value = percentSource.flexible;
+  $('#plan-savings-pct').value = percentSource.savings;
+  // An amount plan starts from what the month is budgeting right now, so
+  // switching modes shows the same money in the other unit, not zeros.
+  const startFixed = plan?.mode === 'amount' ? plan.fixed : Math.round(income * percentSource.fixed / 100);
+  const startFlexible = plan?.mode === 'amount' ? plan.flexible : Math.round(income * percentSource.flexible / 100);
+  $('#plan-fixed-amt').value = group(String(Math.round(startFixed / 100)));
+  $('#plan-flexible-amt').value = group(String(Math.round(startFlexible / 100)));
+
+  let mode = plan?.mode ?? 'percent';
+  const read = () => (mode === 'percent'
+    ? { mode, fixed: Number($('#plan-fixed-pct').value), flexible: Number($('#plan-flexible-pct').value),
+      savings: Number($('#plan-savings-pct').value) }
+    : { mode, fixed: toCents($('#plan-fixed-amt').value) ?? 0, flexible: toCents($('#plan-flexible-amt').value) ?? 0 });
+
+  const status = $('.plan__status');
+  const save = $('.dialog__confirm');
+  const update = () => {
+    for (const button of dialog.querySelectorAll('[data-mode]')) {
+      button.setAttribute('aria-pressed', String(button.dataset.mode === mode));
+    }
+    for (const block of dialog.querySelectorAll('.plan__fields')) block.hidden = block.dataset.for !== mode;
+    const draft = read();
+    const { ok, message } = validate(draft);
+    status.className = ok ? 'plan__status hint' : 'plan__status budget-note__warning';
+    status.textContent = message;
+    save.disabled = !ok;
+  };
+  for (const button of dialog.querySelectorAll('[data-mode]')) {
+    button.onclick = () => { mode = button.dataset.mode; update(); };
+  }
+  for (const input of dialog.querySelectorAll('input')) input.oninput = update;
+  update();
+
+  return new Promise((resolve) => {
+    const finish = (value) => { dialog.close(); resolve(value); };
+    save.onclick = () => { if (validate(read()).ok) finish(read()); };
+    $('.plan__reset').onclick = () => finish(null);
+    $('.plan__close').onclick = () => finish(undefined);
+    dialog.oncancel = () => finish(undefined);
+    dialog.onclick = (event) => { if (event.target === dialog) finish(undefined); };
+    dialog.showModal();
+    $('.plan__close').focus();
+  });
+}
