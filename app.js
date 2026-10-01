@@ -18,6 +18,9 @@ import { dueOccurrences, occurrenceToRow, runStamps } from './recurring.js';
 import { confirmDialog, alertDialog, pickColour, promptDialog, monthPlanDialog } from './dialog.js';
 import { initSyncUi } from './syncui.js';
 import {
+  LAST_BACKUP_KEY, BACKUP_SNOOZE_KEY, SNOOZE_DAYS, backupReminder, backupAgeText, requestPersistence,
+} from './backup.js';
+import {
   SAMPLE_ACCOUNTS, SAMPLE_COLOURS, SAMPLE_NOTE, sampleMonths, sampleTransactions,
 } from './sample.js';
 
@@ -1025,6 +1028,7 @@ async function refresh() {
   // fetch rows that have not changed since the previous letter.
   state.txns = txns;
   renderList(txns);
+  renderBackupState(txns);
 
   // The List view (renderList above) needs every row, including corrupt ones,
   // so its per-row placeholder (Task 6) can surface them individually. The
@@ -1060,6 +1064,46 @@ async function refresh() {
 
 const ioStatus = document.getElementById('io-status');
 
+// The reminder and the tile's own line read the same two settings, so the
+// Add screen and Settings cannot disagree about when the last backup was.
+async function renderBackupState(txns) {
+  const [lastBackup, snoozedUntil] = await Promise.all([
+    db.getSetting(LAST_BACKUP_KEY, null), db.getSetting(BACKUP_SNOOZE_KEY, null),
+  ]);
+  const oldestDate = txns.reduce((min, t) => (!min || t.date < min ? t.date : min), null);
+  const { due, age } = backupReminder({
+    now: Date.now(), lastBackup, snoozedUntil, txnCount: txns.length, oldestDate,
+  });
+  setTileState('state-io', backupAgeText(age));
+  const nudge = document.getElementById('backup-nudge');
+  nudge.hidden = !due;
+  if (due) {
+    document.getElementById('backup-nudge-text').textContent = age === null
+      ? 'Your records are only on this phone and have never been backed up. Export a copy so a cleared browser or a lost phone does not take them.'
+      : `Your last backup was ${age} days ago. Export a fresh copy so the entries since then are not only on this phone.`;
+  }
+}
+
+document.getElementById('backup-nudge-export').addEventListener('click', () => {
+  document.getElementById('export-button').click();
+});
+
+document.getElementById('backup-nudge-later').addEventListener('click', async () => {
+  await db.putSetting(BACKUP_SNOOZE_KEY, Date.now() + SNOOZE_DAYS * 24 * 60 * 60 * 1000);
+  renderBackupState(state.txns);
+});
+
+// Persistence is asked for once per launch and reported in the tile. A
+// browser that says no is told plainly: then the backup is the only copy
+// that is safe, and the user should know that rather than assume otherwise.
+requestPersistence().then((granted) => {
+  document.getElementById('storage-status').textContent = granted === true
+    ? 'This browser has agreed to keep your records. Clearing site data or losing the phone still erases them, so keep a backup.'
+    : granted === false
+      ? 'This browser may clear your records if the phone runs low on space. Installing the app to your home screen usually stops that. Keep a backup either way.'
+      : 'This browser cannot promise to keep your records. Keep a backup.';
+});
+
 document.getElementById('export-button').addEventListener('click', async () => {
   try {
     const [txns, accounts, categories, funds, recurring, split, defaultAccount] = await Promise.all([
@@ -1076,6 +1120,11 @@ document.getElementById('export-button').addEventListener('click', async () => {
       { key: MONTH_PLANS_KEY, value: await db.getSetting(MONTH_PLANS_KEY, {}) },
     ];
     exportXlsx(txns, accounts, { categories, funds, settings, recurring });
+    // Only after the file was written: a failed export must not reset the
+    // clock and silence the reminder for another month.
+    await db.putSetting(LAST_BACKUP_KEY, Date.now());
+    await db.putSetting(BACKUP_SNOOZE_KEY, null);
+    renderBackupState(txns);
     const unreadable = txns.filter((t) => !Number.isInteger(t.amount)).length;
     ioStatus.className = 'is-ok';
     ioStatus.textContent = unreadable

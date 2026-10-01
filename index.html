@@ -66,6 +66,13 @@
 
 <section class="view" id="view-add">
   <h1><svg class="mark" aria-hidden="true"><use href="#mark"/></svg><span class="h1-name">Add</span><span class="h1-meta amount" id="head-balance"></span></h1>
+  <div id="backup-nudge" class="card backup-nudge" role="status" hidden>
+    <p id="backup-nudge-text"></p>
+    <div class="backup-nudge__actions">
+      <button type="button" class="dialog__cancel" id="backup-nudge-later">Later</button>
+      <button type="button" class="primary" id="backup-nudge-export">Back up now</button>
+    </div>
+  </div>
   <!-- Four steps hung off one spine, rather than twelve fields stacked flat.
        The grouping is the same order the form always had — nothing moved
        between steps — so muscle memory and the tab order are unchanged. The
@@ -360,7 +367,8 @@
   </details>
 
   <details class="card">
-    <summary><svg class="tile__icon" aria-hidden="true"><use href="#i-backup"/></svg><h2>Import &amp; export</h2><span class="tile__state">Excel in, Excel out</span></summary>
+    <summary><svg class="tile__icon" aria-hidden="true"><use href="#i-backup"/></svg><h2>Import &amp; export</h2><span class="tile__state" id="state-io">Excel in, Excel out</span></summary>
+    <p id="storage-status" class="hint"></p>
     <button type="button" class="primary" id="export-button">Export to Excel</button>
     <label for="import-input">Import from Excel</label>
     <input type="file" id="import-input" accept=".xlsx,.xls">
