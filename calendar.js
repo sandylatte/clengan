@@ -142,8 +142,14 @@ export function attachCalendar({ button, input, popup, onChange }) {
     }
   });
 
+  // composedPath, not popup.contains(target). Paging a month re-renders the
+  // popup, so by the time this bubbles up the ‹ › button that was clicked is
+  // already detached, contains() says "outside", and the picker shut every
+  // time someone stepped back to an earlier month. The path is fixed at
+  // dispatch, before the re-render, so it still says where the click landed.
   document.addEventListener('click', (event) => {
-    if (!popup.hidden && !popup.contains(event.target) && event.target !== button) close();
+    const path = event.composedPath();
+    if (!popup.hidden && !path.includes(popup) && !path.includes(button)) close();
   });
   document.addEventListener('keydown', (event) => {
     if (event.key === 'Escape' && !popup.hidden) {
