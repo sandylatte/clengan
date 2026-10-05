@@ -409,14 +409,10 @@ Three durations, and every animation uses one of them.
 - **Charts animate on arrival, never on repaint.** The Summary re-renders
   after every save; `is-entering` is added by `showView` and removed after a
   second, so bars grow and slices land only when someone is looking.
-- **A Settings tile opens on one beat, not two.** `grid-column` is not an
-  animatable property, so a tile going half-width to full is a snap nothing can
-  cover. The body inside it therefore fades at `--dur-fast`, not `--dur`: the
-  surface did not arrive, it was already there, and 300ms only bought a second
-  beat landing after the first had finished. Board summaries also opt out of
-  the 3% press scale — the summary is relaid out from a centred column to a row
-  at the same instant, and a transform running through a layout change warps
-  the box.
+- **A Settings page arrives on one beat.** Picking a section from the rail
+  fades its page in at `--dur-fast`, opacity only. The rail item already
+  answered the tap; the page is content becoming legible, not a surface
+  travelling in.
 - **`body` clips `overflow-x`.** The slide translates a full-width section
   26px sideways, which makes the document 401px wide on a 375px phone for the
   length of the animation.
@@ -450,17 +446,36 @@ in the card colour so neighbours in a single-hue ramp do not bleed together.
 The chart has no labels; the category table beneath it carries a
 `legend-swatch` per row and serves as the legend.
 
-**`select`** — Every picker in the app. Never a `datalist`-backed input: a
+**`select`** — Every picker in the app is a real `<select>` with the app's
+own list drawn over it (`picker.js`). The native control on a phone opens the
+platform's wheel or sheet — browser chrome in the platform's colours, and on
+Android a second tap on "Done" to commit. Here the button is drawn exactly as
+the select was (`appearance: none`, `currentColor` chevron) and opens a list in
+the calendar's popover: one tap on an option is the choice. The `<select>`
+stays underneath as the source of truth, so every `.value` read, `change`
+listener and options rebuild keeps working, and a `required` select can still
+block a submit and show its bubble. Never a `datalist`-backed input: a
 datalist gives no visible sign a list exists and silently accepts anything
-typed, which is how one account became two. `appearance: none` plus a
-`currentColor` chevron, because the platform arrow renders black and vanishes
-on the graphite tone.
+typed, which is how one account became two. A list with no room below opens
+upward.
 
-**`date-field`** — Full width on a phone, capped near 280px above 520px. The
-native calendar popup sizes to its own content and cannot be styled, so above
-phone width the field comes down to meet the popup rather than floating twice
-as wide above it. A phone opens a full-screen picker with no relationship to
-the field, where a short field is just out of line with its siblings.
+**`date-field`** — The app's own calendar popover (`calendar.js`), because
+the native date popup is browser chrome. The month picker (`picker.js`) is the
+same popover holding twelve months; it replaces every `<input type="month">`.
+
+**`settings-rail`** — Settings is one page at a time, chosen from a rail of
+every section on the right (chosen 2026-10-06 over a slide-in index and a wide
+labelled list). On a phone the rail is 64px: each section's icon over a
+one-word name at 11px, so the page keeps most of the width. At 640px and up it
+widens to 172px and shows full names in a row. The open section is
+`aria-current="page"`: `{colors.muted}` fill, `{colors.active}` text and icon,
+and a 2px inset bar on the edge facing the page. The search above reads every
+word inside every section (labels, hints, list rows, dropdown options, the
+rail's own short names). Sections that do not match are dimmed to 35%, never
+removed, so the rail keeps its shape under the thumb; matches inside the open
+page get a 2px `{colors.active}` outline. The rail is built from the sections
+by `settings.js`, so it cannot drift from them. The last section opened is
+remembered per device.
 
 **`bar-row`** — Category spending rows. Two stacked linear gradients: a 2px solid leading edge in `{colors.primary}`, and a translucent `{colors.bar}` fill to the row's `--bar` percentage. The translucent fill keeps the label legible instead of sitting on a flat block.
 
@@ -474,6 +489,7 @@ the field, where a short field is just out of line with its siblings.
 - Give any element showing money the `.amount` class.
 - Measure a new colour against the surface it actually sits on, in the browser, not against an assumed one.
 - Keep tap targets at 44px or more.
+- Let every text field's return key say Done. `app.js` sets `enterkeyhint` on each one, and on a touch screen Done closes the keyboard and nothing else — saving is the Save button's job.
 - Use inline Lucide SVG at one stroke weight for icons.
 - Bump `CACHE` in `sw.js` whenever a shell file changes, and add new shell files to `SHELL`.
 
@@ -491,7 +507,7 @@ the field, where a short field is just out of line with its siblings.
 
 ## Responsive behaviour
 
-The layout is a single column at every width; `.view` caps at 620px and centres. There are no breakpoints, because there is nothing that needs to reflow — the only width-sensitive component is the budget table, which is sized to clear 375px and simply gets roomier above it.
+The layout is a single column at every width; `.view` caps at 620px and centres. There is one breakpoint, 640px, where the Settings rail widens from icons to full names. The other width-sensitive component is the budget table, which is sized to clear 375px and simply gets roomier above it.
 
 Tap targets: controls hold 44px, tab items 56px, the amount field 64px.
 

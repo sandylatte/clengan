@@ -6,7 +6,7 @@
 // control is built here instead and matches every other picker in the app.
 
 const WEEKDAYS = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'];
-const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June',
+export const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December'];
 // The trigger button is half a phone wide now, and "12 September 2026" wraps
 // to two lines there — taller than the select beside it. Three letters is

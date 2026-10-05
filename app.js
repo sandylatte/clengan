@@ -14,6 +14,11 @@ import { attachSwipe, closeOpenRow } from './swipe.js';
 import { editTransaction } from './editor.js';
 import { exportXlsx, importXlsx, importPlanner } from './xlsx-io.js';
 import { attachCalendar, toISO } from './calendar.js';
+import { attachMonthPicker, enhanceAllSelects } from './picker.js';
+import { initSettings } from './settings.js';
+
+// Set once the Settings rail is built, near the end of this file.
+let settingsNav = null;
 import { dueOccurrences, occurrenceToRow, runStamps } from './recurring.js';
 import { confirmDialog, alertDialog, pickColour, promptDialog, monthPlanDialog } from './dialog.js';
 import { initSyncUi } from './syncui.js';
@@ -334,21 +339,28 @@ const state = {
   // Chart-only. The month above is global; these narrow the spending chart
   // without touching the budget, which is always the whole month's income.
   filter: { period: 'month', account: '', bucket: '' },
+  // List-only: 'month', 'year' (the year of state.month) or 'all'.
+  listPeriod: 'month',
   codes: new Map(),
 };
 
 // The same month drives the List and the Summary, so it has a control on
 // both. One state field, two inputs kept in step — a second month variable
 // is how two tabs end up quietly describing different months.
-const monthInputs = [document.getElementById('list-month'), document.getElementById('summary-month')];
-for (const input of monthInputs) {
+const monthPickers = ['list-month', 'summary-month'].map((id) => {
+  const input = document.getElementById(id);
   input.value = state.month;
-  input.addEventListener('change', () => {
-    // Clearable on Android Chrome. An empty value has no month to render —
-    // keep showing the last valid month rather than feeding '' downstream.
-    if (!input.value) return;
-    state.month = input.value;
-    for (const other of monthInputs) other.value = state.month;
+  return attachMonthPicker({
+    button: document.getElementById(`${id}-button`),
+    input,
+    popup: document.getElementById(`${id}-popup`),
+  });
+});
+for (const id of ['list-month', 'summary-month']) {
+  document.getElementById(id).addEventListener('change', (event) => {
+    if (!event.target.value) return;
+    state.month = event.target.value;
+    for (const picker of monthPickers) picker.set(state.month);
     refresh();
   });
 }
@@ -364,14 +376,19 @@ document.getElementById('list-search').addEventListener('input', (event) => {
 // One period control for the Summary. It used to live only on the spending
 // chart, which meant the balance, the budget and the funds silently stayed
 // monthly while the chart said "whole year" — two answers on one screen.
-for (const button of document.querySelectorAll('.seg__button')) {
-  button.addEventListener('click', () => {
-    state.filter.period = button.dataset.period;
-    for (const other of document.querySelectorAll('.seg__button')) {
-      other.setAttribute('aria-pressed', String(other === button));
-    }
-    refresh();
-  });
+// The List has its own: how far back it reaches is a question about the
+// list, and should not change what the Summary is adding up.
+for (const [group, apply] of [
+  ['summary-period', (period) => { state.filter.period = period; refresh(); }],
+  ['list-period', (period) => { state.listPeriod = period; renderList(state.txns); }],
+]) {
+  const buttons = document.querySelectorAll(`#${group} .seg__button`);
+  for (const button of buttons) {
+    button.addEventListener('click', () => {
+      for (const other of buttons) other.setAttribute('aria-pressed', String(other === button));
+      apply(button.dataset.period);
+    });
+  }
 }
 
 for (const [id, key] of [['pie-account', 'account'], ['pie-bucket', 'bucket']]) {
@@ -420,22 +437,29 @@ function showListStatus(message) {
   if (message) freshen(status);
 }
 
+const LIST_EMPTY = { month: 'Nothing recorded this month', year: 'Nothing recorded this year', all: 'Nothing recorded yet' };
+
+function inListPeriod(txns) {
+  if (state.listPeriod === 'all') return txns;
+  if (state.listPeriod === 'year') return txns.filter((t) => t.date.startsWith(state.month.slice(0, 4)));
+  return filterMonth(txns, state.month);
+}
+
 function renderList(txns) {
   const searching = state.query.trim().length > 0;
-  const rows = searching ? searchTransactions(txns, state.query) : filterMonth(txns, state.month);
+  const rows = searching ? searchTransactions(txns, state.query) : inListPeriod(txns);
   const list = document.getElementById('list-rows');
   document.getElementById('list-empty').hidden = rows.length > 0 || searching;
+  document.querySelector('#list-empty .empty__title').textContent = LIST_EMPTY[state.listPeriod];
   // A search spans every month, so the month control no longer describes what
   // is on screen. Disabling it says that without a sentence, and gives the
-  // month back the moment the query is cleared.
-  document.getElementById('list-month').disabled = searching;
+  // month back the moment the query is cleared. "All" has no month either.
+  document.getElementById('list-month-button').disabled = searching || state.listPeriod === 'all';
   document.getElementById('list-nomatch').hidden = !searching || rows.length > 0;
 
-  // Searching, the header total is the net of the matches — the figure a
-  // reader wants after asking "how much did I spend on this".
-  const net = searching
-    ? rows.reduce((sum, txn) => (txn.transfer_id == null ? sum + txn.amount : sum), 0)
-    : monthlyTotals(txns, state.month).net;
+  // The header total is the net of what is listed — the month, the year, the
+  // whole ledger, or the matches of a search.
+  const net = rows.reduce((sum, txn) => (txn.transfer_id == null ? sum + txn.amount : sum), 0);
   const total = document.getElementById('head-list-total');
   total.textContent = rows.length ? formatAmount(net) : '';
   total.classList.toggle('amount--in', net >= 0);
@@ -445,7 +469,7 @@ function renderList(txns) {
   // gives the transaction name back the width it was losing.
   const items = [];
   for (const day of groupByDay(rows)) {
-    items.push(dayHeading(day, searching));
+    items.push(dayHeading(day, searching || state.listPeriod === 'all'));
     for (const txn of day.rows) items.push(transactionRow(txn));
   }
   list.replaceChildren(...items);
@@ -696,8 +720,10 @@ const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December'];
 const monthName = (month) => `${MONTH_NAMES[Number(month.slice(5, 7)) - 1]} ${month.slice(0, 4)}`;
 
-document.getElementById('budget-plan').addEventListener('click', async () => {
-  const month = state.month;
+// One editor for a month's plan, opened from the Summary's Budget card for
+// the month on screen and from Settings for any month. Both write the same
+// stored map, so the two can never disagree.
+async function editMonthPlan(month) {
   const { income } = monthlyTotals(state.txns.filter((t) => Number.isInteger(t.amount)), month);
   const result = await monthPlanDialog({
     monthLabel: monthName(month),
@@ -716,7 +742,55 @@ document.getElementById('budget-plan').addEventListener('click', async () => {
   else plans[month] = validateMonthPlan(result);
   await db.putSetting(MONTH_PLANS_KEY, plans);
   await refresh();
+}
+
+document.getElementById('budget-plan').addEventListener('click', () => editMonthPlan(state.month));
+
+// The default split lives in Settings; the Summary only points there.
+document.getElementById('budget-default').addEventListener('click', () => {
+  showView('settings');
+  settingsNav?.select('split');
 });
+
+const planPicker = attachMonthPicker({
+  button: document.getElementById('plan-month-button'),
+  input: document.getElementById('plan-month'),
+  popup: document.getElementById('plan-month-popup'),
+});
+document.getElementById('plan-month').addEventListener('change', async (event) => {
+  const month = event.target.value;
+  planPicker.set('');
+  if (month) await editMonthPlan(month);
+});
+
+const describePlan = (plan) => (plan.mode === 'percent'
+  ? `${plan.fixed} / ${plan.flexible} / ${plan.savings}`
+  : `Fixed ${formatIDR(plan.fixed)} · Flexible ${formatIDR(plan.flexible)}`);
+
+function renderPlans() {
+  const months = Object.keys(state.plans).sort().reverse();
+  document.getElementById('plan-list').replaceChildren(...months.map((month) => {
+    const item = document.createElement('li');
+    item.className = 'row';
+    const main = document.createElement('div');
+    main.className = 'row__main';
+    const title = document.createElement('span');
+    title.className = 'row__title';
+    title.textContent = monthName(month);
+    const meta = document.createElement('span');
+    meta.className = 'row__meta';
+    meta.textContent = describePlan(state.plans[month]);
+    main.append(title, meta);
+    const edit = document.createElement('button');
+    edit.type = 'button';
+    edit.className = 'ghost';
+    edit.textContent = 'Edit';
+    edit.setAttribute('aria-label', `Edit the plan for ${monthName(month)}`);
+    edit.addEventListener('click', () => editMonthPlan(month));
+    item.append(main, edit);
+    return item;
+  }));
+}
 
 // Funds are edited one at a time, so the set is routinely mid-edit and not
 // totalling 100. That is a state to report, not to throw on: allocateFunds
@@ -1010,6 +1084,7 @@ async function refresh() {
   // whole migration: no plans means every month uses the split, as before.
   state.plans = await db.getSetting(MONTH_PLANS_KEY, {});
   if (!state.plans || typeof state.plans !== 'object') state.plans = {};
+  renderPlans();
   state.defaultAccount = defaultAccount;
   state.categories = categories;
   // Derived once per refresh, over the user's own category order plus the
@@ -2152,6 +2227,28 @@ offerDueRecurring().catch(() => {});
 // installs will never use it, so nothing about it may be allowed to stop the
 // rest of Settings from working.
 initSyncUi().catch(() => {});
+
+enhanceAllSelects();
+settingsNav = initSettings();
+
+// The phone keyboard's return key. Inside a form the platform labels it
+// "Next" and walks to the following field, or submits the form outright from
+// the last one — neither is what someone finishing a field wants. Every field
+// says Done, and on a touch screen Done closes the keyboard and nothing else:
+// saving stays the Save button's job. A mouse-and-keyboard user keeps Enter
+// to submit. A handler that already claimed Enter (a dialog's own field)
+// wins, because it ran first and marked the event.
+const TEXT_TYPES = new Set(['text', 'number', 'email', 'tel', 'url', 'password']);
+const isTextField = (el) => el instanceof HTMLInputElement && TEXT_TYPES.has(el.type);
+const touch = matchMedia('(pointer: coarse)');
+const markDone = (el) => { if (isTextField(el) && !el.hasAttribute('enterkeyhint')) el.setAttribute('enterkeyhint', 'done'); };
+for (const field of document.querySelectorAll('input')) markDone(field);
+document.addEventListener('focusin', (event) => markDone(event.target));
+document.addEventListener('keydown', (event) => {
+  if (event.key !== 'Enter' || event.defaultPrevented || !touch.matches || !isTextField(event.target)) return;
+  event.preventDefault();
+  event.target.blur();
+});
 
 if ('serviceWorker' in navigator) {
   // The page that found an update is still running the old code, so without

@@ -280,66 +280,109 @@ h2 {
   font-weight: 600;
 }
 
-/* Settings is nine sections of form. Stacked, it was eight sections to scroll
-   past to reach the ninth. As a two-column board the whole of Settings is one
-   screen, and each tile answers its own question on its face — how many
-   accounts, what the split is — without being opened at all.
+/* Settings is one page at a time, picked from a rail of every section on
+   the right. Eleven tiles opening in place made a long screen of one open
+   form among ten closed ones; here the rail is the whole list, always in
+   view, and the page beside it is the one thing being changed.
 
-   Still a native <details>: it opens in place, the platform owns the toggle
-   state, and the keyboard and screen-reader behaviour is correct for free.
-   The board is a grid laid over that same markup, nothing more. */
-.board {
+   On a phone the rail is a column of icons with a one-word name, so the page
+   keeps most of the 375px. Wider, it has room for each section's full name. */
+.settings__body {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) 64px;
   gap: var(--space-2);
+  align-items: start;
   margin-bottom: var(--space-5);
 }
+.settings__hits {
+  margin: 0 0 var(--space-2);
+  font-size: 12px;
+  color: var(--color-subtle);
+}
+.settings__hits:empty { display: none; }
 
-/* An open tile takes the full width and leaves the grid: a form squeezed into
-   half of a 375px screen is unusable, and every one of these tiles opens onto
-   a form. */
-.board > details.card[open] { grid-column: 1 / -1; }
-.board > details.card { margin-bottom: 0; }
+.settings__rail {
+  position: sticky;
+  top: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  /* Clear of the fixed tab bar; past that the rail scrolls on its own. */
+  max-height: calc(100dvh - 132px);
+  overflow-y: auto;
+  padding-left: var(--space-1);
+  border-left: 1px solid var(--color-border);
+}
+.rail__item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-height: 52px;
+  padding: var(--space-1) 2px;
+  background: none;
+  border: none;
+  border-radius: var(--radius-sm);
+  color: var(--color-subtle);
+  font: inherit;
+  font-size: 11px;
+  line-height: 1.2;
+  text-align: center;
+  cursor: pointer;
+}
+.rail__item .tile__icon { stroke: currentColor; }
+.rail__item:hover { background: var(--color-muted); color: var(--color-foreground); }
+.rail__item:focus-visible { outline: 2px solid var(--color-active); outline-offset: -2px; }
+/* The open section: filled, in the readable accent, with a bar on the edge
+   that faces the page it opened. */
+.rail__item[aria-current="page"] {
+  background: var(--color-muted);
+  color: var(--color-active);
+  box-shadow: inset 2px 0 0 var(--color-active);
+}
+/* Not removed while searching, so the rail never changes shape under the
+   thumb — only dimmed. */
+.rail__item.is-dim { opacity: 0.35; }
+.rail__full { display: none; }
 
-details.card > summary {
+@media (min-width: 640px) {
+  .settings__body { grid-template-columns: minmax(0, 1fr) 172px; }
+  .rail__item {
+    flex-direction: row;
+    justify-content: flex-start;
+    gap: var(--space-2);
+    min-height: 40px;
+    padding: 0 var(--space-2);
+    font-size: 13px;
+    text-align: left;
+  }
+  .rail__short { display: none; }
+  .rail__full { display: inline; }
+}
+
+.setting {
+  background: var(--color-muted);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-3);
+}
+.setting[hidden] { display: none; }
+.setting__head {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  list-style: none;
-  cursor: pointer;
-  min-height: 32px;
+  margin-bottom: var(--space-3);
 }
-details.card > summary::-webkit-details-marker { display: none; }
-details.card > summary h2 { margin: 0; flex: 1; }
-/* The chevron is drawn rather than an icon: one border, rotated. */
-details.card > summary::after {
-  content: "";
-  width: 8px;
-  height: 8px;
-  flex: none;
-  border-right: 2px solid var(--color-subtle);
-  border-bottom: 2px solid var(--color-subtle);
-  transform: rotate(45deg) translate(-2px, -2px);
-  /* No transition on the rotation: closed, the chevron is display:none (see
-     below), and an element arriving from display:none has no previous value to
-     interpolate from. The 150ms that used to sit here never once ran. */
-}
-details.card[open] > summary::after { transform: rotate(-135deg) translate(-2px, -2px); }
-details.card[open] > summary { margin-bottom: var(--space-3); }
-details.card > summary:focus-visible {
+.setting__head h2 { margin: 0; flex: 1; }
+
+/* A search match inside the open page: outlined in the accent, so the word
+   that was asked for is found without reading the page. */
+.setting .is-hit {
   outline: 2px solid var(--color-active);
   outline-offset: 2px;
   border-radius: var(--radius-xs);
 }
 
-/* Closed, a tile is a centred face: icon, name, state. Open, the same markup
-   goes back to being a row — icon, heading and chevron on one line above the
-   form. Only the layout of <summary> changes between the two.
-
-   The chevron is dropped on a closed tile. Nine of them pointing down in a
-   grid is nine identical marks saying the same obvious thing; the tile is
-   plainly a control without it. It comes back when the tile is open, where it
-   is the only affordance for closing again. */
 .tile__icon {
   width: 20px;
   height: 20px;
@@ -356,36 +399,14 @@ details.card > summary:focus-visible {
   stroke-linejoin: round;
 }
 
-.board > details.card:not([open]) > summary {
-  flex-direction: column;
-  align-items: center;
-  justify-content: flex-start;
-  text-align: center;
-  gap: var(--space-0);
-  /* Every tile is the height of the tallest in its row, so the board is a
-     grid rather than a ragged stack — align-items: start on .board would let
-     each one shrink to its own text. */
-  height: 100%;
-  padding: var(--space-1) 0;
-}
-.board > details.card:not([open]) > summary h2 { flex: none; }
-.board > details.card:not([open]) > summary::after { display: none; }
-
-/* stretch, not the board's start: paired tiles match heights, and a two-line
-   state no longer leaves its neighbour short. */
-.board { align-items: stretch; }
-
-/* The answer the tile exists to give. The section name is the label here and
-   the state is the content, so the state takes the foreground and the name
-   stays in the same quiet grey every other h2 uses. */
+/* The section's answer, beside its name: how many accounts, what the split
+   is. */
 .tile__state {
   font-size: 13px;
   color: var(--color-foreground);
   line-height: 1.3;
 }
 .tile__state:empty { display: none; }
-/* Open, the face's state line is redundant — the section itself is showing it. */
-.board > details.card[open] > summary .tile__state { display: none; }
 
 /* Two related fields on one line. auto-fit rather than a fixed two columns,
    so when one of the pair is hidden — To account outside a transfer, Type
@@ -629,16 +650,8 @@ button.primary:active { filter: brightness(0.92); }
 /* Every control acknowledges the press itself, not just its result. 3% is
    small enough to read as the surface taking the weight rather than as the
    button shrinking. */
-button, .chip, .seg__button, summary { transition: transform var(--dur-fast) var(--ease); }
-button:active, .chip:active, .seg__button:active, summary:active { transform: scale(0.97); }
-
-/* Except a board tile. The moment it opens its summary is relaid out from a
-   centred column to a row, and a transform still springing back from the press
-   warps the box on its way through that. A press acknowledgement is for a
-   control whose result is invisible or delayed; this one answers by doubling
-   in width. */
-.board > details.card > summary { transition: none; }
-.board > details.card > summary:active { transform: none; }
+button, .chip, .seg__button { transition: transform var(--dur-fast) var(--ease); }
+button:active, .chip:active, .seg__button:active { transform: scale(0.97); }
 
 /* A dialog is a surface arriving, so it rises and settles; the scrim behind
    it only fades, because a scrim is not an object. */
@@ -650,17 +663,11 @@ button:active, .chip:active, .seg__button:active, summary:active { transform: sc
 .dialog[open] { animation: dialog-in var(--dur) var(--ease); }
 .dialog[open]::backdrop { animation: scrim-in var(--dur-fast) linear; }
 
-/* The box is already there by the time this runs. `grid-column` is not an
-   animatable property, so the tile going half-width to full is a snap no
-   keyframe can cover — and a 300ms fade underneath it was not covering the
-   snap, it was a second beat arriving after the first had finished. What is
-   left to animate is content becoming legible inside a box that already
-   exists, which is the press duration, not the arrival one.
-
-   Opacity only. The old keyframe translated 6px up, which is the one thing
-   the rest of the file says never happens here. */
+/* A settings page arriving from the rail: opacity only, at the press
+   duration. The rail item has already answered the tap; this is the page's
+   content becoming legible, not a surface travelling in. */
 @keyframes tile-open { from { opacity: 0; } }
-.board > details.card[open] > :not(summary) { animation: tile-open var(--dur-fast) var(--ease); }
+.setting:not([hidden]) { animation: tile-open var(--dur-fast) var(--ease); }
 
 /* "Saved." rises into place. The status line is the only confirmation the
    form gives, so it is worth the 300ms of attention. */
@@ -692,21 +699,10 @@ button:active, .chip:active, .seg__button:active, summary:active { transform: sc
 .view.is-entering #pie > :nth-child(5) { animation-delay: 240ms; }
 .view.is-entering #pie > :nth-child(n+6) { animation-delay: 300ms; }
 
-/* Settings arrives as structure, then content: the tiles appear, and what each
-   one holds fills in underneath. Nothing translates — the Summary's figures
-   grow and fade in place, and a screen of sliding rows was a different gesture
-   wearing the same timing. Add and List opt out of arriving at all. */
+/* Settings arrives as structure: the rail settles in place on arrival.
+   Nothing translates — Add and List opt out of arriving at all. */
 @keyframes settle-in { from { opacity: 0; } }
-
-.view.is-entering .board > details > summary,
-.view.is-entering .board > details > summary > .tile__state {
-  animation: settle-in var(--dur) var(--ease) backwards;
-}
-/* The content waits for the structure. `backwards` above is what holds it at
-   zero through the delay rather than letting it paint and then animate. */
-.view.is-entering .board > details > summary > .tile__state {
-  animation-delay: 140ms;
-}
+.view.is-entering .settings__rail { animation: settle-in var(--dur) var(--ease) backwards; }
 
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; animation: none !important; }
@@ -1622,6 +1618,92 @@ label + .hint { margin-top: 0; }
   cursor: pointer;
 }
 .calendar__today:hover { background: var(--color-input); }
+/* Opens upward when there is no room below — set by picker.js on open. */
+.calendar.is-up, .pick__list.is-up { top: auto; bottom: calc(100% + var(--space-0)); }
+
+/* The month picker: the calendar's popup, twelve months instead of a month
+   of days. */
+.monthgrid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 2px; }
+.monthgrid .calendar__day { aspect-ratio: auto; min-height: 40px; font-family: inherit; }
+.period .datefield { flex: 1; min-width: 0; margin: 0; }
+.datefield > button:disabled { opacity: 0.45; cursor: default; }
+
+/* The app's own dropdown (picker.js). The button is drawn exactly like the
+   select it replaces, chevron included; the list is the calendar's popup. */
+.pick { position: relative; margin-bottom: var(--space-2); }
+.pick[hidden] { display: none; }
+.pick__native {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  pointer-events: none;
+  margin: 0;
+}
+.pick__button {
+  width: 100%;
+  min-height: 40px;
+  padding: 0 var(--space-5) 0 var(--space-2);
+  text-align: left;
+  background-color: var(--color-input);
+  background-image: linear-gradient(45deg, transparent 50%, currentColor 50%),
+                    linear-gradient(135deg, currentColor 50%, transparent 50%);
+  background-position: right var(--space-2) center, calc(100% - var(--space-2) + 5px) center;
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+  color: var(--color-foreground);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font: inherit;
+  font-size: 16px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+.pick__button:hover, .pick__button[aria-expanded="true"] { border-color: var(--color-border-strong); }
+.pick__button:disabled { opacity: 0.45; cursor: default; }
+.pick__list {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + var(--space-0));
+  left: 0;
+  min-width: 100%;
+  max-height: min(320px, 50vh);
+  overflow-y: auto;
+  padding: var(--space-0);
+  background: var(--color-muted);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-popover);
+}
+.pick__list[hidden] { display: none; }
+.pick__option {
+  display: block;
+  width: 100%;
+  min-height: 40px;
+  padding: 0 var(--space-2);
+  text-align: left;
+  background: none;
+  border: none;
+  border-radius: var(--radius-sm);
+  color: var(--color-foreground);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.pick__option:hover, .pick__option:focus-visible { background: var(--color-input); outline: none; }
+.pick__option.is-selected { background: var(--color-primary); color: var(--color-on-primary); font-weight: 500; }
+.pick__option:disabled { color: var(--color-subtle); cursor: default; }
+.pick__group {
+  padding: var(--space-1) var(--space-2) var(--space-0);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-subtle);
+}
+.view .pick + label { margin-top: var(--space-2); }
+.filters__field .pick { margin-bottom: 0; }
 
 
 /* Overlay dialogs. The native confirm cannot be styled and reads as the

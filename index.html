@@ -156,8 +156,18 @@
   <h1><svg class="mark" aria-hidden="true"><use href="#mark"/></svg><span class="h1-name">List</span><span class="h1-meta amount" id="head-list-total"></span></h1>
   <label for="list-search">Search</label>
   <input type="search" id="list-search" placeholder="Name, category, account, note" autocomplete="off" enterkeyhint="search">
-  <label for="list-month">Month</label>
-  <input type="month" id="list-month">
+  <div class="period">
+    <div class="datefield monthfield">
+      <button type="button" id="list-month-button" aria-haspopup="dialog" aria-expanded="false" aria-label="Month"></button>
+      <input type="hidden" id="list-month">
+      <div class="calendar" id="list-month-popup" role="dialog" aria-label="Choose a month" hidden></div>
+    </div>
+    <div class="seg" role="group" aria-label="Show" id="list-period">
+      <button type="button" class="seg__button" data-period="month" aria-pressed="true">Month</button>
+      <button type="button" class="seg__button" data-period="year" aria-pressed="false">Year</button>
+      <button type="button" class="seg__button" data-period="all" aria-pressed="false">All</button>
+    </div>
+  </div>
   <p id="list-status" role="status"></p>
   <ul id="list-rows" class="rows spine"></ul>
   <div id="list-empty" class="empty" hidden>
@@ -174,8 +184,12 @@
 <section class="view" id="view-summary" hidden>
   <h1><svg class="mark" aria-hidden="true"><use href="#mark"/></svg><span class="h1-name">Summary</span></h1>
   <div class="period">
-    <input type="month" id="summary-month" aria-label="Month">
-    <div class="seg" role="group" aria-label="Period">
+    <div class="datefield monthfield">
+      <button type="button" id="summary-month-button" aria-haspopup="dialog" aria-expanded="false" aria-label="Month"></button>
+      <input type="hidden" id="summary-month">
+      <div class="calendar" id="summary-month-popup" role="dialog" aria-label="Choose a month" hidden></div>
+    </div>
+    <div class="seg" role="group" aria-label="Period" id="summary-period">
       <button type="button" class="seg__button" data-period="month" aria-pressed="true">Month</button>
       <button type="button" class="seg__button" data-period="year" aria-pressed="false">Year</button>
     </div>
@@ -183,13 +197,6 @@
   <p id="summary-status" role="status"></p>
 
   <div class="spine">
-  <div class="card stats node">
-    <div class="stat stat--balance"><span class="stat__label">Balance</span><span class="amount" id="stat-balance">Rp 0</span></div>
-    <div class="stat stat--net"><span class="stat__label">Net</span><span class="amount" id="stat-net">Rp 0</span></div>
-    <div class="stat"><span class="stat__label">Income</span><span class="amount amount--in" id="stat-income">Rp 0</span></div>
-    <div class="stat"><span class="stat__label">Spent</span><span class="amount amount--out" id="stat-spent">Rp 0</span></div>
-  </div>
-
   <div class="card node">
     <h2>Spending by category</h2>
     <div class="filters" role="group" aria-label="Filter this chart">
@@ -218,11 +225,21 @@
     </div>
   </div>
 
+  <div class="card stats node">
+    <div class="stat stat--balance"><span class="stat__label">Balance</span><span class="amount" id="stat-balance">Rp 0</span></div>
+    <div class="stat stat--net"><span class="stat__label">Net</span><span class="amount" id="stat-net">Rp 0</span></div>
+    <div class="stat"><span class="stat__label">Income</span><span class="amount amount--in" id="stat-income">Rp 0</span></div>
+    <div class="stat"><span class="stat__label">Spent</span><span class="amount amount--out" id="stat-spent">Rp 0</span></div>
+  </div>
+
   <div class="card node">
     <h2>Budget</h2>
     <div id="budget" class="tracks"></div>
     <p id="budget-note"></p>
-    <button type="button" class="chip" id="budget-plan"></button>
+    <div class="chips">
+      <button type="button" class="chip" id="budget-plan"></button>
+      <button type="button" class="chip" id="budget-default">Default split</button>
+    </div>
   </div>
 
   <div class="card node">
@@ -246,19 +263,20 @@
 <section class="view" id="view-settings" hidden>
   <h1><svg class="mark" aria-hidden="true"><use href="#mark"/></svg><span class="h1-name">Settings</span></h1>
 
-  <!-- A tile board, not a stack of accordions. Nine sections stacked meant
-       scrolling past eight to reach the ninth; as two columns the whole of
-       Settings is one screen. Each tile carries its own state on its face, so
-       "how many accounts" and "what is my split" are answered without opening
-       anything.
+  <!-- One page at a time, chosen from a rail of every section on the right.
+       The rail is built by settings.js from the sections below, so a section
+       added here appears there; a section marked setting--off (Sync, until
+       it has a server) is left out. The search reads every word inside every
+       section, not just the titles. -->
+  <div class="settings">
+    <label for="settings-search" class="visually-hidden">Search settings</label>
+    <input type="search" id="settings-search" placeholder="Search settings" autocomplete="off" enterkeyhint="search">
+    <p id="settings-hits" class="settings__hits" role="status"></p>
+    <div class="settings__body">
+    <div class="settings__page">
 
-       Still <details>/<summary>: it opens in place, it is keyboard- and
-       screen-reader-correct for free, and an open tile spans both columns so
-       its form is full width. The tiles are a grid over the same markup. -->
-  <div class="board">
-
-  <details class="card">
-    <summary><svg class="tile__icon" aria-hidden="true"><use href="#i-accounts"/></svg><h2>Accounts</h2><span class="tile__state" id="state-accounts"></span></summary>
+  <section class="setting" id="setting-accounts" data-short="Accounts" aria-labelledby="setting-accounts-title">
+    <header class="setting__head"><svg class="tile__icon" aria-hidden="true"><use href="#i-accounts"/></svg><h2 id="setting-accounts-title">Accounts</h2><span class="tile__state" id="state-accounts"></span></header>
     <p class="hint">Nothing can be recorded until an account exists. The balance you enter is the starting point; every transaction moves it from there.</p>
     <form id="account-form">
       <label for="account-name">Name</label>
@@ -279,19 +297,19 @@
     <label for="default-account">Default account</label>
     <p class="hint">Pre-selected on the Add form, so the account you use most is already chosen. You can still pick another on any transaction.</p>
     <select id="default-account"></select>
-  </details>
+  </section>
 
-  <details class="card">
-    <summary><svg class="tile__icon" aria-hidden="true"><use href="#i-appearance"/></svg><h2>Appearance</h2><span class="tile__state" id="state-theme"></span></summary>
+  <section class="setting" id="setting-appearance" data-short="Theme" aria-labelledby="setting-appearance-title">
+    <header class="setting__head"><svg class="tile__icon" aria-hidden="true"><use href="#i-appearance"/></svg><h2 id="setting-appearance-title">Appearance</h2><span class="tile__state" id="state-theme"></span></header>
     <label for="theme-select">Colour tone</label>
     <select id="theme-select">
       <option value="graphite">Carbon &amp; volt</option>
       <option value="peach">Rose room</option>
     </select>
-  </details>
+  </section>
 
-  <details class="card">
-    <summary><svg class="tile__icon" aria-hidden="true"><use href="#i-split"/></svg><h2>Budget split</h2><span class="tile__state amount" id="state-split"></span></summary>
+  <section class="setting" id="setting-split" data-short="Budget" aria-labelledby="setting-split-title">
+    <header class="setting__head"><svg class="tile__icon" aria-hidden="true"><use href="#i-split"/></svg><h2 id="setting-split-title">Budget split</h2><span class="tile__state amount" id="state-split"></span></header>
     <form id="split-form">
       <label for="split-fixed">Fixed %</label>
       <input type="number" id="split-fixed" min="0" max="100" step="1" required>
@@ -302,10 +320,19 @@
       <button type="submit" class="primary">Save split</button>
     </form>
     <p id="split-status" role="status"></p>
-  </details>
+    <h3 class="group__heading">Months with their own plan</h3>
+    <p class="hint">Any month can have its own split, or rupiah limits for fixed and flexible. Months without one use the split above. The Budget card on the Summary edits the same plan for the month it is showing.</p>
+    <ul id="plan-list" class="rows"></ul>
+    <label for="plan-month-button">Give a month its own plan</label>
+    <div class="datefield monthfield">
+      <button type="button" id="plan-month-button" aria-haspopup="dialog" aria-expanded="false"></button>
+      <input type="hidden" id="plan-month">
+      <div class="calendar" id="plan-month-popup" role="dialog" aria-label="Choose a month" hidden></div>
+    </div>
+  </section>
 
-  <details class="card">
-    <summary><svg class="tile__icon" aria-hidden="true"><use href="#i-funds"/></svg><h2>Savings funds</h2><span class="tile__state" id="state-funds"></span></summary>
+  <section class="setting" id="setting-funds" data-short="Funds" aria-labelledby="setting-funds-title">
+    <header class="setting__head"><svg class="tile__icon" aria-hidden="true"><use href="#i-funds"/></svg><h2 id="setting-funds-title">Savings funds</h2><span class="tile__state" id="state-funds"></span></header>
     <p class="hint">Shares of whatever savings a month actually produces, including budget you did not spend. Must total 100%.</p>
     <form id="fund-form">
       <label for="fund-name">Name</label>
@@ -316,10 +343,10 @@
     </form>
     <p id="fund-status" role="status"></p>
     <ul id="fund-list" class="rows"></ul>
-  </details>
+  </section>
 
-  <details class="card">
-    <summary><svg class="tile__icon" aria-hidden="true"><use href="#i-categories"/></svg><h2>Categories</h2><span class="tile__state" id="state-categories"></span></summary>
+  <section class="setting" id="setting-categories" data-short="Categories" aria-labelledby="setting-categories-title">
+    <header class="setting__head"><svg class="tile__icon" aria-hidden="true"><use href="#i-categories"/></svg><h2 id="setting-categories-title">Categories</h2><span class="tile__state" id="state-categories"></span></header>
     <form id="category-form">
       <label for="category-name">Name</label>
       <input type="text" id="category-name" required>
@@ -338,10 +365,10 @@
     <h3 class="group__heading">Income</h3>
     <ul id="category-list-income" class="rows rows--drop"></ul>
     <p class="group__empty" id="category-empty-income" hidden>No income categories. Drag one here.</p>
-  </details>
+  </section>
 
-  <details class="card">
-    <summary><svg class="tile__icon" aria-hidden="true"><use href="#i-recurring"/></svg><h2>Recurring</h2><span class="tile__state" id="state-recurring"></span></summary>
+  <section class="setting" id="setting-recurring" data-short="Recurring" aria-labelledby="setting-recurring-title">
+    <header class="setting__head"><svg class="tile__icon" aria-hidden="true"><use href="#i-recurring"/></svg><h2 id="setting-recurring-title">Recurring</h2><span class="tile__state" id="state-recurring"></span></header>
     <p class="hint">A rule never files anything on its own. When one is due, Clengan lists it and waits for you to approve it.</p>
     <form id="recurring-form">
       <label for="recurring-name">Name</label>
@@ -364,41 +391,41 @@
     </form>
     <p id="recurring-status" role="status"></p>
     <ul id="recurring-list" class="rows"></ul>
-  </details>
+  </section>
 
-  <details class="card">
-    <summary><svg class="tile__icon" aria-hidden="true"><use href="#i-backup"/></svg><h2>Import &amp; export</h2><span class="tile__state" id="state-io">Excel in, Excel out</span></summary>
+  <section class="setting" id="setting-io" data-short="Import" aria-labelledby="setting-io-title">
+    <header class="setting__head"><svg class="tile__icon" aria-hidden="true"><use href="#i-backup"/></svg><h2 id="setting-io-title">Import &amp; export</h2><span class="tile__state" id="state-io">Excel in, Excel out</span></header>
     <p id="storage-status" class="hint"></p>
     <button type="button" class="primary" id="export-button">Export to Excel</button>
     <label for="import-input">Import from Excel</label>
     <input type="file" id="import-input" accept=".xlsx,.xls">
     <p id="io-status" role="status"></p>
-  </details>
+  </section>
 
-  <details class="card">
-    <summary><svg class="tile__icon" aria-hidden="true"><use href="#i-planner"/></svg><h2>Import a planner</h2><span class="tile__state">One-off, adds rows</span></summary>
+  <section class="setting" id="setting-planner" data-short="Planner" aria-labelledby="setting-planner-title">
+    <header class="setting__head"><svg class="tile__icon" aria-hidden="true"><use href="#i-planner"/></svg><h2 id="setting-planner-title">Import a planner</h2><span class="tile__state">One-off, adds rows</span></header>
     <p class="hint">Reads a spreadsheet once. Any table with a Category (or Item) column and an Amount (or Cost) column is found wherever it sits, with Date and Note if it has them. A table under a Fixed or Flexible heading keeps that bucket. Adds to what is already here rather than replacing it.</p>
     <label for="planner-account">File rows under account</label>
     <input type="text" id="planner-account" value="Imported" required>
     <label for="planner-input">Planner workbook</label>
     <input type="file" id="planner-input" accept=".xlsx,.xls">
     <p id="planner-status" role="status"></p>
-  </details>
+  </section>
 
-  <details class="card">
-    <summary><svg class="tile__icon" aria-hidden="true"><use href="#i-sample"/></svg><h2>Sample data</h2><span class="tile__state">Three made-up months</span></summary>
+  <section class="setting" id="setting-sample" data-short="Sample" aria-labelledby="setting-sample-title">
+    <header class="setting__head"><svg class="tile__icon" aria-hidden="true"><use href="#i-sample"/></svg><h2 id="setting-sample-title">Sample data</h2><span class="tile__state">Three made-up months</span></header>
     <p class="hint">Fills the app with three months of made-up transactions so every screen has something to show. Added alongside anything already here, never in place of it — and every row is labelled in its note, so Remove takes back exactly what Load added.</p>
     <button type="button" class="primary" id="sample-button">Load sample data</button>
     <button type="button" id="sample-remove">Remove sample data</button>
     <p id="sample-status" role="status"></p>
-  </details>
+  </section>
 
   <!-- Off unless asked for. Every installed copy of this app has data and
        never agreed to an account, so the tile reads "Off" until someone
        chooses otherwise and the app works exactly as before if they never do. -->
   <!-- Hidden until sync has a hosted server; remove `hidden` to bring it back. -->
-  <details class="card" hidden>
-    <summary><svg class="tile__icon" aria-hidden="true"><use href="#i-sync"/></svg><h2>Sync</h2><span class="tile__state" id="state-sync">Off</span></summary>
+  <section class="setting setting--off" id="setting-sync" data-short="Sync" aria-labelledby="setting-sync-title" hidden>
+    <header class="setting__head"><svg class="tile__icon" aria-hidden="true"><use href="#i-sync"/></svg><h2 id="setting-sync-title">Sync</h2><span class="tile__state" id="state-sync">Off</span></header>
     <p class="hint">Keep the same ledger on more than one device. Everything is encrypted on this device before it is sent, so the server stores what it cannot read.</p>
 
     <div id="sync-signed-out">
@@ -426,10 +453,10 @@
     <label for="sync-server">Server</label>
     <input type="url" id="sync-server" placeholder="https://…" autocomplete="off">
     <p class="hint">No server is provided. Point this at one you run yourself — see <code>server/</code> in the repository.</p>
-  </details>
+  </section>
 
-  <details class="card">
-    <summary><svg class="tile__icon" aria-hidden="true"><use href="#i-version"/></svg><h2>App version</h2><span class="tile__state" id="state-version"></span></summary>
+  <section class="setting" id="setting-version" data-short="Version" aria-labelledby="setting-version-title">
+    <header class="setting__head"><svg class="tile__icon" aria-hidden="true"><use href="#i-version"/></svg><h2 id="setting-version-title">App version</h2><span class="tile__state" id="state-version"></span></header>
     <p class="hint">The shell is served from an offline cache, so a stale one keeps showing old numbers with no sign anything is wrong. This names the version actually running and forces a fresh copy.</p>
     <p id="version-status" role="status"></p>
     <button type="button" class="primary" id="update-button">Fetch the latest version</button>
@@ -437,7 +464,10 @@
     <p class="hint">Read this out if something looks wrong on your device. It is the only way I can see what your phone is actually rendering.</p>
     <pre id="diagnostics" class="diagnostics"></pre>
     <button type="button" id="copy-diagnostics">Copy diagnostics</button>
-  </details>
+  </section>
+    </div>
+    <nav class="settings__rail" id="settings-rail" aria-label="Settings sections"></nav>
+    </div>
   </div>
 </section>
 
