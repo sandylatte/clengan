@@ -126,18 +126,32 @@ test('dates arrive as Excel serials, words, day-first or a bare day', () => {
   assert.equal(parseDate('2/30/2026', null), null, 'an impossible day is not a date');
 });
 
-test('amounts keep their peso signs, brackets and dashes', () => {
-  assert.equal(parseAmount('₱1,200.50'), 120050);
-  assert.equal(parseAmount('P 300'), 30000);
-  assert.equal(parseAmount('(500)'), -50000);
+test('amounts read as rupiah, with dots or commas for thousands', () => {
+  assert.equal(parseAmount('Rp 10.000'), 1000000);
+  assert.equal(parseAmount('10.000'), 1000000, 'dots are thousands, not a decimal point');
+  assert.equal(parseAmount('Rp1.500.000'), 150000000);
+  assert.equal(parseAmount('10,000'), 1000000);
+  assert.equal(parseAmount('1.234,50'), 123450);
+  assert.equal(parseAmount('1,234.50'), 123450);
+  assert.equal(parseAmount('10.5'), 1050);
+  assert.equal(parseAmount('(Rp 500)'), -50000);
   assert.equal(parseAmount(10.5), 1050);
   assert.equal(parseAmount('-'), null);
+  assert.throws(() => parseAmount('12.345.6'));
+});
+
+test('an Rp total under the summary Income heading is not income', () => {
+  const { rows } = parsePlannerSheet([
+    ['Income'], ['Rp 300.000'], [],
+    ['Income'], ['Salary', 'Rp 300.000'],
+  ], '2026_SEPT');
+  assert.deepEqual(rows.map((r) => [r.category, r.amount]), [['Salary', 30000000]]);
 });
 
 test('renamed, reordered headings with an extra column still read', () => {
   const { rows } = parsePlannerSheet([
     ['Fixed'],
-    ['Item', 'Paid?', 'Cost (PHP)', 'Date Paid', 'Remarks'],
+    ['Item', 'Paid?', 'Cost (Rp)', 'Date Paid', 'Remarks'],
     ['Rent', 'yes', 10000, 46266, 'sept'],
     ['Total', '', 10000, '', ''],
   ], '2026_SEPT');
@@ -218,4 +232,15 @@ test('a tab without a year borrows it from the other tabs; empty tabs drop out',
 test('a refiled date keeps inside the sheet month', () => {
   const { rows } = parsePlannerSheet([['Date', 'Category', 'Amount'], ['1/31/2026', 'Food', 5]], '2026_FEB');
   assert.equal(rows[0].date, '2026-02-28');
+});
+
+test('Indonesian tab names and headings read the same', () => {
+  assert.deepEqual(parseMonthLabel('Agustus 2026'), { year: 2026, month: 8 });
+  assert.deepEqual(parseMonthLabel('MEI_2026'), { year: 2026, month: 5 });
+  const { rows } = parsePlannerSheet([
+    ['Pengeluaran Tetap'],
+    ['Tanggal', 'Kategori', 'Jumlah', 'Keterangan'],
+    ['1/10/2026', 'Sewa', 'Rp 2.500.000', 'kos'],
+  ], 'Oktober 2026');
+  assert.deepEqual(rows, [{ date: '2026-10-01', category: 'Sewa', amount: -250000000, note: 'kos', bucket: 'fixed' }]);
 });

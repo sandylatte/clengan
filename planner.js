@@ -14,11 +14,15 @@ const MONTH_NAMES = [
   'july', 'august', 'september', 'october', 'november', 'december',
 ];
 
-// 'sep', 'Sept', 'SEPTEMBER' -> 9. A prefix of at least three letters, so
-// 'mar' is March but 'marketing' is not.
+// The same months in Indonesian, where they differ: 'Agustus 2026', 'Mei'.
+const BULAN = { mei: 5, agu: 8, agus: 8, agustus: 8, okt: 10, oktober: 10, des: 12, desember: 12, januari: 1, februari: 2, maret: 3, juni: 6, juli: 7 };
+
+// 'sep', 'Sept', 'SEPTEMBER', 'Agustus' -> the month number. A prefix of at
+// least three letters, so 'mar' is March but 'marketing' is not.
 function monthNumber(word) {
   const w = word.toLowerCase();
   if (w === 'sept') return 9;
+  if (BULAN[w]) return BULAN[w];
   if (w.length < 3) return null;
   const index = MONTH_NAMES.findIndex((name) => name.startsWith(w));
   return index === -1 ? null : index + 1;
@@ -118,6 +122,11 @@ export function parseDate(value, fallback, hint = {}) {
   return isoDate(year ?? hint.year, month, day);
 }
 
+// The app counts in rupiah, written with dots for thousands (Rp 10.000), but
+// a sheet may use commas instead. A run of three-digit groups is thousands
+// whichever mark separates them; with both marks present, the last one is
+// the decimal point. Without this, "10.000" typed as text would import as
+// Rp 10.
 export function parseAmount(value) {
   if (typeof value === 'number') return toCents(value);
   let text = String(value ?? '').trim();
@@ -125,30 +134,38 @@ export function parseAmount(value) {
   if (text === '' || text === '-') return null;
   let negative = false;
   if (/^\(.*\)$/.test(text)) { negative = true; text = text.slice(1, -1); }
-  text = text.replace(/php|pesos?|usd|[₱$€£¥,\s]/gi, '').replace(/^p(?=[\d.])/i, '');
+  text = text.replace(/rp\.?|idr|rupiah|[$€£¥\s]/gi, '');
   if (text.endsWith('-')) { negative = true; text = text.slice(0, -1); }
+  const lastDot = text.lastIndexOf('.');
+  const lastComma = text.lastIndexOf(',');
+  if (lastDot !== -1 && lastComma !== -1) {
+    text = lastComma > lastDot ? text.replace(/\./g, '').replace(',', '.') : text.replace(/,/g, '');
+  } else if (/^\d{1,3}([.,]\d{3})+$/.test(text)) {
+    text = text.replace(/[.,]/g, '');
+  } else {
+    text = text.replace(',', '.');
+  }
   const cents = toCents(text);
   return negative ? -cents : cents;
 }
 
 // Heading words for each column a table can have, matched on the heading's
-// first or last word so 'Date Paid', 'Due Date' and 'Amount (PHP)' all count.
+// first or last word so 'Date Paid', 'Due Date' and 'Amount (Rp)' all count.
 // 'text' is a description column: the category when there is no category
-// column, a note when there is.
+// column, a note when there is. Indonesian headings count the same.
 const ROLE_WORDS = {
-  date: ['date', 'day', 'when'],
-  category: ['category', 'categories', 'item', 'items', 'particulars', 'expense', 'name', 'payee', 'merchant', 'purpose', 'source'],
-  amount: ['amount', 'amt', 'cost', 'price', 'spent', 'spend', 'php', 'peso', 'pesos'],
-  note: ['note', 'notes', 'remark', 'remarks', 'memo', 'comment', 'comments'],
-  text: ['description', 'desc', 'details', 'detail'],
-  bucket: ['bucket', 'kind', 'group', 'type'],
+  date: ['date', 'day', 'when', 'tanggal', 'tgl'],
+  category: ['category', 'categories', 'item', 'items', 'particulars', 'expense', 'name', 'payee', 'merchant', 'purpose', 'source', 'kategori', 'nama', 'barang', 'sumber'],
+  amount: ['amount', 'amt', 'cost', 'price', 'spent', 'spend', 'rp', 'idr', 'rupiah', 'nominal', 'jumlah', 'harga', 'biaya'],
+  note: ['note', 'notes', 'remark', 'remarks', 'memo', 'comment', 'comments', 'catatan', 'keterangan', 'ket'],
+  text: ['description', 'desc', 'details', 'detail', 'deskripsi', 'rincian'],
+  bucket: ['bucket', 'kind', 'group', 'type', 'jenis', 'tipe'],
 };
 
 function roleOf(cell) {
   if (typeof cell !== 'string') return null;
   const text = cell.trim();
   if (text === '' || text.length > 30) return null;
-  if (/^[₱$]$/.test(text)) return 'amount';
   const words = text.toLowerCase().replace(/\(.*?\)/g, ' ').match(/[a-z]+/g);
   if (!words) return null;
   for (const [role, list] of Object.entries(ROLE_WORDS)) {
@@ -216,16 +233,16 @@ function labelFor(grid, block, blocks) {
 
 function kindOf(cell) {
   const text = String(cell ?? '').toLowerCase();
-  if (/fixed/.test(text)) return 'fixed';
-  if (/flex|variable/.test(text)) return 'flexible';
-  if (/saving/.test(text)) return 'savings';
-  if (/income|earning/.test(text)) return 'income';
+  if (/fixed|tetap/.test(text)) return 'fixed';
+  if (/flex|variab/.test(text)) return 'flexible';
+  if (/saving|tabungan/.test(text)) return 'savings';
+  if (/income|earning|pemasukan|pendapatan/.test(text)) return 'income';
   return null;
 }
 
 const cellText = (cell) => String(cell ?? '').trim();
 const isSummaryRow = (text) => /^(sub\s*|grand\s*)?totals?\b/i.test(text);
-const isNumberish = (text) => /^[\d.,\s₱$()-]+$/.test(text);
+const isNumberish = (text) => /^(rp\.?|idr)?[\d.,\s$()-]+$/i.test(text.trim());
 
 function readBlock(grid, block, blocks, ctx, problems) {
   const rows = [];
@@ -289,7 +306,7 @@ function readBlock(grid, block, blocks, ctx, problems) {
 // amount — rather than a table with its own headings. The list has no dates,
 // so each entry lands on the first of the month, the only date the source
 // supports.
-const INCOME_HEADING = /^(income|incomes|earnings|revenue|money in)$/i;
+const INCOME_HEADING = /^(income|incomes|earnings|revenue|money in|pemasukan|pendapatan)$/i;
 
 function readIncomeList(grid, blocks, monthKey, sheet, problems) {
   const rows = [];
@@ -379,7 +396,7 @@ export function parsePlannerSheet(grid, name, fallbackYear = new Date().getFullY
     .map((block) => ({ block, rows: readBlock(grid, block, blocks, ctx, problems) }));
 
   // A dashboard adds its own ledgers up: a "Monthly Expenses" table of
-  // Category / Amount, one line per category. Imported, every peso would
+  // Category / Amount, one line per category. Imported, every rupiah would
   // count twice. It shows itself by having no dates while naming only
   // categories the dated tables already carry.
   const dated = new Set(read.filter(({ block }) => block.date !== undefined)
