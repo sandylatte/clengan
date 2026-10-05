@@ -2154,6 +2154,27 @@ offerDueRecurring().catch(() => {});
 initSyncUi().catch(() => {});
 
 if ('serviceWorker' in navigator) {
+  // The page that found an update is still running the old code, so without
+  // this a new version only showed on the SECOND launch — fixes looked
+  // missing for a whole visit. When a new worker takes over, reload onto it.
+  // Not mid-entry, though: once someone has typed or opened a dialog, the
+  // reload waits until the app is next out of sight, where it costs nothing.
+  // A first install also fires controllerchange; there is nothing old to
+  // replace then, so it is ignored.
+  const hadController = Boolean(navigator.serviceWorker.controller);
+  let typed = false;
+  document.addEventListener('input', () => { typed = true; }, true);
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (!hadController) return;
+    if (!typed && !document.querySelector('dialog[open]')) {
+      location.reload();
+      return;
+    }
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden') location.reload();
+    });
+  });
+
   // updateViaCache: 'none' stops the browser answering the sw.js update check
   // out of its own HTTP cache. Without it a worker can keep serving a shell
   // from many versions ago while every reload looks like it checked, which is
