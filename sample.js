@@ -158,3 +158,19 @@ export function sampleTransactions(endMonth, makeId) {
 
   return rows;
 }
+
+// What "remove the sample" takes away: every row the sample wrote (its note
+// says so), and each sample account that it would leave behind empty. An
+// account is only the sample's to remove when it still has the sample's own
+// opening balance and nothing else filed under it. Left in place, those
+// made-up opening balances would keep inflating the Balance with money that
+// never existed; an account the user already had, or has since used, stays.
+export function sampleRemoval(txns, accounts) {
+  const ids = txns.filter((t) => t.note === SAMPLE_NOTE).map((t) => t.id);
+  const used = new Set(txns.filter((t) => t.note !== SAMPLE_NOTE).map((t) => t.account));
+  const accountNames = SAMPLE_ACCOUNTS
+    .map((sample) => accounts.find((a) => a.name === sample.name && a.opening_balance === sample.opening_balance))
+    .filter((account) => account && !used.has(account.name))
+    .map((account) => account.name);
+  return { ids, accountNames };
+}

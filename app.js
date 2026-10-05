@@ -21,7 +21,7 @@ import {
   LAST_BACKUP_KEY, BACKUP_SNOOZE_KEY, SNOOZE_DAYS, backupReminder, backupAgeText, requestPersistence,
 } from './backup.js';
 import {
-  SAMPLE_ACCOUNTS, SAMPLE_COLOURS, SAMPLE_NOTE, sampleMonths, sampleTransactions,
+  SAMPLE_ACCOUNTS, SAMPLE_COLOURS, SAMPLE_NOTE, sampleMonths, sampleTransactions, sampleRemoval,
 } from './sample.js';
 
 // Each tab keeps its own scroll position, the way a native tab bar does.
@@ -307,7 +307,9 @@ form.addEventListener('submit', async (event) => {
     }
 
     form.reset();
-    addDate.set(toISO(new Date()));
+    // Keep the date: entries are usually logged in a batch for one day, and
+    // snapping back to today made every backdated row a second tap.
+    addDate.set(date);
     syncKind();
     status.className = 'is-ok';
     status.textContent = 'Saved.';
@@ -1794,13 +1796,7 @@ async function deleteAccount(name) {
     showAccountStatus(`${name} still has ${count} transaction${count === 1 ? '' : 's'} filed under it. Delete or re-file ${count === 1 ? 'it' : 'them'} on the List tab first.`);
     return;
   }
-  const database = await db.openDb();
-  await new Promise((resolve, reject) => {
-    const tx = database.transaction('accounts', 'readwrite');
-    tx.objectStore('accounts').delete(name);
-    tx.oncomplete = () => resolve();
-    tx.onerror = () => reject(tx.error);
-  });
+  await db.deleteAccount(name);
   showAccountStatus('');
   await refresh();
 }
@@ -1898,6 +1894,39 @@ async function renderAccounts(accounts) {
 }
 
 const sampleStatus = document.getElementById('sample-status');
+
+document.getElementById('sample-remove').addEventListener('click', async () => {
+  const { ids, accountNames } = sampleRemoval(await db.allTransactions(), await db.allAccounts());
+  if (ids.length === 0 && accountNames.length === 0) {
+    sampleStatus.className = '';
+    sampleStatus.textContent = 'There is no sample data to remove.';
+    return;
+  }
+  const ok = await confirmDialog({
+    title: 'Remove sample data',
+    body: `Deletes the ${ids.length} transaction${ids.length === 1 ? '' : 's'} noted "${SAMPLE_NOTE}"`
+      + (accountNames.length ? `, and the account${accountNames.length === 1 ? '' : 's'} ${accountNames.join(', ')}, which only the sample used` : '')
+      + '. Everything you recorded yourself stays.',
+    confirmLabel: 'Remove',
+  });
+  if (!ok) {
+    sampleStatus.className = '';
+    sampleStatus.textContent = 'Nothing was removed.';
+    return;
+  }
+  try {
+    await db.deleteTransactions(ids);
+    for (const name of accountNames) await db.deleteAccount(name);
+    sampleStatus.className = 'is-ok';
+    sampleStatus.textContent = `Removed ${ids.length} sample transaction${ids.length === 1 ? '' : 's'}`
+      + (accountNames.length ? ` and ${accountNames.length} sample account${accountNames.length === 1 ? '' : 's'}.` : '.');
+    await refresh();
+  } catch (error) {
+    sampleStatus.className = 'budget-note__warning';
+    sampleStatus.textContent = 'The sample was not removed.';
+    await alertDialog({ title: 'Sample data not removed', body: `The reason given was: ${error.message}` });
+  }
+});
 
 // Additive, and says so before doing it. Replacing the ledger would be the
 // more impressive demo and a terrible default: the one person who presses

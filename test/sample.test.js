@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  SAMPLE_ACCOUNTS, SAMPLE_COLOURS, SAMPLE_NOTE, sampleMonths, sampleTransactions,
+  SAMPLE_ACCOUNTS, SAMPLE_COLOURS, SAMPLE_NOTE, sampleMonths, sampleTransactions, sampleRemoval,
 } from '../sample.js';
 import { monthlyTotals, bucketTotals, accountBalances, selectSpending } from '../rollup.js';
 import { CATEGORY_COLOURS, DEFAULT_CATEGORIES, DEFAULT_SPLIT, kindOf } from '../budget.js';
@@ -191,4 +191,23 @@ test('every sample income category is coloured too', () => {
   for (const category of earned) {
     assert.ok(SAMPLE_COLOURS.has(category), `${category} is earned but has no sample colour`);
   }
+});
+
+test('sampleRemoval takes the sample rows and only the accounts it left empty', () => {
+  const rows = sampleTransactions('2026-09', (() => { let n = 0; return () => `id-${n += 1}`; })());
+  const mine = { id: 'mine', account: 'Cash', note: 'lunch', amount: -5000 };
+  const accounts = [
+    ...SAMPLE_ACCOUNTS.map((a) => ({ id: a.name, ...a })),
+    { id: 'x', name: 'Savings', opening_balance: 0 },
+  ];
+  const { ids, accountNames } = sampleRemoval([...rows, mine], accounts);
+  assert.equal(ids.length, rows.length);
+  assert.ok(!ids.includes('mine'), 'a row the user wrote is never removed');
+  // Cash holds the user's own row, so it stays; the other two go.
+  assert.deepEqual(accountNames, ['Bank BCA', 'E-Wallet']);
+});
+
+test('sampleRemoval keeps an account the user already had under a sample name', () => {
+  const accounts = [{ id: 'b', name: 'Bank BCA', opening_balance: 300 }];
+  assert.deepEqual(sampleRemoval([], accounts), { ids: [], accountNames: [] });
 });

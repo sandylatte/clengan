@@ -659,6 +659,27 @@ export function deleteTransaction(id) {
   });
 }
 
+// Bulk and in one transaction, so a removal either happens whole or not at
+// all. Callers pass both halves of a transfer; nothing here follows the link.
+export function deleteTransactions(ids) {
+  return run('transactions', 'readwrite', (store) => {
+    for (const id of ids) store.delete(id);
+    return { value: undefined };
+  });
+}
+
+// Accounts are stored under their id since v8, so a delete has to go through
+// the name to find it. Deleting by name directly matched nothing and failed
+// silently. The caller checks the account is empty first.
+export async function deleteAccount(name) {
+  const account = await findAccount(name);
+  if (!account) return;
+  await run('accounts', 'readwrite', (store) => {
+    store.delete(account.id);
+    return { value: undefined };
+  });
+}
+
 // Bulk, so the account list is read once rather than once per row — an import
 // is thousands of rows and findAccount reads every account each time.
 export async function putTransactions(txns) {

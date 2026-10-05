@@ -373,6 +373,26 @@ test('renameAccount rejects an empty name', async () => {
   if (!threw) throw new Error('an account was allowed to have no name');
 });
 
+test('deleteAccount removes the account it names', async () => {
+  await db.clearAll();
+  await db.putAccount('Cash', 0);
+  await db.putAccount('Bank', 0);
+  await db.deleteAccount('cash');
+  const names = (await db.allAccounts()).map((a) => a.name);
+  if (names.join() !== 'Bank') throw new Error(`accounts left: ${names.join(', ')}`);
+});
+
+test('deleteTransactions removes exactly the ids given', async () => {
+  await db.clearAll();
+  await db.putAccount('Cash', 0);
+  await db.addFlow({ date: '2026-09-01', account: 'Cash', amount: -100, note: 'keep' });
+  await db.addFlow({ date: '2026-09-02', account: 'Cash', amount: -200, note: 'drop' });
+  const drop = (await db.allTransactions()).filter((t) => t.note === 'drop').map((t) => t.id);
+  await db.deleteTransactions(drop);
+  const left = (await db.allTransactions()).map((t) => t.note);
+  if (left.join() !== 'keep') throw new Error(`rows left: ${left.join(', ')}`);
+});
+
 let passed = 0;
 for (const { name, fn } of tests) {
   const item = document.createElement('li');
