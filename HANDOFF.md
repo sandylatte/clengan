@@ -1,7 +1,7 @@
 # Handoff
 
-Written 5 October 2026, at commit `d480882`. Everything described here is
-pushed and live at https://sandylatte.github.io/clengan/ (`clengan-v113`).
+Written 6 October 2026, at commit `bb4fa4f`. Everything described here is
+pushed and live at https://sandylatte.github.io/clengan/ (`clengan-v114`).
 
 Read [README.md](README.md) for how to run it, [DESIGN.md](DESIGN.md) for the
 design system (it is machine-checked — see the traps below), and
@@ -29,6 +29,12 @@ placeholders. Nothing else moved.
 breaking, because the workbook it reads is edited by hand. See the planner
 section below before touching `planner.js`.
 
+**The UI was reworked in `bb4fa4f`.** Settings is a rail of pages, every
+dropdown is the app's own, the List spans months, and the Summary leads with
+its chart. The layout was chosen by the owner from three rendered options; it
+is recorded in DESIGN.md (`settings-rail`, `select`, `date-field`). See the UI
+section below before adding a setting or a dropdown.
+
 ## What shipped since the last handoff
 
 | Commit | |
@@ -42,6 +48,8 @@ section below before touching `planner.js`.
 | `5f6b236` | Planner amounts read as rupiah (`10.000` is ten thousand); Indonesian headings and month names |
 | `7fabf67` | Add form keeps its date after a save; Spending by category moved to second on Summary; **Remove sample data**; account delete fixed |
 | `d480882` | Auto-reload onto a new version as soon as it takes over |
+| `26c8005` | Handoff updated |
+| `bb4fa4f` | Settings rail with search; own dropdowns and month picker; List Month / Year / All; Done key; chart first on Summary; month plans listed in Settings |
 
 `680afd6`–`ecff77b` came from a separate cloud session on 1 October. They were
 pulled in and audited, not written here.
@@ -94,6 +102,52 @@ problems. As of `5f6b236` they are identical: 14 rows across 2026-09 and
 The partner's **revised** workbook — the one that prompted all this — was never
 received. The parser has only been proven on the old file and on synthetic
 layouts in `test/planner.test.js`.
+
+## The UI as of v114
+
+**Settings** (`settings.js`). Each section is a `<section class="setting"
+data-short="…">` with a `.setting__head` holding its icon, `<h2>` and state
+line. The rail on the right is built from those sections at load, so **adding a
+setting is adding a section** — nothing else to register. `data-short` is the
+one-word rail label on a phone; the `<h2>` is the label from 640px. A section
+marked `setting--off` (Sync) is left out of the rail. Only one section is
+visible at a time (`hidden` on the rest); the last one opened is kept in
+`localStorage` under `clengan-setting`. The search reads each section's
+`textContent` plus placeholders, `aria-label`s and its `data-short`, dims rail
+items that do not match (never removes them), opens the first match, and
+outlines the smallest matching elements on the page with `.is-hit`.
+
+**Dropdowns** (`picker.js`). `enhanceAllSelects()` wraps every `<select>` in
+`.pick` and draws a button and a list over it, and a MutationObserver does the
+same for any select added later (the edit dialog builds three). **The real
+`<select>` stays and is the source of truth**: keep reading `.value`, keep
+listening for `change`, keep rebuilding `<option>`s — the button follows. Its
+`value`/`selectedIndex` setters are patched per element so a programmatic set
+updates the button; form `reset`, option changes and `disabled`/`hidden` are
+observed. It is invisible but not `display:none`, so a `required` select still
+blocks a submit and shows its bubble. A list with no room below opens upward
+(`is-up`).
+
+**Month fields** are `attachMonthPicker()` in `picker.js`: a button, a hidden
+`<input>` holding `YYYY-MM` that fires `change`, and a `.calendar` popup with
+twelve months. `list-month` and `summary-month` share `state.month` and are
+kept in step through `monthPickers`; `plan-month` opens the month-plan editor.
+
+**List range** is `state.listPeriod` (`month` / `year` / `all`), separate from
+the Summary's `state.filter.period`. The two segmented controls are scoped by
+`#list-period` and `#summary-period`; a bare `.seg__button` selector would
+bind both.
+
+**Month plans** are edited by one function, `editMonthPlan(month)`, from the
+Summary's Budget card and from Settings → Budget split, which lists every
+month in `month-budgets`. The Summary's **Default split** chip calls
+`settingsNav.select('split')`.
+
+**The Done key.** `app.js` gives every text-like `<input>` `enterkeyhint="done"`
+(at load and on focus, so dialog fields get it too). On a coarse pointer, Enter
+in such a field blurs it and does nothing else; a handler that already called
+`preventDefault` (the prompt dialog's own field) wins. Enter on a desktop
+still submits.
 
 ## Traps. Read these before touching anything
 
@@ -153,6 +207,14 @@ sync pull path still cannot be verified there; `server/test_integration.mjs`
 covers it from node. Screenshots come back black (the pane runs hidden), so
 check state with `javascript_tool` or `read_page`, never by looking.
 
+**A new script file must go in `SHELL`.** `test/` has a check that every file
+the page loads is listed; it caught `picker.js` missing. Without it the app
+breaks offline.
+
+**`test.html` refuses to run while a service worker controls it.** It reports
+"Not run" rather than a score. Unregister first (or Settings → App version →
+Fetch the latest version), then reload it.
+
 **Testing auto-reload** needs a version that actually changes. Load the app
 (controlled), change `CACHE` on disk to a throwaway name, call
 `registration.update()` from the page, and check the page navigated and the
@@ -182,7 +244,11 @@ http://localhost:8124/migration-test.html  # 17, the v7 → v8 migration
 ```
 
 Run this cycle: `node --test` (325/325) and `test.html` (30/30). The two server
-suites and `migration-test.html` were not touched and not re-run.
+suites and `migration-test.html` were not touched and not re-run. The v114 UI
+was checked in the agent pane at desktop width and at 375×812 with a touch
+emulation: every Settings page fits its column with no horizontal scroll, the
+rail fits without scrolling, dropdowns open inside the edit dialog unclipped,
+and a simulated Enter on a touch screen closes the field without saving.
 
 `python3 server/app.py` runs the sync backend. Stdlib only — no pip, no venv.
 
@@ -195,6 +261,13 @@ dialog lists every adjusted row before anything is written, but a wrongly
 detected table would still import cleanly.
 
 **Every device needs one manual update to v113.** See the auto-reload trap.
+From v113 on, v114 arrives by itself.
+
+**Not yet seen on a real phone:** the v114 Settings rail, the dropdowns, and the
+Done key. The keyboard's return-key label comes from the platform; Android
+Chrome and iOS Safari both honour `enterkeyhint`, but only a real device shows
+what it actually says. Animations were not watched (the pane cannot render
+them).
 
 **Per-category monthly limits** ("Food: Rp 2.000.000 in October") were offered
 and not asked for yet. The per-month budget from `fbb8c5e` covers fixed /
