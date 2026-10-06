@@ -189,13 +189,13 @@ components:
     textColor: "{colors.foreground}"
     typography: "{typography.control}"
     rounded: "{rounded.sm}"
-    minHeight: 44px
+    minHeight: 40px
   amount-input:
     backgroundColor: "{colors.input}"
     textColor: "{colors.foreground}"
     typography: "{typography.amount-hero}"
     rounded: "{rounded.sm}"
-    minHeight: 64px
+    minHeight: 60px
   segmented-option:
     backgroundColor: "{colors.input}"
     textColor: "{colors.foreground}"
@@ -244,7 +244,7 @@ The system ships **two tones the user switches in Settings**. They share one tok
 - **Two tones, one token set.** `--color-primary`, `--color-foreground`, and the rest resolve per tone. Consuming rules are token-only; there are no hardcoded colours below the palette blocks.
 - **`--color-active` is split from `--color-primary`.** A fill dark enough to carry white label text is too dark to read as an 11px tab label. One token cannot do both jobs.
 - **`--shadow-primary` is a token, not a constant.** Tone A's brass separates from graphite unaided and sets it to `none`; Tone B's pale fill on a pale card reaches only 1.5:1 and is lifted by a shadow instead.
-- **The amount field is the tallest thing in the app** at 34px and 64px tall. Headings are 17px and below. This is an app, not a page.
+- **The amount field is the tallest thing in the app** at 34px and 60px tall. Headings are 17px and below. This is an app, not a page.
 - **Every figure is Fira Code with `tabular-nums`.** Columns of money must align.
 - **Money displays as rupiah and stores as cents.** `formatIDR` renders `Rp 300.000` for the screen; `fromCents` renders `300000.00` for the Excel export, which the importer reads back. The two must never be swapped.
 - **Colour means something or it is absent.** Green is income, red is spending or a warning, the accent is the primary action and the active tab. There is no decorative colour.
@@ -445,7 +445,7 @@ Three durations, and every animation uses one of them.
 
 **`card`** — `{colors.muted}` on canvas, 1px `{colors.border}`, `{rounded.lg}` 16px, 24px padding. Cards are never nested.
 
-**`amount-input`** — The Add form's first field and the tallest control in the app: `min-height: 64px`, 34px Fira Code. `inputmode="decimal"` so phones open the number pad.
+**`amount-input`** — The Add form's first field and the tallest control in the app: `min-height: 60px`, 34px Fira Sans at weight 300, right-aligned. `inputmode="numeric"` so phones open the number pad.
 
 **`segmented-option`** — The expense / income / transfer radio group, rendered as three labels. The checked one uses `:has(input:checked)` to take the primary fill plus `--shadow-primary`. The radio inputs are invisible (still focusable); keyboard focus outlines the label.
 
@@ -566,7 +566,7 @@ amounts are masked, like the ring's shares. The dials draw on arrival
 
 The layout is a single column at every width; `.view` caps at 620px and centres. There is one breakpoint, 640px, where the Settings rail widens from icons to full names.
 
-Tap targets: controls hold 44px, tab items 56px, the amount field 64px.
+Tap targets: buttons hold 44px, tab items 56px, the amount field 60px. Text fields are 40px on purpose: they are stepped through in order rather than stabbed at, and seven at 44px made the Add screen taller than the phone.
 
 ## Known gaps
 
