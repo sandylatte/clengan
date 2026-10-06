@@ -15,12 +15,30 @@ let counter = 0;
 const makeId = () => `sample-${counter += 1}`;
 const build = (month = '2026-09') => { counter = 0; return sampleTransactions(month, makeId); };
 
-test('sampleMonths ends on the month asked for and runs consecutively', () => {
-  assert.deepEqual(sampleMonths('2026-09'), ['2026-07', '2026-08', '2026-09']);
+test('sampleMonths covers six months, ending on the month asked for', () => {
+  assert.deepEqual(sampleMonths('2026-09'), ['2026-04', '2026-05', '2026-06', '2026-07', '2026-08', '2026-09']);
 });
 
 test('sampleMonths crosses a year boundary correctly', () => {
-  assert.deepEqual(sampleMonths('2026-01'), ['2025-11', '2025-12', '2026-01']);
+  assert.deepEqual(sampleMonths('2026-02'), ['2025-09', '2025-10', '2025-11', '2025-12', '2026-01', '2026-02']);
+});
+
+test('every sample month has rows, and the months differ', () => {
+  const rows = build();
+  const spentBy = sampleMonths('2026-09').map((month) => monthlyTotals(rows, month).spending);
+  for (const spent of spentBy) assert.notEqual(spent, 0);
+  assert.equal(new Set(spentBy).size, spentBy.length, 'each month should spend a different total');
+});
+
+test('the sample month on screen is varied enough to judge the chart by', () => {
+  // The Summary opens on the latest month, so that one has to spread across
+  // most categories and every account, or a chart redesign is judged on three
+  // slices.
+  const rows = build();
+  const month = sampleMonths('2026-09').at(-1);
+  const spending = rows.filter((r) => r.date.startsWith(month) && r.amount < 0 && !r.transfer_id);
+  assert.ok(new Set(spending.map((r) => r.category)).size >= 9);
+  assert.equal(new Set(rows.filter((r) => r.date.startsWith(month)).map((r) => r.account)).size, SAMPLE_ACCOUNTS.length);
 });
 
 test('every amount is integer cents and never zero', () => {
@@ -203,8 +221,8 @@ test('sampleRemoval takes the sample rows and only the accounts it left empty', 
   const { ids, accountNames } = sampleRemoval([...rows, mine], accounts);
   assert.equal(ids.length, rows.length);
   assert.ok(!ids.includes('mine'), 'a row the user wrote is never removed');
-  // Cash holds the user's own row, so it stays; the other two go.
-  assert.deepEqual(accountNames, ['Bank BCA', 'E-Wallet']);
+  // Cash holds the user's own row, so it stays; the others go.
+  assert.deepEqual(accountNames, ['Bank BCA', 'E-Wallet', 'Bank Jago']);
 });
 
 test('sampleRemoval keeps an account the user already had under a sample name', () => {
