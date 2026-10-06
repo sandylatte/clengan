@@ -172,7 +172,7 @@ test('every sample row is labelled so the user can find and delete them', () => 
   }
 });
 
-test('every colour the sample presets is one of the curated ten', () => {
+test('every colour the sample presets is one of the curated set', () => {
   // A colour outside the set would be normalised away to null on save, so
   // the sample would silently colour nothing.
   const allowed = new Set(CATEGORY_COLOURS.map((c) => c.value));
@@ -190,18 +190,11 @@ test('the sample presets a colour for every category it spends in', () => {
   }
 });
 
-// Uniqueness is enforced per kind, not across the whole set. The palette
-// holds ten colours and the sample uses twelve categories, so something has
-// to repeat. Income is where it costs least: the pie charts spending only, so
-// two categories never compete there, and in the List an income row is marked
-// by a credit-coloured signed amount before its rail is read.
-test('no two sample categories of the same kind share a colour', () => {
-  const rows = build().filter((r) => !r.transfer_id);
-  const earned = new Set(rows.filter((r) => r.amount > 0).map((r) => r.category));
-  for (const kind of [earned, new Set(rows.filter((r) => r.amount < 0).map((r) => r.category))]) {
-    const values = [...kind].map((name) => SAMPLE_COLOURS.get(name)).filter(Boolean);
-    assert.equal(new Set(values).size, values.length);
-  }
+// Thirteen curated colours and thirteen sample categories: every one gets its
+// own, income included, so no two rails in the sample List look alike.
+test('no two sample categories share a colour', () => {
+  const values = [...SAMPLE_COLOURS.values()];
+  assert.equal(new Set(values).size, values.length);
 });
 
 test('every sample income category is coloured too', () => {

@@ -36,9 +36,14 @@ export const DEFAULT_CATEGORIES = [
 // very light or very dark. They sit in the middle of the lightness range and
 // carry their identity by hue instead.
 //
-// Ten, and no more, on purpose. A pie with fifteen colours stops being
-// readable, and a fixed set means two categories can be told apart at a
-// glance rather than being two neighbouring shades of the same guess.
+// A fixed, curated set, so two categories can be told apart at a glance
+// rather than being two neighbouring shades of the same guess. Ten until
+// v125; the spending ring stopped using category colours (it is one hue now),
+// so they only have to stay apart on a List rail and a legend swatch, and
+// three were added for the owner. The three were picked by measurement, not
+// by eye: each sits at least as far from its nearest neighbour (OKLab
+// distance 0.057) as the closest of the original ten, and a test holds any
+// future addition to that.
 // Solved rather than eyeballed. Clearing 3:1 against BOTH cards at once pins
 // relative luminance into a narrow band — roughly 0.13 to 0.22 — so these are
 // one hue sweep at the lightness that balances the two ratios. The first
@@ -54,6 +59,12 @@ export const CATEGORY_COLOURS = [
   { name: 'Violet', value: '#9F54B2' },   /* 3.7:1 graphite, 3.7:1 peach */
   { name: 'Pink', value: '#AC567E' },     /* 3.7:1 graphite, 3.7:1 peach */
   { name: 'Stone', value: '#7E7063' },    /* 3.7:1 graphite, 3.7:1 peach */
+  // v125. The same lightness as the ten; identity by hue and saturation:
+  // a vivid sky blue beside the denim Blue, a greyed purple, and a cool grey
+  // to pair with the warm Stone.
+  { name: 'Azure', value: '#0775C7' },
+  { name: 'Mauve', value: '#89678C' },
+  { name: 'Slate', value: '#637587' },
 ];
 
 const COLOUR_VALUES = new Set(CATEGORY_COLOURS.map((c) => c.value));

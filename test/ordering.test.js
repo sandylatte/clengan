@@ -156,6 +156,36 @@ test('every curated colour reads on both tones, on the surface it sits on', () =
   }
 });
 
+// Contrast keeps a colour legible; this keeps it recognisable. OKLab distance
+// is roughly perceptual, and the closest pair of the original ten (Clay and
+// Pink) is 0.058 apart. A colour added closer than that to any other would be
+// a second shade of one, which is what a curated set exists to prevent.
+const oklab = (hex) => {
+  const lin = (pair) => {
+    const c = parseInt(pair, 16) / 255;
+    return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  };
+  const [r, g, b] = [hex.slice(1, 3), hex.slice(3, 5), hex.slice(5, 7)].map(lin);
+  const l = Math.cbrt(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b);
+  const m = Math.cbrt(0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b);
+  const s = Math.cbrt(0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b);
+  return [
+    0.2104542553 * l + 0.7936177850 * m - 0.0040720468 * s,
+    1.9779984951 * l - 2.4285922050 * m + 0.4505937099 * s,
+    0.0259040371 * l + 0.7827717662 * m - 0.8086757660 * s,
+  ];
+};
+
+test('no two curated colours are near-shades of each other', () => {
+  for (let i = 0; i < CATEGORY_COLOURS.length; i += 1) {
+    for (let j = i + 1; j < CATEGORY_COLOURS.length; j += 1) {
+      const [a, b] = [CATEGORY_COLOURS[i], CATEGORY_COLOURS[j]];
+      const distance = Math.hypot(...oklab(a.value).map((v, k) => v - oklab(b.value)[k]));
+      assert.ok(distance >= 0.055, `${a.name} and ${b.name} are only ${distance.toFixed(3)} apart`);
+    }
+  }
+});
+
 test('the reserved Transfer name is never offered as a category', () => {
   // Both halves of a transfer are written with category "Transfer". It is not
   // a category anyone creates, and a spend filed under it would read as a

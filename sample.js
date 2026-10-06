@@ -29,13 +29,11 @@ export const SAMPLE_COLOURS = new Map([
   ['Internet', colour('Stone')],
   ['Insurance', colour('Olive')],
   ['Health & Skincare', colour('Clay')],
-  // Income too. Ten colours cover thirteen categories, so these repeat a hue
-  // an expense already owns — acceptable because income and expense never
-  // share a chart, and in the List an income row is already marked by a
-  // signed amount in the credit colour before its rail is read.
-  ['Salary', colour('Green')],
-  ['Bonus', colour('Teal')],
-  ['Other income', colour('Indigo')],
+  // Income too, with the three colours added in v125, so every one of the
+  // sample's thirteen categories has a colour of its own.
+  ['Salary', colour('Azure')],
+  ['Bonus', colour('Mauve')],
+  ['Other income', colour('Slate')],
 ]);
 
 // Every sample row carries this in its note. Settings promises the user they
