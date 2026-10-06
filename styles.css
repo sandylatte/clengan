@@ -625,12 +625,20 @@ input[type="file"]::file-selector-button {
 
 input[type="file"]::file-selector-button:hover { background: var(--color-input); }
 
+/* font and radius are stated here because buttons do not inherit them.
+   This rule was split out of `input, select, button.primary` (ee3094e) to
+   keep its 44px when fields went to 40, and lost both in the move: every
+   primary button rendered in the browser's Arial with square corners until
+   v121. */
 button.primary {
   margin-top: var(--space-1);
   background: var(--color-primary);
   color: var(--color-on-primary);
   border: none;
+  border-radius: var(--radius-md);
   box-shadow: var(--shadow-primary);
+  font: inherit;
+  font-size: 13px;
   font-weight: 600;
   cursor: pointer;
   /* transform is listed here as well as in the shared press rule below: this
@@ -646,6 +654,45 @@ button.primary {
 }
 button.primary:hover { background: var(--color-primary-hover); }
 button.primary:active { filter: brightness(0.92); }
+
+/* The second action on a page — Remove sample data, Copy diagnostics,
+   Create account. The primary's size, shape and type, in the outlined look
+   the dialogs' Cancel already uses, so it reads as the quieter partner of
+   the primary above or beside it. */
+button.secondary {
+  width: 100%;
+  min-height: 44px;
+  margin: var(--space-1) 0 var(--space-2);
+  padding: 0 var(--space-3);
+  background: var(--color-input);
+  color: var(--color-foreground);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 150ms ease, transform var(--dur-fast) var(--ease);
+}
+button.secondary:hover { background: var(--color-muted); }
+
+/* An action inside a list row — Edit on a month plan, Delete on a recurring
+   rule. A word, not a box: the row is already the object, so the button
+   only needs its 44px target and a hover. */
+button.ghost {
+  flex: none;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 var(--space-2);
+  background: none;
+  border: none;
+  border-radius: var(--radius-md);
+  color: var(--color-subtle);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 150ms ease, color 150ms ease, transform var(--dur-fast) var(--ease);
+}
+button.ghost:hover { background: var(--color-input); color: var(--color-foreground); }
 
 /* Every control acknowledges the press itself, not just its result. 3% is
    small enough to read as the surface taking the weight rather than as the

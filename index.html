@@ -456,7 +456,7 @@
     <header class="setting__head"><svg class="tile__icon" aria-hidden="true"><use href="#i-sample"/></svg><h2 id="setting-sample-title">Sample data</h2><span class="tile__state">Six made-up months</span></header>
     <p class="hint">Fills the app with six months of made-up transactions, across four accounts, so every screen has something to show. Added alongside anything already here, never in place of it — and every row is labelled in its note, so Remove takes back exactly what Load added.</p>
     <button type="button" class="primary" id="sample-button">Load sample data</button>
-    <button type="button" id="sample-remove">Remove sample data</button>
+    <button type="button" class="secondary" id="sample-remove">Remove sample data</button>
     <p id="sample-status" role="status"></p>
   </section>
 
@@ -476,7 +476,7 @@
         <input type="password" id="sync-password" autocomplete="current-password" required>
         <div class="pair">
           <div><button type="submit" class="primary" id="sync-signin">Sign in</button></div>
-          <div><button type="button" id="sync-signup">Create account</button></div>
+          <div><button type="button" class="secondary" id="sync-signup">Create account</button></div>
         </div>
       </form>
       <p class="hint">There is no password reset. The password is what decrypts your records, so nobody — including whoever runs the server — can recover it for you. Creating an account gives you a recovery code; that code is the only other way in.</p>
@@ -485,7 +485,7 @@
     <div id="sync-signed-in" hidden>
       <p class="hint" id="sync-account"></p>
       <button type="button" class="primary" id="sync-now">Sync now</button>
-      <button type="button" id="sync-signout">Sign out on this device</button>
+      <button type="button" class="secondary" id="sync-signout">Sign out on this device</button>
       <p class="hint">Signing out leaves every record on this device. It only forgets the account.</p>
     </div>
 
@@ -503,7 +503,7 @@
     <h3 class="group__heading">Diagnostics</h3>
     <p class="hint">Read this out if something looks wrong on your device. It is the only way I can see what your phone is actually rendering.</p>
     <pre id="diagnostics" class="diagnostics"></pre>
-    <button type="button" id="copy-diagnostics">Copy diagnostics</button>
+    <button type="button" class="secondary" id="copy-diagnostics">Copy diagnostics</button>
   </section>
     </div>
     <nav class="settings__rail" id="settings-rail" aria-label="Settings sections"></nav>

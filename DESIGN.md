@@ -160,6 +160,17 @@ components:
     typography: "{typography.control}"
     rounded: "{rounded.md}"
     minHeight: 44px
+  button-secondary:
+    backgroundColor: "{colors.input}"
+    textColor: "{colors.foreground}"
+    typography: "{typography.control}"
+    rounded: "{rounded.md}"
+    minHeight: 44px
+  row-action:
+    textColor: "{colors.subtle}"
+    typography: "{typography.control}"
+    rounded: "{rounded.md}"
+    minHeight: 44px
   section:
     backgroundColor: transparent
     textColor: "{colors.foreground}"
@@ -425,6 +436,10 @@ Three durations, and every animation uses one of them.
 **`title-bar`** — Sticky, `backdrop-filter: blur(12px)` over an 88%-opaque canvas, 1px bottom border. Flex row, `justify-content: space-between`, baseline aligned. The right slot hides itself when empty via `:empty`.
 
 **`button-primary`** — `{colors.primary}` fill, `{colors.on-primary}` label, no border, `{rounded.md}`, `min-height: 44px`, full width inside a form. Carries `--shadow-primary`. The pressed state is `filter: brightness(0.92)`, which works in both tones without a second token.
+
+**`button-secondary`** — `button.secondary`: the second action on a page (Remove sample data, Copy diagnostics, Create account). The primary's size, shape and type, in the dialogs' Cancel look: `{colors.input}` fill, 1px `{colors.border-strong}`, `{colors.foreground}` label; hover lifts to `{colors.muted}`. A plain `<button>` with no class renders as the browser's own grey box, so every button in the app takes one of primary, secondary, row-action, chip or a component class.
+
+**`row-action`** — `button.ghost`: a word-button inside a list row (Edit on a month plan, Delete on a recurring rule). No fill or border, `{colors.subtle}` label, a 44px target, hover fills `{colors.input}` and the label goes `{colors.foreground}`.
 
 **`card`** — `{colors.muted}` on canvas, 1px `{colors.border}`, `{rounded.lg}` 12px, 24px padding. Cards are never nested.
 
