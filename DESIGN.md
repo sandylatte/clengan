@@ -538,6 +538,19 @@ what is over in `{colors.destructive}`. The percent stays readable while
 amounts are masked, like the ring's shares. The dials draw on arrival
 (`dial-draw`, `--dur-slow`).
 
+**`funds-table`** — The Summary's Savings by fund card (chosen 2026-10-07
+over hairline rows and answer-first dials). A 10px bar of the split, one
+segment per fund in proportion to its share, parted by 2px gaps and stepping
+from `{colors.accent}` toward the card (100% down to 25%); it unrolls from the
+left on arrival (`bar-grow`, `--dur-slow`). Under it a real `<table>`: swatch
+and fund name (ellipsised), this period's amount exact, and the year so far
+in the short form at one fixed decimal ("Rp 14,0 jt") in `{colors.subtle}`,
+so the names keep their width at 375px. A Total row in `<tfoot>` over a
+hairline. The share is drawn only by the bar, so each name carries it in
+visually hidden text. In the Year view the year column is dropped and the
+one column is exact. The note beneath shares `#budget-note`'s 12px subtle
+style.
+
 ## Do's and don'ts
 
 ### Do

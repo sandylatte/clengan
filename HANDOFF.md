@@ -1,8 +1,8 @@
 # Handoff
 
-Written 6 October 2026, at commit `e4988f8`. Everything described here is
-pushed to `master` (`clengan-v122`), and the live `sw.js` was confirmed
-serving v122 within a minute of the push. Phones still need to pick it up:
+Written 7 October 2026. v123 (the Savings by fund redesign) is committed on
+`master` but not yet pushed; v122 is live, confirmed in the live `sw.js`
+within a minute of its push. Phones still need to pick it up:
 check the App version tile before telling anyone a change is on their device.
 
 Read [README.md](README.md) for how to run it, [DESIGN.md](DESIGN.md) for the
@@ -76,6 +76,7 @@ section below before adding a setting or a dropdown.
 | `b6fcac2` | `button.secondary` and `button.ghost`; primary buttons get Fira Sans and rounded corners back (v121) |
 | `f1192e3` `15907de` | DESIGN.md radius scale matches the stylesheet, plus `pill`; the List's tag rail uses `--radius-xs` (v122) |
 | `e752ed6` `e4988f8` | DESIGN.md field heights (40 / 60px), tab items (48px) and tab bar clearance match the stylesheet (docs only) |
+| (this commit) | Savings by fund redesigned: one bar for the split, then a this-period / this-year table (owner picked option B of 3) (v123) |
 
 `680afd6`–`ecff77b` came from a separate cloud session on 1 October. They were
 pulled in and audited, not written here.
@@ -359,6 +360,12 @@ looks up an account by name must resolve it first (`findAccount`,
 
 **`node --test test/` silently runs nothing useful.** It reports 1 test, 1 fail.
 Use bare `node --test` from the repo root.
+
+**`node --check app.js` passes code the browser rejects.** It exited 0 on an
+`app.js` with two `const total` in one function, which would have stopped
+the whole app loading. Parse it as the module it is instead:
+`node --experimental-vm-modules -e "new (require('vm').SourceTextModule)(require('fs').readFileSync('app.js','utf8'))"`
+throws on that. Loading the page and reading the console is the real check.
 
 **`DESIGN.md` is machine-checked.** `test/tokens.test.js` asserts every
 `font-size` in `styles.css` appears in the DESIGN.md ramp. A new size fails the

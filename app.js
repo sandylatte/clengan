@@ -949,51 +949,72 @@ function renderFunds(txns) {
   const monthly = new Map(allocateFunds(month, state.funds).map((f) => [f.name, f.amount]));
   const yearly = new Map(year.funds.map((f) => [f.name, f.amount]));
 
-  // The share IS the bar, so the percentage does not need printing twice.
-  // The four-column table put share, month and year side by side at 13px and
-  // still left the reader working out which column was which.
-  const rows = state.funds.map((fund) => {
-    const amount = monthly.get(fund.name);
-    const row = document.createElement('div');
-    row.className = 'track';
+  // One bar for the split, then a table: what each fund gets in the period
+  // on screen and what it has had so far this year, side by side, so the
+  // two can be read across a row rather than hunted for in a sentence. The
+  // bar is the only place the share is drawn; it steps one hue (savings
+  // green) toward the card, like the spending ring.
+  const yearView = state.filter.period === 'year';
+  const FAINTEST = 25;
+  const shade = (i) => {
+    const strength = state.funds.length === 1 ? 100 : 100 - ((100 - FAINTEST) * i) / (state.funds.length - 1);
+    return `color-mix(in srgb, var(--color-accent) ${strength.toFixed(1)}%, var(--color-muted))`;
+  };
 
-    const head = document.createElement('div');
-    head.className = 'track__head';
-    const name = document.createElement('span');
-    name.textContent = fund.name;
-    const figure = document.createElement('span');
-    figure.className = `amount ${amount < 0 ? 'amount--out' : ''}`;
-    figure.textContent = formatIDR(amount);
-    head.append(name, figure);
+  const bar = document.createElement('div');
+  bar.className = 'funds__bar';
+  bar.setAttribute('aria-hidden', 'true');
+  bar.append(...state.funds.map((fund, i) => {
+    const part = document.createElement('i');
+    part.style.flexGrow = String(fund.percent);
+    part.style.background = shade(i);
+    return part;
+  }));
 
-    const rail = document.createElement('div');
-    rail.className = 'track__rail';
-    const fill = document.createElement('i');
-    fill.style.width = `${fund.percent}%`;
-    fill.classList.add('is-savings');
-    rail.append(fill);
+  const cell = (tag, text, className = '') => {
+    const node = document.createElement(tag);
+    if (className) node.className = className;
+    node.textContent = text;
+    return node;
+  };
+  const money = (cents, extra = '', format = formatIDR) => cell('td', format(cents), `amount ${cents < 0 ? 'amount--out' : ''} ${extra}`.trim());
+  // This period's figure stays exact: it is the amount someone moves into
+  // the fund. The year is a running total, read for its size, so it takes
+  // the short form ("Rp 16,3 jt") and gives the fund names the width.
+  const yearMoney = (cents, extra) => money(cents, extra, (c) => compactIDR(c, COMPACT_COLUMN));
 
-    const foot = document.createElement('div');
-    foot.className = 'track__foot';
-    foot.textContent = state.filter.period === 'year'
-      ? `${fund.percent}% of savings`
-      : `${fund.percent}% of savings · ${formatIDR(yearly.get(fund.name))} so far in ${year.year}`;
+  const table = document.createElement('table');
+  table.className = 'funds__table';
+  const head = document.createElement('tr');
+  head.append(cell('th', 'Fund', 'visually-hidden-cell'),
+    cell('th', yearView ? state.month.slice(0, 4) : MONTH_ABBR[Number(state.month.slice(5, 7)) - 1]));
+  if (!yearView) head.append(cell('th', String(year.year)));
+  const thead = document.createElement('thead');
+  thead.append(head);
 
-    row.append(head, rail, foot);
+  const tbody = document.createElement('tbody');
+  tbody.append(...state.funds.map((fund, i) => {
+    const row = document.createElement('tr');
+    const name = document.createElement('th');
+    name.scope = 'row';
+    const swatch = document.createElement('span');
+    swatch.className = 'swatch';
+    swatch.style.background = shade(i);
+    // The share is drawn by the bar, which a screen reader skips; said here.
+    name.append(swatch, fund.name, cell('span', `, ${fund.percent}% of savings`, 'visually-hidden'));
+    row.append(name, money(monthly.get(fund.name)));
+    if (!yearView) row.append(yearMoney(yearly.get(fund.name), 'funds__year'));
     return row;
-  });
+  }));
 
-  const sum = document.createElement('div');
-  sum.className = 'figures__row figures__row--total';
-  const sumLabel = document.createElement('span');
-  sumLabel.textContent = 'Total';
-  const sumValue = document.createElement('span');
-  sumValue.className = `amount ${month < 0 ? 'amount--out' : 'amount--in'}`;
-  sumValue.textContent = formatIDR(month);
-  sum.append(sumLabel, sumValue);
-  rows.push(sum);
+  const totalRow = document.createElement('tr');
+  totalRow.append(cell('th', 'Total'), money(month, month < 0 ? '' : 'amount--in'));
+  if (!yearView) totalRow.append(yearMoney(year.funds.reduce((sum, f) => sum + f.amount, 0), 'funds__year'));
+  const tfoot = document.createElement('tfoot');
+  tfoot.append(totalRow);
 
-  body.replaceChildren(...rows);
+  table.append(thead, tbody, tfoot);
+  body.replaceChildren(bar, table);
 
   note.className = '';
   const counted = year.months.length;
@@ -1056,9 +1077,12 @@ const sliceColour = (i) => (i < RAMP.length
 // into the slices, so the centre uses the short form a rupiah reader says
 // aloud ("6,9 jt"); the legend underneath keeps every figure exact.
 const COMPACT = new Intl.NumberFormat('id-ID', { notation: 'compact', maximumFractionDigits: 1 });
-function compactIDR(cents) {
+// In a column, always one decimal, so "14,0 jt" lines up under "16,3 jt"
+// instead of a bare "14 jt" breaking the decimal edge.
+const COMPACT_COLUMN = new Intl.NumberFormat('id-ID', { notation: 'compact', minimumFractionDigits: 1, maximumFractionDigits: 1 });
+function compactIDR(cents, format = COMPACT) {
   const exact = formatIDR(cents);
-  return revealed() ? `Rp ${COMPACT.format(Math.round(cents / 100))}` : exact;
+  return revealed() ? `Rp ${format.format(Math.round(cents / 100))}` : exact;
 }
 
 function renderPie(slices, colours, breakdown) {

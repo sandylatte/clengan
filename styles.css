@@ -749,8 +749,9 @@ button:active, .chip:active, .seg__button:active { transform: scale(0.97); }
    re-growing them on each one would animate a screen nobody is looking at.
    The bar's real width is inline, so a keyframe that only sets `from` grows
    it to whatever that value is. */
-@keyframes bar-grow { from { width: 0; } }
-.view.is-entering .track__rail i { animation: bar-grow var(--dur-slow) var(--ease); }
+/* The funds bar unrolls from the left, its parts in proportion throughout. */
+@keyframes bar-grow { from { transform: scaleX(0); } }
+.view.is-entering .funds__bar { transform-origin: left center; animation: bar-grow var(--dur-slow) var(--ease); }
 /* The Budget card's dials draw round from twelve, at the same pace. */
 @keyframes dial-draw { from { stroke-dasharray: 0 100; } }
 .view.is-entering .dial__value { animation: dial-draw var(--dur-slow) var(--ease); }
@@ -1214,24 +1215,46 @@ button:active, .chip:active, .seg__button:active { transform: scale(0.97); }
 }
 .stat--net .amount { font-size: 18px; font-weight: 400; }
 
-/* S2. A labelled track per bucket: what is spent against what is budgeted,
-   a bar for how far through, and the remainder underneath in words. */
-/* Pods. Each bucket is a separate object rather than a row in a list, so the
-   eye can compare two of them at once instead of reading down a column. */
-.tracks {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--space-2);
+/* Savings by fund: one bar for the split, then a table of what each fund
+   gets this period and has had this year. A real <table>, because it is
+   one: two columns of figures that are read across a row. */
+.funds__bar {
+  display: flex;
+  gap: 2px;
+  height: 10px;
+  margin: var(--space-1) 0 var(--space-3);
 }
-.tracks .track {
-  background: var(--color-input);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  padding: var(--space-3);
+.funds__bar i { flex: 1 1 0; min-width: 2px; border-radius: var(--radius-xs); }
+.funds__table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.funds__table th, .funds__table td { padding: var(--space-1) 0; font-weight: 400; }
+.funds__table thead th {
+  padding-top: 0;
+  font-size: 12px;
+  color: var(--color-subtle);
+  text-align: right;
 }
-
-/* The funds total is a summary of the pods above it, not a pod. */
-.tracks .figures__row { grid-column: 1 / -1; }
+.funds__table tbody th {
+  max-width: 0;
+  width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: left;
+}
+.funds__table td { padding-left: var(--space-3); text-align: right; white-space: nowrap; }
+.funds__table .funds__year { color: var(--color-subtle); }
+.funds__table tfoot th, .funds__table tfoot td {
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--color-border);
+  font-weight: 600;
+  text-align: left;
+}
+.funds__table tfoot td { text-align: right; }
+.funds__table tfoot .funds__year { color: var(--color-foreground); }
+/* The column heads name periods; the first column's head is for screen
+   readers only, since the fund names say what they are. Not .visually-hidden:
+   that takes the cell out of the table's layout and shifts every column. */
+.funds__table .visually-hidden-cell { font-size: 0; }
 
 /* The Budget card, answer first: per bucket, a dial for how much is used
    and the amount left (or over) as the row's big figure. Rows on hairlines,
@@ -1259,37 +1282,6 @@ button:active, .chip:active, .seg__button:active { transform: scale(0.97); }
 .dial__figure.amount--out { color: var(--color-destructive); }
 .dial__figure small { font-family: var(--font-ui); font-size: 12px; color: var(--color-subtle); }
 .dial__figure.amount--out small { color: inherit; }
-
-/* Stacked inside a pod: the label sits above its figure rather than beside
-   it, because a pod is half the width a row had. */
-.track__head {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  font-size: 12px;
-  margin-bottom: var(--space-2);
-}
-.track__figures { font-size: 14px; font-weight: 400; color: var(--color-foreground); }
-
-.track__rail {
-  height: 8px;
-  background: var(--color-input);
-  border-radius: var(--radius-sm);
-  overflow: hidden;
-}
-.track__rail i {
-  display: block;
-  height: 100%;
-  background: var(--color-primary);
-  border-radius: var(--radius-sm);
-}
-.track__rail i.is-savings { background: var(--color-accent); }
-
-.track__foot {
-  margin-top: var(--space-1);
-  font-size: 11px;
-  color: var(--color-subtle);
-}
 
 /* A label and a figure on one line, with an optional bar behind it. This
    replaced two separate table styles — .bars and .budget — that between them
@@ -1326,13 +1318,16 @@ button:active, .chip:active, .seg__button:active { transform: scale(0.97); }
 /* The space above the two chips belongs to the note, not to one chip: a
    margin on the first chip alone pushed it 9px below its neighbour, and the
    flex row stretched the second to match, so the pair sat at two heights. */
-#budget-note {
+#budget-note, #funds-note {
   font-size: 12px;
   line-height: 1.5;
   margin: var(--space-3) 0 var(--space-2);
   color: var(--color-subtle);
 }
 .budget-note__warning { color: var(--color-destructive); }
+/* The funds note carries the warning class itself, and the id rule above
+   would otherwise grey out "Fund shares total 90%". */
+#funds-note.budget-note__warning { color: var(--color-destructive); }
 
 /* Three controls that describe one chart, so they sit on one line and wrap
    together rather than reading as three unrelated settings stacked above it.
