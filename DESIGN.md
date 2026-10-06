@@ -452,6 +452,31 @@ share. The centre carries the period's total spent in the short form
 ("Rp 13,5 jt"). Its two filters are compact pills on one line, labelled for
 screen readers only.
 
+**`privacy-eye`** — Amounts are masked until an eye is tapped. The eye in
+every title bar is the **master**: all four in step, 44px, `{colors.subtle}`
+closed and `{colors.active}` open. A **section eye** (36px, 18px icon, pulled
+into its heading's line by negative margins) sits at the end of each Summary
+card heading (Balance in the stats card's label row, Spending by category,
+Budget, Savings by fund, Balances) and at the end of the List's filter row
+for the rows' amounts. A section eye overrides the master for its section
+only; tapping the master sets every section back to following it. Title-bar
+figures, Settings and dialogs answer to the master alone. Leaving the app
+hides everything.
+
+**`list-filters`** — Category and account pills on the List, the same
+compact pills as the chart filters, sharing a line with the List's section
+eye. They narrow whatever is listed: the period, or a search across every
+month. The List's title-bar net always nets exactly what is listed, labelled
+with the period ("Oct", "2026", "All time") or "Listed" while a search or
+filter is on.
+
+**`pin-dialog`** — The shared prompt dialog in PIN mode: a password field
+with the number pad, four digits, Fira Code with 0.5em tracking, centred. A
+wrong try clears the field and says how many tries are left; while locked it
+says how long. Settings → PIN for amounts holds set / change / remove, a
+"Forgot the PIN?" that removes it after an hour, and the frequency as three
+plain radios at 44px rows.
+
 **`select`** — Every picker in the app is a real `<select>` with the app's
 own list drawn over it (`picker.js`). The native control on a phone opens the
 platform's wheel or sheet — browser chrome in the platform's colours, and on

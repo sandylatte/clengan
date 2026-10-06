@@ -5,6 +5,7 @@ import {
 import {
   filterMonth, monthlyTotals, spendingBreakdown, accountBalances, netTrend, bucketTotals, fundsByYear,
   lastSixMonths, groupByDay, periodTotals, periodBuckets, searchTransactions, chartSlices,
+  filterRows, rowCategory, rowsNet,
 } from './rollup.js';
 import {
   BUCKETS, CATEGORY_KINDS, CATEGORY_COLOURS, DEFAULT_SPLIT, validateSplit, allocateFunds,
@@ -18,6 +19,10 @@ import { exportXlsx, importXlsx, importPlanner } from './xlsx-io.js';
 import { attachCalendar, toISO } from './calendar.js';
 import { attachMonthPicker, enhanceAllSelects } from './picker.js';
 import { initSettings } from './settings.js';
+import {
+  PIN_KEY, PIN_LOCK_KEY, ASK_EVERY, ASK_LEAVE, DEFAULT_MINUTES, FREE_TRIES, RESET_DELAY,
+  isPin, hashPin, newSalt, lockFor, pinNeeded, waitText,
+} from './pin.js';
 
 // Set once the Settings rail is built, near the end of this file.
 let settingsNav = null;
@@ -212,6 +217,18 @@ async function fillPickers() {
   // one that no longer exists falls back to all.
   const pieAccount = document.getElementById('pie-account');
   fillSelect(pieAccount, names, 'All accounts', { optional: true });
+  // The List's filters offer what its rows can actually match: every
+  // account, and the categories in use in the user's own order, then
+  // Transfer, Uncategorised and any imported name Settings does not know.
+  // fillSelect keeps a choice that still exists and drops one that does not.
+  const listAccount = document.getElementById('list-account');
+  fillSelect(listAccount, names, 'All accounts', { optional: true });
+  state.listFilter.account = listAccount.value;
+  const present = new Set(txns.map(rowCategory));
+  const listed = sortByPosition(state.categories).map((c) => c.name).filter((name) => present.delete(name));
+  const listCategory = document.getElementById('list-category');
+  fillSelect(listCategory, [...listed, ...[...present].sort()], 'All categories', { optional: true });
+  state.listFilter.category = listCategory.value;
   if (!names.includes(state.filter.account)) state.filter.account = '';
   pieAccount.value = state.filter.account;
   // Only when nothing is chosen: overriding a selection mid-entry would undo
@@ -383,13 +400,25 @@ new MutationObserver((records) => {
     }
   }
 }).observe(document.body, { childList: true, characterData: true, subtree: true });
+// Which eye a figure answers to. Rendering code runs each section inside
+// inScope(), and the formatters below read the section from here, so the
+// forty call sites never had to learn about sections. Anything painted
+// outside a section (title bars, Settings, dialogs) answers to the master.
+let paintScope = 'base';
+const revealed = (scope = paintScope) => state.sections[scope] ?? state.reveal;
+function inScope(scope, paint) {
+  const outer = paintScope;
+  paintScope = scope;
+  try { return paint(); } finally { paintScope = outer; }
+}
+
 const formatIDR = (cents) => {
   const text = plainIDR(cents);
-  return state.reveal ? text : `Rp ${MASK}`;
+  return revealed() ? text : `Rp ${MASK}`;
 };
 const formatAmount = (cents) => {
   const text = plainAmount(cents);
-  return state.reveal ? text : `${cents > 0 ? '+' : cents < 0 ? '-' : ''}Rp ${MASK}`;
+  return revealed() ? text : `${cents > 0 ? '+' : cents < 0 ? '-' : ''}Rp ${MASK}`;
 };
 
 const state = {
@@ -399,7 +428,13 @@ const state = {
   // Amounts start hidden on every launch and hide again whenever the app
   // leaves the screen. Never persisted: a reveal that survived a relaunch
   // would show the balance to whoever picks the phone up next.
+  // `reveal` is the master — the eye in every title bar, all in step.
+  // `sections` is each section eye's own answer, or null to follow the
+  // master; tapping the master puts every section back to following it.
   reveal: false,
+  sections: { list: null, balance: null, spending: null, budget: null, funds: null, balances: null },
+  // List-only, like the query: the two filters above the rows.
+  listFilter: { category: '', account: '' },
   // Month -> its own budget plan. Loaded on every refresh.
   plans: {},
   // List-only, and deliberately not persisted: a search is a question being
@@ -466,6 +501,14 @@ for (const [group, apply] of [
   }
 }
 
+for (const [id, key] of [['list-category', 'category'], ['list-account', 'account']]) {
+  document.getElementById(id).addEventListener('change', (event) => {
+    state.listFilter[key] = event.target.value;
+    composeCurrent();
+    renderList(state.txns);
+  });
+}
+
 for (const [id, key] of [['pie-account', 'account'], ['pie-bucket', 'bucket']]) {
   document.getElementById(id).addEventListener('change', (event) => {
     state.filter[key] = event.target.value;
@@ -505,26 +548,44 @@ function inListPeriod(txns) {
   return filterMonth(txns, state.month);
 }
 
+const NOMATCH_SEARCH = 'Search covers every month, and looks at the name, category, account and note.';
+
 function renderList(txns) {
   const searching = state.query.trim().length > 0;
-  const rows = searching ? searchTransactions(txns, state.query) : inListPeriod(txns);
-  const list = document.getElementById('list-rows');
-  document.getElementById('list-empty').hidden = rows.length > 0 || searching;
-  document.querySelector('#list-empty .empty__title').textContent = LIST_EMPTY[state.listPeriod];
-  // A search spans every month, so the month control no longer describes what
-  // is on screen. Disabling it says that without a sentence, and gives the
-  // month back the moment the query is cleared. "All" has no month either.
-  document.getElementById('list-month-button').disabled = searching || state.listPeriod === 'all';
-  document.getElementById('list-nomatch').hidden = !searching || rows.length > 0;
+  const filtering = Boolean(state.listFilter.category || state.listFilter.account);
+  // Filters narrow whatever else is chosen: the period, or a search across
+  // every month.
+  const rows = filterRows(searching ? searchTransactions(txns, state.query) : inListPeriod(txns), state.listFilter);
+  inScope('list', () => {
+    const list = document.getElementById('list-rows');
+    document.getElementById('list-empty').hidden = rows.length > 0 || searching || filtering;
+    document.querySelector('#list-empty .empty__title').textContent = LIST_EMPTY[state.listPeriod];
+    // A search spans every month, so the month control no longer describes what
+    // is on screen. Disabling it says that without a sentence, and gives the
+    // month back the moment the query is cleared. "All" has no month either.
+    document.getElementById('list-month-button').disabled = searching || state.listPeriod === 'all';
+    document.getElementById('list-nomatch').hidden = !(searching || filtering) || rows.length > 0;
+    document.getElementById('list-nomatch-body').textContent = searching
+      ? `${NOMATCH_SEARCH}${filtering ? ' The filters above narrow it further.' : ''}`
+      : 'Nothing in this period matches the filters above.';
 
-  // Date is written once per day rather than on every row, which is what
-  // gives the transaction name back the width it was losing.
-  const items = [];
-  for (const day of groupByDay(rows)) {
-    items.push(dayHeading(day, searching || state.listPeriod === 'all'));
-    for (const txn of day.rows) items.push(transactionRow(txn));
-  }
-  list.replaceChildren(...items);
+    // Date is written once per day rather than on every row, which is what
+    // gives the transaction name back the width it was losing.
+    const items = [];
+    for (const day of groupByDay(rows)) {
+      items.push(dayHeading(day, searching || state.listPeriod === 'all'));
+      for (const txn of day.rows) items.push(transactionRow(txn));
+    }
+    list.replaceChildren(...items);
+  });
+
+  // The title bar nets exactly what is listed, so it answers for the search
+  // and the filters as well as the period. It is the master eye's figure.
+  const label = searching || filtering
+    ? 'Listed'
+    : { month: MONTH_ABBR[Number(state.month.slice(5, 7)) - 1], year: state.month.slice(0, 4), all: 'All time' }[state.listPeriod];
+  headNet(document.getElementById('head-list-total'), label, rowsNet(rows),
+    'Net of the rows listed: income minus spending, transfers excluded');
 }
 
 function dayHeading({ date, net }, withYear = false) {
@@ -624,11 +685,13 @@ async function deleteTransaction(txn) {
     return;
   }
   const isTransfer = Boolean(txn.transfer_id);
+  // The row's own eye decides whether its amount is spelled out here.
+  const amount = inScope('list', () => formatAmount(txn.amount));
   const ok = await confirmDialog({
     title: isTransfer ? 'Delete this transfer' : 'Delete this transaction',
     body: isTransfer
-      ? `${formatAmount(txn.amount)} on ${txn.date}. Both sides of the transfer are removed, so the two accounts stay balanced against each other.\n\nThis cannot be undone.`
-      : `${formatAmount(txn.amount)} on ${txn.date}. This cannot be undone.`,
+      ? `${amount} on ${txn.date}. Both sides of the transfer are removed, so the two accounts stay balanced against each other.\n\nThis cannot be undone.`
+      : `${amount} on ${txn.date}. This cannot be undone.`,
     confirmLabel: 'Delete',
     danger: true,
   });
@@ -995,7 +1058,7 @@ const sliceColour = (i) => (i < RAMP.length
 const COMPACT = new Intl.NumberFormat('id-ID', { notation: 'compact', maximumFractionDigits: 1 });
 function compactIDR(cents) {
   const exact = formatIDR(cents);
-  return state.reveal ? `Rp ${COMPACT.format(Math.round(cents / 100))}` : exact;
+  return revealed() ? `Rp ${COMPACT.format(Math.round(cents / 100))}` : exact;
 }
 
 function renderPie(slices, colours, breakdown) {
@@ -1066,21 +1129,21 @@ function renderPie(slices, colours, breakdown) {
 // figure means the same thing on every screen and every day.
 const currentMonth = () => toISO(new Date()).slice(0, 7);
 
+function headNet(slot, label, net, title) {
+  const name = document.createElement('span');
+  name.className = 'h1-meta__label';
+  name.textContent = label;
+  const value = document.createElement('span');
+  value.className = `amount ${net > 0 ? 'amount--in' : net < 0 ? 'amount--out' : ''}`;
+  value.textContent = formatAmount(net);
+  slot.replaceChildren(name, value);
+  slot.title = title;
+}
+
 function renderHeadNet(txns) {
   const month = currentMonth();
-  const { net } = monthlyTotals(txns, month);
-  const label = `${MONTH_ABBR[Number(month.slice(5, 7)) - 1]}`;
-  for (const id of ['head-balance', 'head-list-total']) {
-    const slot = document.getElementById(id);
-    const name = document.createElement('span');
-    name.className = 'h1-meta__label';
-    name.textContent = label;
-    const value = document.createElement('span');
-    value.className = `amount ${net > 0 ? 'amount--in' : net < 0 ? 'amount--out' : ''}`;
-    value.textContent = formatAmount(net);
-    slot.replaceChildren(name, value);
-    slot.title = 'Net this month: income minus spending since the 1st';
-  }
+  headNet(document.getElementById('head-balance'), MONTH_ABBR[Number(month.slice(5, 7)) - 1],
+    monthlyTotals(txns, month).net, 'Net this month: income minus spending since the 1st');
 }
 
 function netLabel() {
@@ -1096,14 +1159,17 @@ function netLabel() {
 function renderSummary(txns, accounts, invalidTxns) {
   renderHeadNet(txns);
   const totals = periodTotals(txns, state.filter.period, state.month);
-  renderBudget(txns);
-  renderFunds(txns);
-  document.getElementById('stat-income').textContent = formatIDR(totals.income);
-  document.getElementById('stat-spent').textContent = formatIDR(-totals.spending);
-  const net = document.getElementById('stat-net');
-  document.querySelector('.stat--net .stat__label').textContent = netLabel();
-  net.textContent = formatAmount(totals.net);
-  net.className = `amount ${totals.net >= 0 ? 'amount--in' : 'amount--out'}`;
+  // Each card answers to its own eye (see inScope).
+  inScope('budget', () => renderBudget(txns));
+  inScope('funds', () => renderFunds(txns));
+  inScope('balance', () => {
+    document.getElementById('stat-income').textContent = formatIDR(totals.income);
+    document.getElementById('stat-spent').textContent = formatIDR(-totals.spending);
+    const net = document.getElementById('stat-net');
+    document.querySelector('.stat--net .stat__label').textContent = netLabel();
+    net.textContent = formatAmount(totals.net);
+    net.className = `amount ${totals.net >= 0 ? 'amount--in' : 'amount--out'}`;
+  });
 
   const breakdown = spendingBreakdown(txns, {
     period: state.filter.period,
@@ -1115,11 +1181,11 @@ function renderSummary(txns, accounts, invalidTxns) {
   const slices = chartSlices(breakdown);
   const colours = slices.map((_, i) => sliceColour(i));
   document.getElementById('bars-empty').hidden = breakdown.length > 0;
-  renderPie(slices, colours, breakdown);
+  inScope('spending', () => renderPie(slices, colours, breakdown));
   // The swatch makes this list the ring's legend, so the chart needs no
   // labels of its own. Other is followed by the categories it stands for, in
   // a quieter row with no swatch, so folding the ring never hides a figure.
-  document.getElementById('bars').replaceChildren(
+  inScope('spending', () => document.getElementById('bars').replaceChildren(
     // No bar painted behind each row any more: the ring already draws the
     // proportions, and a second set of green blocks beside it doubled the
     // saturation the redesign was asked to take away.
@@ -1131,7 +1197,7 @@ function renderSummary(txns, accounts, invalidTxns) {
         return sub;
       })];
     }),
-  );
+  ));
 
   const balances = accountBalances(txns, accounts);
   const total = balances.reduce((sum, b) => sum + b.balance, 0);
@@ -1142,18 +1208,19 @@ function renderSummary(txns, accounts, invalidTxns) {
   // months could not be compared on.
   // Balance is a running total and belongs to no period, so it is the one
   // figure on the screen the toggle must NOT change.
-  const balanceStat = document.getElementById('stat-balance');
-  balanceStat.textContent = formatIDR(total);
-  balanceStat.className = `amount ${total < 0 ? 'amount--out' : ''}`;
+  inScope('balance', () => {
+    const balanceStat = document.getElementById('stat-balance');
+    balanceStat.textContent = formatIDR(total);
+    balanceStat.className = `amount ${total < 0 ? 'amount--out' : ''}`;
+  });
 
-
-  document.getElementById('balances').replaceChildren(
+  inScope('balances', () => document.getElementById('balances').replaceChildren(
     ...sortByPosition(accounts).map(({ name }) => {
       const found = balances.find((b) => b.account === name);
       return figureRow(name, formatIDR(found.balance), { tone: found.balance < 0 ? 'amount--out' : '' });
     }),
     figureRow('Total', formatIDR(total), { total: true, tone: total < 0 ? 'amount--out' : '' }),
-  );
+  ));
 
   renderTrend(netTrend(txns, lastSixMonths(state.month)));
 
@@ -1199,29 +1266,233 @@ function renderTrend(points) {
 }
 
 // One eye per title bar, all in step: hiding on one screen and finding the
-// figures bare on the next would make the control untrustworthy.
-const privacyToggles = document.querySelectorAll('.privacy-toggle');
+// figures bare on the next would make the control untrustworthy. That eye is
+// the master. Each Summary card and the List's rows have an eye of their own
+// that overrides it for that section until the master is next tapped.
+const masterToggles = document.querySelectorAll('h1 .privacy-toggle');
+const sectionToggles = document.querySelectorAll('.privacy-toggle--section');
+function paintEye(button, on, label) {
+  button.setAttribute('aria-pressed', String(on));
+  button.setAttribute('aria-label', label);
+  button.querySelector('use').setAttribute('href', on ? '#i-eye' : '#i-eye-closed');
+}
 function paintPrivacy() {
-  for (const button of privacyToggles) {
-    button.setAttribute('aria-pressed', String(state.reveal));
-    button.setAttribute('aria-label', state.reveal ? 'Hide amounts' : 'Show amounts');
-    button.querySelector('use').setAttribute('href', state.reveal ? '#i-eye' : '#i-eye-closed');
+  for (const button of masterToggles) {
+    paintEye(button, state.reveal, state.reveal ? 'Hide all amounts' : 'Show all amounts');
+  }
+  for (const button of sectionToggles) {
+    const on = revealed(button.dataset.scope);
+    paintEye(button, on, `${on ? 'Hide' : 'Show'} amounts in ${button.dataset.name}`);
   }
 }
-function setReveal(reveal) {
-  if (state.reveal === reveal) return;
+const anyRevealed = () => state.reveal || Object.values(state.sections).some(Boolean);
+
+async function setReveal(reveal) {
+  if (reveal && !(await unlock())) return;
   state.reveal = reveal;
+  for (const key of Object.keys(state.sections)) state.sections[key] = null;
   paintPrivacy();
   refresh();
 }
-for (const button of privacyToggles) {
-  button.addEventListener('click', () => setReveal(!state.reveal));
+async function toggleSection(scope) {
+  const showing = revealed(scope);
+  if (!showing && !(await unlock())) return;
+  state.sections[scope] = !showing;
+  paintPrivacy();
+  refresh();
 }
+for (const button of masterToggles) button.addEventListener('click', () => setReveal(!state.reveal));
+for (const button of sectionToggles) button.addEventListener('click', () => toggleSection(button.dataset.scope));
+
 // Leaving the app (home button, app switcher, screen off) hides them again,
-// so the app-switcher thumbnail and the next unlock both show nothing.
+// so the app-switcher thumbnail and the next unlock both show nothing. With
+// "ask again after leaving the app", leaving is also what re-arms the PIN.
 document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'hidden') setReveal(false);
+  if (document.visibilityState !== 'hidden') return;
+  if (readPin()?.ask === ASK_LEAVE) unlockedAt = 0;
+  if (anyRevealed()) setReveal(false);
 });
+
+// ---- PIN ----------------------------------------------------------------
+// Optional, device-only, and checked only on the way from hidden to shown
+// (pin.js has the reasoning). When it was last entered correctly, for the
+// "once" choices; in memory, so a relaunch asks again.
+let unlockedAt = 0;
+
+function readPin() {
+  let pin = null;
+  try { pin = JSON.parse(localStorage.getItem(PIN_KEY)); } catch { return null; }
+  if (!pin || !pin.hash || !pin.salt) return null;
+  // "Forgot the PIN?" removes it once its hour is up.
+  if (pin.resetAt && Date.now() >= pin.resetAt) {
+    writePin(null);
+    return null;
+  }
+  return pin;
+}
+function writePin(pin) {
+  try {
+    if (pin) localStorage.setItem(PIN_KEY, JSON.stringify(pin));
+    else localStorage.removeItem(PIN_KEY);
+  } catch { /* private mode: the PIN simply does not stick */ }
+}
+// The lockout is stored too, or reloading the page would reset the count.
+function readLock() {
+  try { return JSON.parse(localStorage.getItem(PIN_LOCK_KEY)) ?? { fails: 0, until: 0 }; } catch { return { fails: 0, until: 0 }; }
+}
+function writeLock(lock) {
+  try { localStorage.setItem(PIN_LOCK_KEY, JSON.stringify(lock)); } catch { /* as above */ }
+}
+
+// Asks for the current PIN. Resolves true once it is entered correctly (or
+// when there is none), false when dismissed. Wrong tries count toward the
+// lockout, and while locked even the right PIN is refused.
+async function askPin({ title, confirmLabel }) {
+  const pin = readPin();
+  if (!pin) return true;
+  const entered = await promptDialog({
+    title,
+    label: 'PIN',
+    confirmLabel,
+    pin: true,
+    validate: async (value) => {
+      const lock = readLock();
+      const now = Date.now();
+      if (now < lock.until) return `Too many wrong tries. Try again in ${waitText(lock.until - now)}.`;
+      if (!isPin(value)) return 'Enter the four digits.';
+      if (await hashPin(value, pin.salt) === pin.hash) {
+        writeLock({ fails: 0, until: 0 });
+        // The right PIN is proof enough to cancel a pending "Forgot".
+        if (pin.resetAt) {
+          delete pin.resetAt;
+          writePin(pin);
+        }
+        return null;
+      }
+      const fails = lock.fails + 1;
+      const wait = lockFor(fails);
+      writeLock({ fails, until: wait ? now + wait : 0 });
+      if (wait) return `Wrong PIN. Locked for ${waitText(wait)}.`;
+      const left = FREE_TRIES - fails;
+      return `Wrong PIN. ${left} ${left === 1 ? 'try' : 'tries'} left before a lockout.`;
+    },
+  });
+  renderPinSetting();
+  if (entered === null) return false;
+  unlockedAt = Date.now();
+  return true;
+}
+
+function unlock() {
+  // Redrawn first: reading the PIN is also what retires an expired "Forgot".
+  renderPinSetting();
+  if (!pinNeeded(readPin(), unlockedAt, Date.now())) return true;
+  return askPin({ title: 'Enter your PIN', confirmLabel: 'Show amounts' });
+}
+
+// Settings → PIN for amounts.
+const pinStatus = document.getElementById('pin-status');
+const pinSay = (text, tone = 'is-ok') => { pinStatus.className = tone; pinStatus.textContent = text; };
+const clock = (ms) => new Date(ms).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+function renderPinSetting() {
+  const pin = readPin();
+  document.getElementById('pin-off').hidden = Boolean(pin);
+  document.getElementById('pin-on').hidden = !pin;
+  // Not setTileState: this runs at load, above where that is defined.
+  document.getElementById('state-pin').textContent = !pin ? 'Off' : pin.resetAt ? `Removed at ${clock(pin.resetAt)}` : 'On';
+  if (!pin) return;
+  for (const radio of document.querySelectorAll('input[name="pin-ask"]')) radio.checked = radio.value === (pin.ask || ASK_EVERY);
+  document.getElementById('pin-minutes').value = pin.minutes || DEFAULT_MINUTES;
+  document.getElementById('pin-forgot').textContent = pin.resetAt ? 'Keep the PIN' : 'Forgot the PIN?';
+}
+
+// Typed twice, because a PIN mistyped once on the way in is a PIN nobody knows.
+async function choosePin() {
+  const first = await promptDialog({
+    title: 'Choose a PIN', body: 'Four digits. Showing amounts will ask for them.', label: 'New PIN',
+    pin: true, confirmLabel: 'Next', validate: (value) => (isPin(value) ? null : 'Use exactly four digits.'),
+  });
+  if (first === null) return null;
+  const again = await promptDialog({
+    title: 'Enter the PIN again', label: 'New PIN', pin: true, confirmLabel: 'Save PIN',
+    validate: (value) => (value === first ? null : 'That does not match the first one. Try again.'),
+  });
+  return again;
+}
+
+async function savePin(digits, keep = {}) {
+  const salt = newSalt();
+  writePin({ salt, hash: await hashPin(digits, salt), ask: keep.ask || ASK_EVERY, minutes: keep.minutes || DEFAULT_MINUTES });
+  writeLock({ fails: 0, until: 0 });
+}
+
+document.getElementById('pin-set').addEventListener('click', async () => {
+  const digits = await choosePin();
+  if (digits === null) { pinSay('No PIN was set.', ''); return; }
+  await savePin(digits);
+  // Just typed twice: that counts as entered for the "once" choices.
+  unlockedAt = Date.now();
+  renderPinSetting();
+  pinSay('PIN set. Showing amounts now asks for it.');
+});
+
+document.getElementById('pin-change').addEventListener('click', async () => {
+  if (!(await askPin({ title: 'Enter your current PIN', confirmLabel: 'Continue' }))) { pinSay('The PIN was not changed.', ''); return; }
+  const digits = await choosePin();
+  if (digits === null) { pinSay('The PIN was not changed.', ''); return; }
+  await savePin(digits, readPin() ?? {});
+  renderPinSetting();
+  pinSay('PIN changed.');
+});
+
+document.getElementById('pin-remove').addEventListener('click', async () => {
+  if (!(await askPin({ title: 'Enter your PIN to remove it', confirmLabel: 'Remove PIN' }))) { pinSay('The PIN was not removed.', ''); return; }
+  writePin(null);
+  writeLock({ fails: 0, until: 0 });
+  renderPinSetting();
+  pinSay('PIN removed. Showing amounts no longer asks for one.');
+});
+
+// Without the PIN the only way out is to wait, so the lockout still means
+// something: anyone can press this, but then has to hold the phone an hour.
+document.getElementById('pin-forgot').addEventListener('click', async () => {
+  const pin = readPin();
+  if (!pin) return;
+  if (pin.resetAt) {
+    delete pin.resetAt;
+    writePin(pin);
+    renderPinSetting();
+    pinSay('The PIN stays.');
+    return;
+  }
+  const ok = await confirmDialog({
+    title: 'Remove the PIN in an hour',
+    body: 'Without the PIN, the way to remove it is to wait. In one hour it is removed, and amounts can be shown without it.\n\nEntering the right PIN before then, or pressing Keep the PIN, cancels this.',
+    confirmLabel: 'Start the hour',
+  });
+  if (!ok) return;
+  pin.resetAt = Date.now() + RESET_DELAY;
+  writePin(pin);
+  renderPinSetting();
+  pinSay(`The PIN will be removed at ${clock(pin.resetAt)}.`);
+});
+
+// The frequency is saved the moment it is picked. It needs no PIN: choosing
+// how often to be asked reveals nothing by itself.
+document.querySelector('.pin-ask').addEventListener('change', (event) => {
+  const pin = readPin();
+  if (!pin) return;
+  if (event.target.name === 'pin-ask') pin.ask = event.target.value;
+  if (event.target.id === 'pin-minutes') {
+    const minutes = Math.round(Number(event.target.value));
+    pin.minutes = Number.isFinite(minutes) ? Math.min(240, Math.max(1, minutes)) : DEFAULT_MINUTES;
+    event.target.value = pin.minutes;
+  }
+  writePin(pin);
+  pinSay('Saved.');
+});
+renderPinSetting();
 paintPrivacy();
 
 async function refresh() {

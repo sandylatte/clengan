@@ -1850,6 +1850,43 @@ label + .hint { margin-top: 0; }
    is the state, readable at a glance before the shape is. */
 .privacy-toggle .tile__icon { stroke: currentColor; }
 
+/* A section's own eye, at the end of its heading. Smaller than the title
+   bar's master and pulled into the heading's line by negative margins, so a
+   heading with an eye is no taller than one without. */
+.privacy-toggle--section {
+  width: 36px;
+  height: 36px;
+  margin: -10px -8px -10px auto;
+  border-radius: var(--radius-sm);
+}
+.privacy-toggle--section .tile__icon { width: 18px; height: 18px; }
+.section-head,
+.stat--balance .stat__label { display: flex; align-items: center; gap: var(--space-2); }
+
+/* The List's filter pills share their line with the rows' eye. */
+.filters--list { align-items: center; }
+.filters--list .privacy-toggle--section { margin: -2px -8px -2px 0; }
+
+/* PIN for amounts: the frequency is one choice of three, as plain radios —
+   a short list read once, not a control used daily. */
+.pin-ask { margin: 0 0 var(--space-3); padding: 0; border: 0; }
+.pin-ask legend { margin-bottom: var(--space-1); padding: 0; font-size: 12px; color: var(--color-subtle); }
+.pin-ask label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 44px;
+  margin: 0;
+  font-size: 13px;
+  color: var(--color-foreground);
+  cursor: pointer;
+}
+.pin-ask input[type="radio"] { flex: none; width: 18px; min-height: 0; height: 18px; margin: 0; }
+.pin-ask input[type="number"] { width: 3.5em; min-height: 36px; margin: 0; padding: 0; text-align: center; }
+
+/* Four hidden digits: spaced out, centred, in the figure face. */
+.prompt__pin { font-family: var(--font-num); letter-spacing: 0.5em; text-align: center; }
+
 /* Masked figures. The dots stand in for a number; they should read as an
    absence, not as a value in the figure's own colour and weight. */
 .mask {

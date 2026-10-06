@@ -1,4 +1,4 @@
-import { monthBudget, resolveBucket, allocateFunds, UNCATEGORISED } from './budget.js';
+import { monthBudget, resolveBucket, allocateFunds, UNCATEGORISED, TRANSFER_CATEGORY } from './budget.js';
 
 // A transfer moves money between the user's own accounts. It is neither
 // income nor spending, and both of its rows must be excluded from every
@@ -33,6 +33,26 @@ export function searchTransactions(txns, query) {
       .filter(Boolean).join(' ').toLowerCase();
     return words.every((word) => hay.includes(word));
   });
+}
+
+// The category a row is listed under: a transfer under Transfer, an empty
+// category under Uncategorised — the same names its tag carries on the List.
+export const rowCategory = (txn) => (txn.transfer_id ? TRANSFER_CATEGORY : txn.category || UNCATEGORISED);
+
+// The List's two filters, applied on top of the period or the search. An
+// empty value means "any". Each half of a transfer is its own row with its
+// own account, so filtering by account keeps the half that touched it.
+export function filterRows(txns, { category = '', account = '' } = {}) {
+  return txns.filter((txn) => (!account || txn.account === account)
+    && (!category || rowCategory(txn) === category));
+}
+
+// What a list of rows nets to: money in minus money out, transfers left out
+// for the same reason they are everywhere else. Rows whose amount is not an
+// integer are skipped rather than allowed to turn the total into NaN; the
+// List flags those rows on their own.
+export function rowsNet(txns) {
+  return txns.reduce((sum, txn) => (isFlow(txn) && Number.isInteger(txn.amount) ? sum + txn.amount : sum), 0);
 }
 
 // The List groups rows under a date instead of repeating it on every row.

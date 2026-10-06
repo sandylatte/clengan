@@ -75,9 +75,13 @@ export async function alertDialog({ title, body, confirmLabel = 'Close' }) {
 // Asking for one line of text. Resolves to the trimmed string, or to null
 // when dismissed — never to an empty string, so a caller cannot mistake
 // "cancelled" for "cleared it".
+//
+// `pin` turns the field into four hidden digits with the number pad.
+// `validate` may be async (checking a PIN is): the dialog stays open, with
+// what was typed, until it resolves to no complaint.
 let promptNode = null;
 
-export function promptDialog({ title, body, label, value = '', confirmLabel, validate }) {
+export function promptDialog({ title, body, label, value = '', confirmLabel, validate, pin = false }) {
   if (!promptNode) {
     promptNode = document.createElement('dialog');
     promptNode.className = 'dialog';
@@ -101,17 +105,40 @@ export function promptDialog({ title, body, label, value = '', confirmLabel, val
   dialog.querySelector('.dialog__confirm').textContent = confirmLabel;
   const field = dialog.querySelector('#prompt-input');
   const error = dialog.querySelector('.prompt__error');
+  // One node serves every prompt, so the PIN attributes are set or cleared
+  // on each call rather than left behind for the next text prompt.
+  field.type = pin ? 'password' : 'text';
+  field.classList.toggle('prompt__pin', pin);
+  if (pin) {
+    field.inputMode = 'numeric';
+    field.maxLength = 4;
+    field.pattern = '[0-9]*';
+  } else {
+    field.removeAttribute('inputmode');
+    field.removeAttribute('maxlength');
+    field.removeAttribute('pattern');
+  }
   field.value = value;
   error.textContent = '';
 
   return new Promise((resolve) => {
     const finish = (result) => { dialog.close(); resolve(result); };
-    const submit = () => {
+    let checking = false;
+    const submit = async () => {
+      if (checking) return;
       const entered = field.value.trim();
       // Validation runs BEFORE closing, so a rejected value keeps what was
       // typed on screen instead of making the user start again.
-      const complaint = validate ? validate(entered) : null;
-      if (complaint) { error.textContent = complaint; field.focus(); return; }
+      checking = true;
+      const complaint = validate ? await validate(entered) : null;
+      checking = false;
+      if (complaint) {
+        error.textContent = complaint;
+        // A wrong PIN is cleared for the next try; a wrong name is kept to fix.
+        if (pin) field.value = '';
+        field.focus();
+        return;
+      }
       finish(entered);
     };
     dialog.querySelector('.dialog__confirm').onclick = submit;

@@ -1,9 +1,9 @@
 # Handoff
 
-Written 6 October 2026, at commit `0c6284e`. Everything described here is
-pushed to `master` (`clengan-v116`). The site was serving v114 when last
-confirmed by the owner; check `sw.js` on the live URL names v116 before
-telling anyone a v115/v116 change is out.
+Written 6 October 2026. Everything described here is committed on `master`
+(`clengan-v120`); pushing is the owner's call. The site was serving v114 when
+last confirmed by the owner; check `sw.js` on the live URL names the version
+before telling anyone a change is out.
 
 Read [README.md](README.md) for how to run it, [DESIGN.md](DESIGN.md) for the
 design system (it is machine-checked — see the traps below), and
@@ -36,6 +36,11 @@ as `Rp •••••` until the eye in a title bar is tapped, and hides again 
 launch and whenever the app leaves the screen. See the privacy section below
 before adding anything that displays money.
 
+**v117–v120 (this session) were one round of owner feedback**, in three
+commit groups: polish and motion, sample data plus a Summary redesign chosen
+from rendered options, and List filters, finer hide toggles and a PIN. See
+"v117–v120" below.
+
 **The UI was reworked in `bb4fa4f`.** Settings is a rail of pages, every
 dropdown is the app's own, the List spans months, and the Summary leads with
 its chart. The layout was chosen by the owner from three rendered options; it
@@ -60,6 +65,11 @@ section below before adding a setting or a dropdown.
 | `d000f37` | Handoff updated for v114 |
 | `6a53303` | **Privacy:** every amount masked by default behind an eye in each title bar (v115) |
 | `0c6284e` | Title bars show this month's net; Balance back on top of Summary; spending chart is a ring with percentages; filters as pills; muted mask dots; closed-eye icon (v116) |
+
+| `1682991` | Kind radio dots hidden; every tab slides the same way (Settings' extra fades removed); budget chips aligned; popovers and month changes animate (v117) |
+| `2acde75` | Sample data: six varied months, four accounts, 236 rows (v118) |
+| `8f5a3b6` | One-hue spending ring with an Other slice; answer-first budget card (v119) |
+| (this commit) | List category / account filters; List net follows what is listed; per-section eyes; optional PIN (v120) |
 
 `680afd6`–`ecff77b` came from a separate cloud session on 1 October. They were
 pulled in and audited, not written here.
@@ -105,7 +115,7 @@ named like `2026_SEPT`; any rearranging broke it. Now:
 **The regression check that matters:** the real workbook must import exactly as
 the old parser did. Run the old parser (`git show ad33900:planner.js`, fed
 display text) and the new one (fed raw values) over
-`~/Downloads/FINANCIAL PLANNER (DRAFT).xlsx` and compare rows, categories and
+`~/Documents/docs/keuangan/FINANCIAL PLANNER (DRAFT).xlsx` and compare rows, categories and
 problems. As of `5f6b236` they are identical: 14 rows across 2026-09 and
 2026-10, 4 categories, 4 refile notes. The workbook stays out of git.
 
@@ -140,9 +150,65 @@ figure: the month-plan dialog's live line and the account-clash dialog.
 Verified in headless Chromium: a full DOM walk (text, `aria-label`, `title`,
 input values) finds no digit groups while hidden, on all four views.
 
+## v117–v120
+
+**Motion.** All four views take the same `view-in` slide and nothing else on
+arrival. `compose()` in `app.js` restarts `is-entering`; it runs on arrival
+and on a month or period change (never on a save). A Settings page picked
+from the rail gets `is-opening` for one `page-in`, set only by a pick and
+removed on `animationend`/`animationcancel` — **never key an animation on
+`.setting:not([hidden])`**: that replays whenever the Settings view itself
+appears and stacks inside the view slide, which was the reported glitch.
+
+**Spending ring** (owner picked option 2 of 3): one hue from
+`--color-active`, top four categories plus one grey Other (`chartSlices` in
+`rollup.js`). Category colours no longer appear on the ring. Slices are
+dashes on one stroked circle (`pathLength="100"`), parted by gaps, no
+outlines, no on-ring percentages. The legend lost its background bars and
+`--color-bar` is gone from both tones.
+
+**Budget card** (owner picked option C of 3): `.dials`, one row per bucket,
+a dial for used and the left/over amount as the big figure. In the peach
+tone the normal dial (`--color-active`) and the over dial
+(`--color-destructive`) are close in colour; the red figure and "over" carry
+the difference there.
+
+**Sample data** is six months ending on the month in view (like before, the
+current month's rows run to the 28th, so some are future-dated), seeded so
+each month is deterministic, with a fourth account, Bank Jago.
+
+**List.** Category and account filters (`filterRows` in `rollup.js`) narrow
+the period or the search. The title-bar net is now `rowsNet` of exactly what
+is listed — this reverses the v116 decision below, at the owner's request.
+The Add title bar still shows the calendar month's net.
+
+**Finer hide toggles.** `state.reveal` is the master (every title bar's eye).
+`state.sections` holds one override per section (`list`, `balance`,
+`spending`, `budget`, `funds`, `balances`), `null` meaning "follow the
+master"; tapping the master resets them all. Rendering wraps each section in
+`inScope(scope, paint)` and `formatIDR` / `formatAmount` read the ambient
+scope, so **a new figure inside a section must be formatted inside that
+section's `inScope`**, or it follows the master instead of its section's eye.
+
+**PIN** (`pin.js`, tested). Optional, four digits, PBKDF2 hash plus salt in
+**localStorage** (`clengan-pin`), lockout state in `clengan-pin-lock` (five
+free tries, then 30 s doubling to 30 min). Deliberately not in the settings
+store, so sync would never upload it and backups never carry it. Frequency:
+every reveal (default), once until the app is left, or at most every X
+minutes (1–240). "Forgot the PIN?" removes it after an hour; the right PIN or
+"Keep the PIN" cancels. It is a privacy screen: exports still carry every
+figure.
+
+Verified in the agent pane at 375×812: a DOM walk with everything hidden
+finds no digit groups on any view; every PIN path (set, mismatch, wrong
+tries, lockout refusing the right PIN, expiry, each frequency, change,
+forgot, keep, remove) was driven through the real dialogs. **Screenshots
+work in the pane now, but not of an open `<dialog>`** (top layer), so dialog
+layout was checked by measurement only.
+
 ## The UI as of v116
 
-**Title bars.** Add and List show **this calendar month's net** (income minus
+**Title bars** (List changed in v120, see above). Add and List show **this calendar month's net** (income minus
 spending since the 1st, transfers excluded), labelled with the month: `Oct
 +Rp …`. `renderHeadNet()` writes both. It is always the *calendar* month, never
 the month a picker is on. This replaced the all-time balance on Add and the
@@ -300,7 +366,7 @@ refuse to commit until it is set there too.
 
 ```bash
 python3 serve.py 8124              # dev server, sends no-store
-node --test                        # 325 pure-logic tests
+node --test                        # 337 pure-logic tests
 python3 server/test_server.py      # 34 HTTP tests for the sync backend
 node server/test_integration.mjs   # 14 end-to-end, spawns the server itself
 ```
@@ -333,7 +399,9 @@ detected table would still import cleanly.
 **Every device needs one manual update to v113.** See the auto-reload trap.
 From v113 on, v114 arrives by itself.
 
-**Not yet seen on a real phone:** the v114 Settings rail, the dropdowns, the
+**Not yet seen on a real phone:** everything in v117–v120 (the slides on Add and
+List, the new ring and budget card, the filters, the section eyes, the PIN
+dialog and its number pad). Also the v114 Settings rail, the dropdowns, the
 Done key, and everything in v115–v116 (the eye, masked dots, the ring chart,
 the title-bar net). v115–v116 were checked only in headless Chromium at
 375×812. The keyboard's return-key label comes from the platform; Android

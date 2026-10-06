@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  monthOf, filterMonth, monthlyTotals, spendingBreakdown, chartSlices,
+  monthOf, filterMonth, monthlyTotals, spendingBreakdown, chartSlices, filterRows, rowCategory, rowsNet,
   accountBalances, netTrend,
 } from '../rollup.js';
 
@@ -92,4 +92,35 @@ test('chartSlices leaves a tail of one as itself, and short lists alone', () => 
   assert.equal(chartSlices(five).some((s) => s.other), false);
   assert.deepEqual(chartSlices([]), []);
   assert.deepEqual(chartSlices([{ category: 'a', total: 1 }]).map((s) => s.category), ['a']);
+});
+
+const listRows = [
+  { id: 'a', account: 'Cash', category: 'Groceries', amount: -5000, transfer_id: null },
+  { id: 'b', account: 'Bank', category: 'Groceries', amount: -7000, transfer_id: null },
+  { id: 'c', account: 'Bank', category: '', amount: -1000, transfer_id: null },
+  { id: 'd', account: 'Bank', category: 'Salary', amount: 90000, transfer_id: null },
+  { id: 'e', account: 'Bank', category: 'Transfer', amount: -20000, transfer_id: 'f' },
+  { id: 'f', account: 'Cash', category: 'Transfer', amount: 20000, transfer_id: 'e' },
+];
+const ids = (rows) => rows.map((r) => r.id).join('');
+
+test('filterRows narrows by category, by account, or both, and empty means any', () => {
+  assert.equal(ids(filterRows(listRows)), 'abcdef');
+  assert.equal(ids(filterRows(listRows, { category: 'Groceries' })), 'ab');
+  assert.equal(ids(filterRows(listRows, { account: 'Cash' })), 'af');
+  assert.equal(ids(filterRows(listRows, { category: 'Groceries', account: 'Bank' })), 'b');
+  assert.equal(ids(filterRows(listRows, { category: 'Groceries', account: 'Nowhere' })), '');
+});
+
+test('filterRows files transfers under Transfer and blanks under Uncategorised', () => {
+  assert.equal(rowCategory(listRows[2]), 'Uncategorised');
+  assert.equal(ids(filterRows(listRows, { category: 'Uncategorised' })), 'c');
+  assert.equal(ids(filterRows(listRows, { category: 'Transfer' })), 'ef');
+});
+
+test('rowsNet leaves transfers out and skips amounts that are not integers', () => {
+  assert.equal(rowsNet(listRows), 77000);
+  assert.equal(rowsNet(filterRows(listRows, { account: 'Cash' })), -5000);
+  assert.equal(rowsNet([...listRows, { amount: 'lots', transfer_id: null }]), 77000);
+  assert.equal(rowsNet([]), 0);
 });
