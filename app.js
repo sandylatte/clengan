@@ -65,13 +65,12 @@ function showView(name) {
   // contents settle in reading order behind the slide, so a tab reads as a
   // page being laid out instead of a finished block sliding sideways.
   //
-  // On arrival ONLY, never on repaint. Each view re-renders after every save,
-  // and re-running the stagger there would animate a screen nobody is looking
-  // at — and worse, would restart mid-scroll on the List every time a row
-  // changed. Cleared when it ends so the next arrival can start it again.
-  entering.classList.add('is-entering');
-  clearTimeout(enteringTimer);
-  enteringTimer = setTimeout(() => entering.classList.remove('is-entering'), 1000);
+  // On arrival and on a change of month or period, never on repaint. Each
+  // view re-renders after every save, and re-running the stagger there would
+  // animate a screen nobody is looking at — and worse, would restart
+  // mid-scroll on the List every time a row changed. Cleared when it ends so
+  // the next arrival can start it again.
+  compose(entering);
 
   for (const button of document.querySelectorAll('.tabbar button')) {
     if (button.dataset.view === name) {
@@ -87,6 +86,18 @@ function showView(name) {
   // scroll the incoming view past content the reader never asked to see.
   window.scrollTo({ top: scrollPositions.get(name) ?? 0, behavior: 'instant' });
 }
+
+// Restarted rather than just added, because a month change can land while
+// the class is still on from the last arrival, and re-adding a class that is
+// already there starts nothing.
+function compose(view) {
+  view.classList.remove('is-entering');
+  void view.offsetWidth;
+  view.classList.add('is-entering');
+  clearTimeout(enteringTimer);
+  enteringTimer = setTimeout(() => view.classList.remove('is-entering'), 1000);
+}
+const composeCurrent = () => compose(document.getElementById(`view-${currentView}`));
 
 // The marker is one element for the whole bar, moved with a transform. A
 // ::before on whichever button is current cannot travel between elements, so
@@ -422,6 +433,9 @@ for (const id of ['list-month', 'summary-month']) {
     if (!event.target.value) return;
     state.month = event.target.value;
     for (const picker of monthPickers) picker.set(state.month);
+    // A different month is a page turning, so it draws in the way the view
+    // does on arrival: slices land, bars grow, the List's rows settle.
+    composeCurrent();
     refresh();
   });
 }
@@ -440,8 +454,8 @@ document.getElementById('list-search').addEventListener('input', (event) => {
 // The List has its own: how far back it reaches is a question about the
 // list, and should not change what the Summary is adding up.
 for (const [group, apply] of [
-  ['summary-period', (period) => { state.filter.period = period; refresh(); }],
-  ['list-period', (period) => { state.listPeriod = period; renderList(state.txns); }],
+  ['summary-period', (period) => { state.filter.period = period; composeCurrent(); refresh(); }],
+  ['list-period', (period) => { state.listPeriod = period; composeCurrent(); renderList(state.txns); }],
 ]) {
   const buttons = document.querySelectorAll(`#${group} .seg__button`);
   for (const button of buttons) {
@@ -785,9 +799,11 @@ async function editMonthPlan(month) {
 document.getElementById('budget-plan').addEventListener('click', () => editMonthPlan(state.month));
 
 // The default split lives in Settings; the Summary only points there.
+// The page is picked before the view is shown, so it arrives with the view's
+// slide rather than sliding in a second time inside it.
 document.getElementById('budget-default').addEventListener('click', () => {
-  showView('settings');
   settingsNav?.select('split');
+  showView('settings');
 });
 
 const planPicker = attachMonthPicker({

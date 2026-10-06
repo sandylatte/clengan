@@ -402,17 +402,25 @@ Three durations, and every animation uses one of them.
 
 - **Views slide with the tab order.** Right along the bar arrives from the
   right, back arrives from the left. `VIEW_ORDER` in `app.js` is the source of
-  that direction, not the DOM.
+  that direction, not the DOM. All four views take the same slide and nothing
+  else on arrival (Add and List used to opt out; the owner asked for one
+  consistent arrival in v117).
 - **The tab marker is one element** moved by transform. A `::before` on the
   current button cannot travel between elements, so it used to teleport while
   the view slid.
 - **Charts animate on arrival, never on repaint.** The Summary re-renders
-  after every save; `is-entering` is added by `showView` and removed after a
-  second, so bars grow and slices land only when someone is looking.
-- **A Settings page arrives on one beat.** Picking a section from the rail
-  fades its page in at `--dur-fast`, opacity only. The rail item already
-  answered the tap; the page is content becoming legible, not a surface
-  travelling in.
+  after every save; `is-entering` is added by `compose()` and removed after a
+  second, so bars grow and slices land only when someone is looking. A change
+  of month or period counts as an arrival (the page turned); a save does not.
+  On the List the same class settles the rows in.
+- **A Settings page slides out of the rail.** Picking a section adds
+  `is-opening` for one `page-in` (12px, `--dur`), removed on `animationend`.
+  Never keyed on `[hidden]`: that restarts whenever the Settings view itself
+  appears and stacks a second animation inside the view's slide, which is
+  what made arriving at Settings look glitchy before v117.
+- **Popovers unfold from their field.** Calendar, month grid and dropdown
+  lists drop 6px into place at `--dur` (`pop-in`), upward when they open
+  upward.
 - **`body` clips `overflow-x`.** The slide translates a full-width section
   26px sideways, which makes the document 401px wide on a 375px phone for the
   length of the animation.
@@ -429,7 +437,7 @@ Three durations, and every animation uses one of them.
 
 **`amount-input`** — The Add form's first field and the tallest control in the app: `min-height: 64px`, 34px Fira Code. `inputmode="decimal"` so phones open the number pad.
 
-**`segmented-option`** — The expense / income / transfer radio group, rendered as three labels. The checked one uses `:has(input:checked)` to take the primary fill plus `--shadow-primary`.
+**`segmented-option`** — The expense / income / transfer radio group, rendered as three labels. The checked one uses `:has(input:checked)` to take the primary fill plus `--shadow-primary`. The radio inputs are invisible (still focusable); keyboard focus outlines the label.
 
 **`tab-item`** — Four fixed items, flex column, icon over label, `min-height: 56px`, `max-width: 155px` each. Icons are inline Lucide SVG at 20px, stroke 1.75, one consistent weight. The active item is marked by `aria-current="page"` and takes `{colors.active}`.
 
@@ -521,4 +529,3 @@ Tap targets: controls hold 44px, tab items 56px, the amount field 64px.
 - Tone B's primary button is 1.5:1 against its card, below the 3:1 non-text floor. Documented above as a deliberate, user-directed exception carried by a shadow and a 6.66:1 label.
 - Hover states are unverified on a real device. The agent browser pane runs hidden, so CSS transitions never complete and `getComputedStyle` returns the pre-transition value indefinitely. Tab and button states are worth a glance on a phone.
 - There is no loading state anywhere. Every read is IndexedDB on the local device and completes within a frame.
-- Motion is absent by choice. The app is opened to type a number and leave; an entrance animation would be in the way.

@@ -443,10 +443,12 @@ h2 {
 .view:not([hidden]) { animation: view-in var(--dur) var(--ease); }
 .view:not([hidden]).is-back { animation-name: view-in-back; }
 
-/* Except the two you land on to DO something. Add and List are typed into and
-   scanned, not read, and 300ms of slide is 300ms before the first keystroke.
-   Summary and Settings keep the arrival; they are screens you look at. */
-#view-add:not([hidden]), #view-list:not([hidden]) { animation: none; }
+/* All four views arrive the same way. Add and List used to opt out, on the
+   grounds that 300ms of slide is 300ms before the first keystroke; the owner
+   preferred one consistent arrival, and the curve is mostly settled in the
+   first 100ms anyway. Settings used to layer two more fades on top of this
+   one (its rail and its open page, at different speeds), which is what made
+   arriving there look glitchy. It now gets this slide and nothing else. */
 
 /* Vault: the screen is a tray of objects, not a continuous sheet. A section
    is a filled, rounded surface sitting on the canvas — which is the opposite
@@ -663,11 +665,31 @@ button:active, .chip:active, .seg__button:active { transform: scale(0.97); }
 .dialog[open] { animation: dialog-in var(--dur) var(--ease); }
 .dialog[open]::backdrop { animation: scrim-in var(--dur-fast) linear; }
 
-/* A settings page arriving from the rail: opacity only, at the press
-   duration. The rail item has already answered the tap; this is the page's
-   content becoming legible, not a surface travelling in. */
-@keyframes tile-open { from { opacity: 0; } }
-.setting:not([hidden]) { animation: tile-open var(--dur-fast) var(--ease); }
+/* A settings page picked from the rail slides out of it: the same arrival
+   as a view, over a shorter distance, because it travels across a column
+   rather than a screen. Keyed on a class settings.js sets only for a pick,
+   not on [hidden] — a rule on [hidden] restarts every time the Settings view
+   itself appears, and that second animation inside the view's slide was the
+   glitch on arriving there. */
+@keyframes page-in {
+  from { opacity: 0; transform: translateX(12px); }
+  to   { opacity: 1; transform: none; }
+}
+.setting.is-opening { animation: page-in var(--dur) var(--ease); }
+
+/* Popovers (the calendar, the month grid, every dropdown) unfold from the
+   field they belong to instead of appearing whole. A short drop toward where
+   they open — down normally, up when there is no room below. */
+@keyframes pop-in {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes pop-in-up {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: none; }
+}
+.calendar:not([hidden]), .pick__list:not([hidden]) { animation: pop-in var(--dur) var(--ease); }
+.calendar.is-up:not([hidden]), .pick__list.is-up:not([hidden]) { animation-name: pop-in-up; }
 
 /* "Saved." rises into place. The status line is the only confirmation the
    form gives, so it is worth the 300ms of attention. */
@@ -699,10 +721,11 @@ button:active, .chip:active, .seg__button:active { transform: scale(0.97); }
 .view.is-entering #pie > :nth-child(5) { animation-delay: 240ms; }
 .view.is-entering #pie > :nth-child(n+6) { animation-delay: 300ms; }
 
-/* Settings arrives as structure: the rail settles in place on arrival.
-   Nothing translates — Add and List opt out of arriving at all. */
+/* The List's rows settle in behind the view's slide, and again whenever the
+   month or the Month / Year / All switch changes what they show — the same
+   page turning, rather than rows swapped under the reader's eye. */
 @keyframes settle-in { from { opacity: 0; } }
-.view.is-entering .settings__rail { animation: settle-in var(--dur) var(--ease) backwards; }
+.view.is-entering #list-rows { animation: settle-in var(--dur) var(--ease) backwards; }
 
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; animation: none !important; }
@@ -720,6 +743,7 @@ button:active, .chip:active, .seg__button:active { transform: scale(0.97); }
 }
 
 #add-kind label {
+  position: relative;
   flex: 1;
   display: flex;
   align-items: center;
@@ -741,15 +765,22 @@ button:active, .chip:active, .seg__button:active { transform: scale(0.97); }
   font-weight: 600;
 }
 
-/* The bullet was painting in the browser's own blue, which belongs to
-   neither tone and was the only colour on screen from outside the palette.
-   accent-color hands the control's fill to the theme, and it follows a tone
-   switch because the token does. */
+/* The filled option already says which kind is chosen, so the radio dot
+   beside it said it twice. The input stays in the page, invisible, so the
+   group still works by keyboard and screen reader; its focus ring moves to
+   the label it sits in. */
 #add-kind input {
-  width: auto;
+  position: absolute;
+  width: 1px;
+  height: 1px;
   min-height: 0;
   margin: 0;
-  accent-color: var(--color-active);
+  opacity: 0;
+  pointer-events: none;
+}
+#add-kind label:has(input:focus-visible) {
+  outline: 2px solid var(--color-active);
+  outline-offset: 2px;
 }
 
 /* Every other native control that paints itself: checkboxes, the month
@@ -1230,10 +1261,13 @@ button:active, .chip:active, .seg__button:active { transform: scale(0.97); }
   border-radius: var(--radius-sm);
 }
 
+/* The space above the two chips belongs to the note, not to one chip: a
+   margin on the first chip alone pushed it 9px below its neighbour, and the
+   flex row stretched the second to match, so the pair sat at two heights. */
 #budget-note {
   font-size: 12px;
   line-height: 1.5;
-  margin: var(--space-3) 0 0;
+  margin: var(--space-3) 0 var(--space-2);
   color: var(--color-subtle);
 }
 .budget-note__warning { color: var(--color-destructive); }
@@ -1765,7 +1799,6 @@ label + .hint { margin-top: 0; }
 
 /* Per-month budget dialog. The mode switch reuses the period control, and the
    two field sets swap in place so the dialog does not change height much. */
-#budget-plan { margin-top: var(--space-2); }
 .dialog .seg { margin-bottom: var(--space-3); }
 .plan__fields[hidden] { display: none; }
 .plan__fields input { margin-bottom: var(--space-2); }

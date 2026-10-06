@@ -67,6 +67,22 @@ export function initSettings() {
 
   function select(key) {
     const entry = items.get(key) ?? items.values().next().value;
+    // Only a change of page made on screen slides in; a page chosen while
+    // Settings is hidden arrives with the view's own slide instead. Removed
+    // when it ends (or is cut short by leaving the tab), so the class is never
+    // still there to replay the slide when the Settings view reappears.
+    if (current && current !== entry && !rail.closest('.view').hidden) {
+      const { section } = entry;
+      const done = (event) => {
+        if (event.target !== section) return;
+        section.classList.remove('is-opening');
+        section.removeEventListener('animationend', done);
+        section.removeEventListener('animationcancel', done);
+      };
+      section.addEventListener('animationend', done);
+      section.addEventListener('animationcancel', done);
+      section.classList.add('is-opening');
+    }
     current = entry;
     for (const { section, item } of items.values()) {
       const on = section === entry.section;
