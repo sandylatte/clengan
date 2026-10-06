@@ -510,14 +510,21 @@ upward.
 **`date-field`** — The app's own calendar popover (`calendar.js`), because
 the native date popup is browser chrome. The month picker (`picker.js`) is the
 same popover holding twelve months; it replaces every `<input type="month">`.
+In the heading, the month name and the year are `.calendar__jump` buttons
+(faint `{colors.input}` fill, so they read as tappable without hover): the
+month opens the twelve months of that year, the year opens a page of twelve
+years paged by twelve, and a choice returns to the days. The month picker's
+year does the same. The popover always opens on its first view.
 
 **`settings-rail`** — Settings is one page at a time, chosen from a rail of
 every section on the right (chosen 2026-10-06 over a slide-in index and a wide
 labelled list). On a phone the rail is 64px: each section's icon over a
 one-word name at 11px, so the page keeps most of the width. At 640px and up it
 widens to 172px and shows full names in a row. The open section is
-`aria-current="page"`: `{colors.muted}` fill, `{colors.active}` text and icon,
-and a 2px inset bar on the edge facing the page. The search above reads every
+`aria-current="page"`, marked quietly (v124, asked for as subtler): no fill
+and no box; its name goes `{colors.foreground}` at weight 600, its icon
+`{colors.active}`, and a 2px × 20px `{colors.active}` mark sits on the rail's
+own hairline beside it, like the tab bar's marker on its top edge. The search above reads every
 word inside every section (labels, hints, list rows, dropdown options, the
 rail's own short names). Sections that do not match are dimmed to 35%, never
 removed, so the rail keeps its shape under the thumb; matches inside the open

@@ -331,12 +331,24 @@ h2 {
 .rail__item .tile__icon { stroke: currentColor; }
 .rail__item:hover { background: var(--color-muted); color: var(--color-foreground); }
 .rail__item:focus-visible { outline: 2px solid var(--color-active); outline-offset: -2px; }
-/* The open section: filled, in the readable accent, with a bar on the edge
-   that faces the page it opened. */
-.rail__item[aria-current="page"] {
-  background: var(--color-muted);
-  color: var(--color-active);
-  box-shadow: inset 2px 0 0 var(--color-active);
+/* The open section: no fill, no box. Its icon and name step up from the
+   quiet tone to the text colour, and a short accent mark sits on the rail's
+   own hairline beside it — the same idea as the tab bar's marker riding its
+   top edge. The filled, outlined item it replaced read louder than the page
+   it pointed at. */
+.rail__item { position: relative; }
+.rail__item[aria-current="page"] { color: var(--color-foreground); font-weight: 600; }
+.rail__item[aria-current="page"] .tile__icon { stroke: var(--color-active); }
+.rail__item[aria-current="page"]::before {
+  content: '';
+  position: absolute;
+  left: calc(var(--space-1) * -1);
+  top: 50%;
+  width: 2px;
+  height: 20px;
+  margin-top: -10px;
+  border-radius: var(--radius-xs);
+  background: var(--color-active);
 }
 /* Not removed while searching, so the rail never changes shape under the
    thumb — only dimmed. */
@@ -1651,7 +1663,21 @@ label + .hint { margin-top: 0; }
   justify-content: space-between;
   margin-bottom: var(--space-2);
 }
-.calendar__label { font-size: 13px; font-weight: 500; }
+.calendar__label { display: flex; align-items: center; gap: 2px; font-size: 13px; font-weight: 500; }
+/* The month name and the year in the heading are buttons that open their
+   own grid. A faint fill says so on a touch screen, where there is no hover
+   to discover it by. */
+.calendar__jump {
+  min-height: 32px;
+  padding: 0 var(--space-2);
+  background: color-mix(in srgb, var(--color-input) 60%, transparent);
+  border: none;
+  border-radius: var(--radius-sm);
+  color: var(--color-foreground);
+  font: inherit;
+  cursor: pointer;
+}
+.calendar__jump:hover { background: var(--color-input); }
 .calendar__nav {
   width: 32px;
   height: 32px;

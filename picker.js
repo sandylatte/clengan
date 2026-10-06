@@ -8,7 +8,9 @@
 // options, and form validation keep working untouched; this only draws a
 // button over it and keeps the two in step.
 
-import { MONTHS } from './calendar.js';
+import {
+  MONTHS, yearPage, calendarHead, jumpButton, choiceGrid, focusChoice,
+} from './calendar.js';
 
 let openPopup = null;
 
@@ -188,6 +190,9 @@ export const formatMonth = (value) => {
 // 'YYYY-MM' and fires `change`, so the code reading it is unchanged.
 export function attachMonthPicker({ button, input, popup }) {
   let year = Number(String(input.value).slice(0, 4)) || new Date().getFullYear();
+  // The twelve months of a year, or — from the year in the heading — a page
+  // of years to jump to. Always opens on the months.
+  let mode = 'months';
 
   const set = (value) => {
     input.value = value;
@@ -195,54 +200,58 @@ export function attachMonthPicker({ button, input, popup }) {
   };
 
   function render() {
-    const head = document.createElement('div');
-    head.className = 'calendar__head';
-    const previous = document.createElement('button');
-    previous.type = 'button';
-    previous.className = 'calendar__nav';
-    previous.textContent = '‹';
-    previous.setAttribute('aria-label', 'Previous year');
-    previous.addEventListener('click', () => { year -= 1; render(); });
-    const label = document.createElement('span');
-    label.className = 'calendar__label';
-    label.textContent = String(year);
-    const next = document.createElement('button');
-    next.type = 'button';
-    next.className = 'calendar__nav';
-    next.textContent = '›';
-    next.setAttribute('aria-label', 'Next year');
-    next.addEventListener('click', () => { year += 1; render(); });
-    head.append(previous, label, next);
-
-    const grid = document.createElement('div');
-    grid.className = 'monthgrid';
     const now = new Date();
+    const chosenYear = Number(String(input.value).slice(0, 4));
+    if (mode === 'years') {
+      const years = yearPage(year);
+      const range = document.createElement('span');
+      range.textContent = `${years[0]}–${years.at(-1)}`;
+      popup.replaceChildren(
+        calendarHead([range], {
+          onPrevious: () => { year -= 12; render(); },
+          onNext: () => { year += 12; render(); },
+          previousLabel: 'Earlier years',
+          nextLabel: 'Later years',
+        }),
+        choiceGrid(years.map((y) => ({
+          text: String(y),
+          current: y === now.getFullYear(),
+          selected: y === chosenYear,
+          onPick: () => { year = y; mode = 'months'; render(); focusChoice(popup); },
+        }))),
+      );
+      return;
+    }
+
     const current = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-    SHORT.forEach((name, i) => {
-      const value = `${year}-${String(i + 1).padStart(2, '0')}`;
-      const cell = document.createElement('button');
-      cell.type = 'button';
-      cell.className = 'calendar__day';
-      cell.textContent = name;
-      if (value === current) cell.classList.add('is-today');
-      if (value === input.value) {
-        cell.classList.add('is-selected');
-        cell.setAttribute('aria-current', 'date');
-      }
-      cell.addEventListener('click', () => {
-        set(value);
-        popover.close();
-        button.focus();
-        input.dispatchEvent(new Event('change', { bubbles: true }));
-      });
-      grid.append(cell);
-    });
-    popup.replaceChildren(head, grid);
+    popup.replaceChildren(
+      calendarHead([jumpButton(String(year), 'Choose a year', () => { mode = 'years'; render(); focusChoice(popup); })], {
+        onPrevious: () => { year -= 1; render(); },
+        onNext: () => { year += 1; render(); },
+        previousLabel: 'Previous year',
+        nextLabel: 'Next year',
+      }),
+      choiceGrid(SHORT.map((name, i) => {
+        const value = `${year}-${String(i + 1).padStart(2, '0')}`;
+        return {
+          text: name,
+          current: value === current,
+          selected: value === input.value,
+          onPick: () => {
+            set(value);
+            popover.close();
+            button.focus();
+            input.dispatchEvent(new Event('change', { bubbles: true }));
+          },
+        };
+      })),
+    );
   }
 
   const popover = bindPopover(button, popup, {
     onOpen: () => {
       year = Number(String(input.value).slice(0, 4)) || year;
+      mode = 'months';
       render();
     },
   });

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { toISO, fromISO, formatDate, monthGrid } from '../calendar.js';
+import { toISO, fromISO, formatDate, monthGrid, yearPage } from '../calendar.js';
 
 test('toISO zero-pads month and day', () => {
   assert.equal(toISO(new Date(2026, 8, 1)), '2026-09-01');
@@ -97,4 +97,12 @@ test('a month starting on a Monday still shows a full leading week', () => {
   const grid = monthGrid(2026, 5);
   assert.equal(toISO(grid[0]), '2026-06-01');
   assert.equal(grid.length, 42);
+});
+
+test('yearPage is twelve consecutive years with the given one inside, paging cleanly', () => {
+  const page = yearPage(2026);
+  assert.equal(page.length, 12);
+  assert.ok(page.includes(2026));
+  for (let i = 1; i < page.length; i += 1) assert.equal(page[i], page[i - 1] + 1);
+  assert.equal(yearPage(2026 + 12)[0], page.at(-1) + 1, 'the next page starts where this one ends');
 });

@@ -1,9 +1,8 @@
 # Handoff
 
-Written 7 October 2026. v123 (the Savings by fund redesign) is committed on
-`master` but not yet pushed; v122 is live, confirmed in the live `sw.js`
-within a minute of its push. Phones still need to pick it up:
-check the App version tile before telling anyone a change is on their device.
+Written 7 October 2026. Everything described here is pushed to `master`
+(`clengan-v124`); check the live `sw.js` names it, and the App version tile
+on a phone, before telling anyone a change is on their device.
 
 Read [README.md](README.md) for how to run it, [DESIGN.md](DESIGN.md) for the
 design system (it is machine-checked — see the traps below), and
@@ -76,7 +75,8 @@ section below before adding a setting or a dropdown.
 | `b6fcac2` | `button.secondary` and `button.ghost`; primary buttons get Fira Sans and rounded corners back (v121) |
 | `f1192e3` `15907de` | DESIGN.md radius scale matches the stylesheet, plus `pill`; the List's tag rail uses `--radius-xs` (v122) |
 | `e752ed6` `e4988f8` | DESIGN.md field heights (40 / 60px), tab items (48px) and tab bar clearance match the stylesheet (docs only) |
-| (this commit) | Savings by fund redesigned: one bar for the split, then a this-period / this-year table (owner picked option B of 3) (v123) |
+| `4faaf71` | Savings by fund redesigned: one bar for the split, then a this-period / this-year table (owner picked option B of 3) (v123) |
+| (this commit) | Settings rail marks the open page quietly (no box); calendar month and year jump straight to a month or year grid (v124) |
 
 `680afd6`–`ecff77b` came from a separate cloud session on 1 October. They were
 pulled in and audited, not written here.
