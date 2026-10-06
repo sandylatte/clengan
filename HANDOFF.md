@@ -1,7 +1,9 @@
 # Handoff
 
-Written 6 October 2026, at commit `bb4fa4f`. Everything described here is
-pushed and live at https://sandylatte.github.io/clengan/ (`clengan-v114`).
+Written 6 October 2026, at commit `0c6284e`. Everything described here is
+pushed to `master` (`clengan-v116`). The site was serving v114 when last
+confirmed by the owner; check `sw.js` on the live URL names v116 before
+telling anyone a v115/v116 change is out.
 
 Read [README.md](README.md) for how to run it, [DESIGN.md](DESIGN.md) for the
 design system (it is machine-checked — see the traps below), and
@@ -29,6 +31,11 @@ placeholders. Nothing else moved.
 breaking, because the workbook it reads is edited by hand. See the planner
 section below before touching `planner.js`.
 
+**Amounts are private by default (`6a53303`, `0c6284e`).** Every figure shows
+as `Rp •••••` until the eye in a title bar is tapped, and hides again on every
+launch and whenever the app leaves the screen. See the privacy section below
+before adding anything that displays money.
+
 **The UI was reworked in `bb4fa4f`.** Settings is a rail of pages, every
 dropdown is the app's own, the List spans months, and the Summary leads with
 its chart. The layout was chosen by the owner from three rendered options; it
@@ -50,6 +57,9 @@ section below before adding a setting or a dropdown.
 | `d480882` | Auto-reload onto a new version as soon as it takes over |
 | `26c8005` | Handoff updated |
 | `bb4fa4f` | Settings rail with search; own dropdowns and month picker; List Month / Year / All; Done key; chart first on Summary; month plans listed in Settings |
+| `d000f37` | Handoff updated for v114 |
+| `6a53303` | **Privacy:** every amount masked by default behind an eye in each title bar (v115) |
+| `0c6284e` | Title bars show this month's net; Balance back on top of Summary; spending chart is a ring with percentages; filters as pills; muted mask dots; closed-eye icon (v116) |
 
 `680afd6`–`ecff77b` came from a separate cloud session on 1 October. They were
 pulled in and audited, not written here.
@@ -102,6 +112,59 @@ problems. As of `5f6b236` they are identical: 14 rows across 2026-09 and
 The partner's **revised** workbook — the one that prompted all this — was never
 received. The parser has only been proven on the old file and on synthetic
 layouts in `test/planner.test.js`.
+
+## Privacy masking (v115–v116)
+
+**Every displayed amount goes through `formatIDR` / `formatAmount` in
+`app.js`, which are wrappers.** The real formatters are imported as
+`plainIDR` / `plainAmount` from `money.js`. The wrappers format the real value
+first (so a corrupt amount still throws exactly as before), then return
+`Rp •••••` unless `state.reveal` is true. A row keeps its `+`/`-`; a balance
+does not. **Anything new that displays money must use the wrappers**, or it
+leaks while hidden. `plainIDR` is used only where the user is typing the
+figure: the month-plan dialog's live line and the account-clash dialog.
+
+- `state.reveal` starts `false`, is **never persisted**, and is reset to false
+  on `visibilitychange` → hidden. Toggling calls `refresh()` to re-render.
+- One `.privacy-toggle` button per `<h1>` (four), all painted together by
+  `paintPrivacy()`. Icons are `#i-eye` (showing) and `#i-eye-closed` (hidden).
+- **Muted dots** come from `dimMasks()` plus a `MutationObserver` on `body`:
+  any text node containing the mask is split and the dots wrapped in
+  `span.mask`. Inside an SVG it must be a `tspan` — an HTML span is not drawn
+  there, which made the donut's masked total read as a bare "Rp".
+- **Not masked, on purpose:** inputs (the edit dialog shows the real amount),
+  pie slice sizes and percentages, budget bar lengths, category names. It hides
+  figures from someone glancing at the screen; it is not an app lock.
+- Exports and backups are unaffected.
+
+Verified in headless Chromium: a full DOM walk (text, `aria-label`, `title`,
+input values) finds no digit groups while hidden, on all four views.
+
+## The UI as of v116
+
+**Title bars.** Add and List show **this calendar month's net** (income minus
+spending since the 1st, transfers excluded), labelled with the month: `Oct
++Rp …`. `renderHeadNet()` writes both. It is always the *calendar* month, never
+the month a picker is on. This replaced the all-time balance on Add and the
+listed-rows total on List — **the List no longer shows a total for a search or
+a year**; the owner was told and has not asked for it back.
+
+**Summary order:** Balance, Net, Income / Spent first, then Spending by
+category, Budget, Funds, trend, Balances. The Net label is `netLabel()`: "Net
+this month", "Net in Sep 2026", "Net this year", "Net in 2025".
+
+**Spending chart** is a ring (`R = 46`, `HOLE = 28`): the hole shows "Spent in
+Oct" and the total in compact Indonesian form (`compactIDR`, "Rp 6,9 jt")
+because the exact figure overflows the hole. Slices of 7% or more carry their
+percent with a halo (`paint-order: stroke`); the legend rows carry a share
+column (`sharePercent`, "<1%" for slivers). SVG `font-size` is set as an
+attribute in viewBox units, deliberately not in `styles.css`, so it stays out
+of the type ramp check. The filters are `.filters--compact` pills with
+visually-hidden labels; the old "Rp X across 2026-10." scope line is gone.
+
+**`state.month` starts from local time** (`toISO(new Date())`). It used
+`toISOString()`, which is UTC and opened the previous month in Jakarta until
+07:00 on the 1st.
 
 ## The UI as of v114
 
@@ -220,6 +283,12 @@ Fetch the latest version), then reload it.
 `registration.update()` from the page, and check the page navigated and the
 App version tile names the throwaway. Put `CACHE` back before committing.
 
+**Sync uploads the whole `settings` store.** That is right for `split` and
+`month-budgets`, wrong for the device-local keys added since: `last-backup`
+and `backup-snooze` (backup reminder). Exporting on one device would silence
+the reminder on another. Harmless while sync is hidden; exclude them in
+`sync.js` before sync ever ships.
+
 **Never point `test.html` at the real database.** It uses `moneytrack-test`.
 `migration-test.html` uses its own throwaway name and deletes it afterwards.
 
@@ -243,7 +312,8 @@ http://localhost:8124/test.html            # 30, the IndexedDB layer
 http://localhost:8124/migration-test.html  # 17, the v7 → v8 migration
 ```
 
-Run this cycle: `node --test` (325/325) and `test.html` (30/30). The two server
+Run this cycle: `node --test` (325/325) and `test.html` (30/30); v115–v116
+added no tests (display-only) and re-ran `node --test` at 325/325. The two server
 suites and `migration-test.html` were not touched and not re-run. The v114 UI
 was checked in the agent pane at desktop width and at 375×812 with a touch
 emulation: every Settings page fits its column with no horizontal scroll, the
@@ -263,8 +333,10 @@ detected table would still import cleanly.
 **Every device needs one manual update to v113.** See the auto-reload trap.
 From v113 on, v114 arrives by itself.
 
-**Not yet seen on a real phone:** the v114 Settings rail, the dropdowns, and the
-Done key. The keyboard's return-key label comes from the platform; Android
+**Not yet seen on a real phone:** the v114 Settings rail, the dropdowns, the
+Done key, and everything in v115–v116 (the eye, masked dots, the ring chart,
+the title-bar net). v115–v116 were checked only in headless Chromium at
+375×812. The keyboard's return-key label comes from the platform; Android
 Chrome and iOS Safari both honour `enterkeyhint`, but only a real device shows
 what it actually says. Animations were not watched (the pane cannot render
 them).
