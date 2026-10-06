@@ -1,9 +1,9 @@
 # Handoff
 
-Written 6 October 2026. Everything described here is committed on `master`
-(`clengan-v120`); pushing is the owner's call. The site was serving v114 when
-last confirmed by the owner; check `sw.js` on the live URL names the version
-before telling anyone a change is out.
+Written 6 October 2026, at commit `e4988f8`. Everything described here is
+pushed to `master` (`clengan-v122`), and the live `sw.js` was confirmed
+serving v122 within a minute of the push. Phones still need to pick it up:
+check the App version tile before telling anyone a change is on their device.
 
 Read [README.md](README.md) for how to run it, [DESIGN.md](DESIGN.md) for the
 design system (it is machine-checked — see the traps below), and
@@ -39,7 +39,10 @@ before adding anything that displays money.
 **v117–v120 (this session) were one round of owner feedback**, in three
 commit groups: polish and motion, sample data plus a Summary redesign chosen
 from rendered options, and List filters, finer hide toggles and a PIN. See
-"v117–v120" below.
+"v117–v120" below. **v121–v122** followed: every button now has a style
+(primary buttons had silently lost their font and corners), and DESIGN.md's
+radius scale and component sizes were brought back in line with
+`styles.css`. See "v121–v122".
 
 **The UI was reworked in `bb4fa4f`.** Settings is a rail of pages, every
 dropdown is the app's own, the List spans months, and the Summary leads with
@@ -69,7 +72,10 @@ section below before adding a setting or a dropdown.
 | `1682991` | Kind radio dots hidden; every tab slides the same way (Settings' extra fades removed); budget chips aligned; popovers and month changes animate (v117) |
 | `2acde75` | Sample data: six varied months, four accounts, 236 rows (v118) |
 | `8f5a3b6` | One-hue spending ring with an Other slice; answer-first budget card (v119) |
-| (this commit) | List category / account filters; List net follows what is listed; per-section eyes; optional PIN (v120) |
+| `992eff2` | List category / account filters; List net follows what is listed; per-section eyes; optional PIN (v120) |
+| `b6fcac2` | `button.secondary` and `button.ghost`; primary buttons get Fira Sans and rounded corners back (v121) |
+| `f1192e3` `15907de` | DESIGN.md radius scale matches the stylesheet, plus `pill`; the List's tag rail uses `--radius-xs` (v122) |
+| `e752ed6` `e4988f8` | DESIGN.md field heights (40 / 60px), tab items (48px) and tab bar clearance match the stylesheet (docs only) |
 
 `680afd6`–`ecff77b` came from a separate cloud session on 1 October. They were
 pulled in and audited, not written here.
@@ -205,6 +211,37 @@ tries, lockout refusing the right PIN, expiry, each frequency, change,
 forgot, keep, remove) was driven through the real dialogs. **Screenshots
 work in the pane now, but not of an open `<dialog>`** (top layer), so dialog
 layout was checked by measurement only.
+
+## v121–v122
+
+**Buttons.** A `<button>` with no class renders as the browser's grey box,
+and five did: Remove sample data, Copy diagnostics, Sync's Create account
+and Sign out, and the in-row `.ghost` actions (Edit on a month plan, Delete
+on a recurring rule), which had a class but no rule. Now there are two
+styles: `button.secondary`, the second action on a page (primary's size and
+shape, the dialogs' Cancel look), and `button.ghost`, a word inside a list
+row. **Every button takes one of primary, secondary, ghost, chip or a
+component class.** In the pane, a filter on `getComputedStyle(b).borderStyle
+=== 'outset'` over every button finds any that slipped through; it found
+none after the fix.
+
+**Primary buttons had no font or radius since `ee3094e` (6 Sep).** That
+commit split `button.primary` out of `input, select, button.primary` to keep
+44px when fields went to 40px, and dropped `font: inherit` and the radius
+with it, so every primary button ("Save", "Load sample data") rendered in
+Arial 13.3px with square corners for a month. v121 restores DESIGN.md's
+spec: Fira Sans 13px, weight 600, `--radius-md`. If a primary button ever
+looks wrong again, check that rule first — buttons inherit neither font nor
+radius.
+
+**DESIGN.md now matches the stylesheet** where it had drifted: the rounded
+scale is xs 3 / sm 8 / md 12 / lg 16 / xl 20 / pill 999px (it said
+2 / 6 / 8 / 12); text and amount fields are `rounded.sm`, 40px and 60px (it
+said md, 44 and 64); the amount field is Fira Sans 300 with
+`inputmode="numeric"`; tab items are 48px (it said 56); `body` clears the
+tab bar with `calc(58px + env(safe-area-inset-bottom))` (it said 88px).
+The impeccable design hook checks literal radii against that scale, which
+is why `pill` was added rather than waived.
 
 ## The UI as of v116
 
@@ -378,8 +415,10 @@ http://localhost:8124/test.html            # 30, the IndexedDB layer
 http://localhost:8124/migration-test.html  # 17, the v7 → v8 migration
 ```
 
-Run this cycle: `node --test` (325/325) and `test.html` (30/30); v115–v116
-added no tests (display-only) and re-ran `node --test` at 325/325. The two server
+Run this cycle (v117–v122): `node --test` at 337/337 after every commit
+(12 tests added: `chartSlices`, `filterRows`, `rowsNet`, `pin.js`, sample
+coverage), and `test.html` at 30/30 before the push. Before that,
+v115–v116 added no tests (display-only) and re-ran `node --test` at 325/325. The two server
 suites and `migration-test.html` were not touched and not re-run. The v114 UI
 was checked in the agent pane at desktop width and at 375×812 with a touch
 emulation: every Settings page fits its column with no horizontal scroll, the
@@ -399,15 +438,16 @@ detected table would still import cleanly.
 **Every device needs one manual update to v113.** See the auto-reload trap.
 From v113 on, v114 arrives by itself.
 
-**Not yet seen on a real phone:** everything in v117–v120 (the slides on Add and
+**Not yet seen on a real phone:** everything in v117–v122 (the slides on Add and
 List, the new ring and budget card, the filters, the section eyes, the PIN
-dialog and its number pad). Also the v114 Settings rail, the dropdowns, the
+dialog and its number pad, and the restyled buttons — the Save button on Add
+now looks different from what the owner is used to). Also the v114 Settings rail, the dropdowns, the
 Done key, and everything in v115–v116 (the eye, masked dots, the ring chart,
 the title-bar net). v115–v116 were checked only in headless Chromium at
 375×812. The keyboard's return-key label comes from the platform; Android
 Chrome and iOS Safari both honour `enterkeyhint`, but only a real device shows
-what it actually says. Animations were not watched (the pane cannot render
-them).
+what it actually says. Animations were only partly watched: the pane renders
+screenshots now, but a frame caught mid-slide is all it shows of motion.
 
 **Per-category monthly limits** ("Food: Rp 2.000.000 in October") were offered
 and not asked for yet. The per-month budget from `fbb8c5e` covers fixed /
