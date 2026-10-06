@@ -212,12 +212,12 @@ components:
     backgroundColor: "{colors.background}"
     textColor: "{colors.subtle}"
     typography: "{typography.tab-label}"
-    minHeight: 56px
+    minHeight: 48px
   tab-item-active:
     backgroundColor: "{colors.background}"
     textColor: "{colors.active}"
     typography: "{typography.tab-label}"
-    minHeight: 56px
+    minHeight: 48px
   ledger-row:
     backgroundColor: "{colors.background}"
     textColor: "{colors.foreground}"
@@ -363,7 +363,7 @@ Card interior padding is `{spacing.space-4}` 24px. View padding is `{spacing.spa
 
 `.view` is `max-width: 620px; margin: 0 auto`. The app is phone-first, but a laptop should not get 1400px-wide inputs.
 
-`body` carries `padding-bottom: 88px` to clear the fixed tab bar.
+`body` carries `padding-bottom: calc(58px + env(safe-area-inset-bottom))` to clear the fixed tab bar: its 49px (48px items plus the top hairline) and a step of air, plus the home-indicator inset on a notched phone.
 
 ### Title bar
 
@@ -449,7 +449,7 @@ Three durations, and every animation uses one of them.
 
 **`segmented-option`** — The expense / income / transfer radio group, rendered as three labels. The checked one uses `:has(input:checked)` to take the primary fill plus `--shadow-primary`. The radio inputs are invisible (still focusable); keyboard focus outlines the label.
 
-**`tab-item`** — Four fixed items, flex column, icon over label, `min-height: 56px`, `max-width: 155px` each. Icons are inline Lucide SVG at 20px, stroke 1.75, one consistent weight. The active item is marked by `aria-current="page"` and takes `{colors.active}`.
+**`tab-item`** — Four fixed items, flex column, icon over label, `min-height: 48px`, `max-width: 155px` each. Icons are inline Lucide SVG at 20px, stroke 1.75, one consistent weight. The active item is marked by `aria-current="page"` and takes `{colors.active}`.
 
 **`ledger-row`** — `min-height: 44px`, `{rounded.md}`, title over meta on the left, amount right, delete button at the end. Hover lifts to `{colors.muted}`.
 
@@ -566,7 +566,7 @@ amounts are masked, like the ring's shares. The dials draw on arrival
 
 The layout is a single column at every width; `.view` caps at 620px and centres. There is one breakpoint, 640px, where the Settings rail widens from icons to full names.
 
-Tap targets: buttons hold 44px, tab items 56px, the amount field 60px. Text fields are 40px on purpose: they are stepped through in order rather than stabbed at, and seven at 44px made the Add screen taller than the phone.
+Tap targets: buttons hold 44px, tab items 48px, the amount field 60px. Text fields are 40px on purpose: they are stepped through in order rather than stabbed at, and seven at 44px made the Add screen taller than the phone.
 
 ## Known gaps
 
