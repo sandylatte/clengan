@@ -138,6 +138,7 @@ rounded:
   sm: 6px
   md: 8px
   lg: 12px
+  pill: 999px
 
 spacing:
   space-0: 3px
@@ -464,8 +465,8 @@ stroked with one dash (`pathLength="100"`, so a dash is its percentage),
 starting at twelve and running clockwise; neighbours are parted by a 0.6%
 gap, never outlined. No percentages on the ring — the legend carries every
 share. The centre carries the period's total spent in the short form
-("Rp 13,5 jt"). Its two filters are compact pills on one line, labelled for
-screen readers only.
+("Rp 13,5 jt"). Its two filters are compact pills (`{rounded.pill}`) on one
+line, labelled for screen readers only.
 
 **`privacy-eye`** — Amounts are masked until an eye is tapped. The eye in
 every title bar is the **master**: all four in step, 44px, `{colors.subtle}`
@@ -479,7 +480,7 @@ figures, Settings and dialogs answer to the master alone. Leaving the app
 hides everything.
 
 **`list-filters`** — Category and account pills on the List, the same
-compact pills as the chart filters, sharing a line with the List's section
+compact `{rounded.pill}` pills as the chart filters, sharing a line with the List's section
 eye. They narrow whatever is listed: the period, or a search across every
 month. The List's title-bar net always nets exactly what is listed, labelled
 with the period ("Oct", "2026", "All time") or "Listed" while a search or
