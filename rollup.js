@@ -99,6 +99,20 @@ export function spendingBreakdown(txns, filter) {
     .sort((a, b) => b.total - a.total || a.category.localeCompare(b.category));
 }
 
+// The chart names the biggest few categories and folds the long tail into one
+// Other slice, so the ring stays a handful of shapes however many categories
+// a month touched. A tail of one is left as itself: an Other standing for a
+// single category hides a name and saves nothing. `members` keeps the folded
+// rows so the legend can still list every one of them.
+export function chartSlices(breakdown, keep = 4) {
+  if (breakdown.length <= keep + 1) return breakdown.map((b) => ({ ...b, other: false, members: [] }));
+  const rest = breakdown.slice(keep);
+  return [
+    ...breakdown.slice(0, keep).map((b) => ({ ...b, other: false, members: [] })),
+    { category: 'Other', total: rest.reduce((sum, b) => sum + b.total, 0), other: true, members: rest },
+  ];
+}
+
 // Budget comes from income actually recorded in the month, not from a
 // separately entered forecast. One number the user already keys in drives
 // the whole split, and there is no second figure to drift out of sync.

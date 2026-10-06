@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  monthOf, filterMonth, monthlyTotals, spendingBreakdown,
+  monthOf, filterMonth, monthlyTotals, spendingBreakdown, chartSlices,
   accountBalances, netTrend,
 } from '../rollup.js';
 
@@ -74,4 +74,22 @@ test('netTrend returns one entry per requested month, zero-filled', () => {
     { month: '2026-08', net: 285000 },
     { month: '2026-09', net: 0 },
   ]);
+});
+
+test('chartSlices keeps the top four and folds the rest into Other', () => {
+  const rows = [9, 7, 5, 4, 3, 2, 1].map((total, i) => ({ category: `c${i}`, total }));
+  const slices = chartSlices(rows);
+  assert.deepEqual(slices.map((s) => [s.category, s.total, s.other]), [
+    ['c0', 9, false], ['c1', 7, false], ['c2', 5, false], ['c3', 4, false], ['Other', 6, true],
+  ]);
+  assert.deepEqual(slices[4].members.map((m) => m.category), ['c4', 'c5', 'c6']);
+  assert.equal(slices.reduce((sum, s) => sum + s.total, 0), 31, 'folding loses no money');
+});
+
+test('chartSlices leaves a tail of one as itself, and short lists alone', () => {
+  const five = [5, 4, 3, 2, 1].map((total, i) => ({ category: `c${i}`, total }));
+  assert.deepEqual(chartSlices(five).map((s) => s.category), ['c0', 'c1', 'c2', 'c3', 'c4']);
+  assert.equal(chartSlices(five).some((s) => s.other), false);
+  assert.deepEqual(chartSlices([]), []);
+  assert.deepEqual(chartSlices([{ category: 'a', total: 1 }]).map((s) => s.category), ['a']);
 });

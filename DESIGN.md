@@ -34,7 +34,6 @@ colors:
   peach-tabbar: "#EFC5B7"
   scrim: "rgb(0 0 0 / 0.72)"
   peach-scrim: "rgb(74 42 34 / 0.38)"
-  peach-bar: "#F0C0B0"
 
 shadows:
   primary-graphite: "none"
@@ -212,20 +211,14 @@ components:
     typography: "{typography.body}"
     rounded: "{rounded.md}"
     minHeight: 44px
-  budget-table:
-    backgroundColor: "{colors.muted}"
+  budget-dials:
     textColor: "{colors.foreground}"
-    typography: "{typography.supporting}"
-    padding: 12px 4px
+    typography: "{typography.stat-value}"
+    padding: 9px 0
   legend-swatch:
     backgroundColor: "{colors.primary}"
     rounded: "{rounded.xs}"
     size: 10px
-  bar-row:
-    backgroundColor: "{colors.bar}"
-    textColor: "{colors.foreground}"
-    typography: "{typography.body}"
-    padding: 12px
 ---
 
 ## Overview
@@ -351,7 +344,7 @@ Every step moved down one notch when the app read as too zoomed-in on a phone. T
 
 Base unit 4px. Tokens run `{spacing.space-0}` 4px through `{spacing.space-6}` 48px.
 
-Card interior padding is `{spacing.space-4}` 24px. View padding is `{spacing.space-4}` vertical and `{spacing.space-2}` 12px horizontal. The budget table tightens its column padding to 4px because four money columns have to clear 375px; anything roomier pushes the last column off the screen edge.
+Card interior padding is `{spacing.space-4}` 24px. View padding is `{spacing.space-4}` vertical and `{spacing.space-2}` 12px horizontal.
 
 ### Container
 
@@ -443,20 +436,20 @@ Three durations, and every animation uses one of them.
 
 **`ledger-row`** — `min-height: 44px`, `{rounded.md}`, title over meta on the left, amount right, delete button at the end. Hover lifts to `{colors.muted}`.
 
-**`pie`** — Spending share on Summary, capped at 240px because a pie gains
-nothing from being wider than it is tall. Slices are one hue: the largest takes
-`{colors.primary}` at full strength and each smaller one steps toward
-`{colors.muted}` behind it, expressed as `color-mix` over the tokens so the
-chart follows a tone switch at paint time with no JavaScript. Receding toward
-the card reads as "less" in both tones, which a lightness ramp cannot do — on
-graphite the pale end advances, on peach it recedes. Slices carry a 1px stroke
-in the card colour so neighbours in a single-hue ramp do not bleed together.
-It is a ring: the hole (`{colors.muted}`) carries the period's total
-spent, in the short form ("Rp 6,9 jt") because the exact figure does not fit.
-Slices of 7% or more carry their percent, drawn with a halo in the card colour
-so it reads on any slice; slivers carry none. The category table beneath it
-carries a `legend-swatch`, the share and the exact amount per row, and serves
-as the legend. Its two filters are compact pills on one line, labelled for
+**`pie`** — Spending share on Summary, a ring capped at 240px (chosen
+2026-10-06 over a softened category-colour ring and a stacked bar). One hue:
+the four largest categories step from `{colors.active}` at full strength
+toward `{colors.muted}` (100 / 72 / 50 / 32%), and everything past them folds
+into one Other slice in a neutral (`{colors.subtle}` at 45% over the card) —
+`chartSlices()` in `rollup.js`. A tail of one category is left as itself.
+Category colours are not used on the ring; they stay on the List's rails.
+`--color-active`, not `--color-primary`, because the peach primary is a pale
+fill a ring segment would barely show in. Each slice is the same circle path
+stroked with one dash (`pathLength="100"`, so a dash is its percentage),
+starting at twelve and running clockwise; neighbours are parted by a 0.6%
+gap, never outlined. No percentages on the ring — the legend carries every
+share. The centre carries the period's total spent in the short form
+("Rp 13,5 jt"). Its two filters are compact pills on one line, labelled for
 screen readers only.
 
 **`select`** — Every picker in the app is a real `<select>` with the app's
@@ -490,9 +483,18 @@ page get a 2px `{colors.active}` outline. The rail is built from the sections
 by `settings.js`, so it cannot drift from them. The last section opened is
 remembered per device.
 
-**`bar-row`** — Category spending rows. Two stacked linear gradients: a 2px solid leading edge in `{colors.primary}`, and a translucent `{colors.bar}` fill to the row's `--bar` percentage. The translucent fill keeps the label legible instead of sitting on a flat block.
+**`legend-row`** — The spending ring's legend: swatch, name, share and exact amount per slice, on hairlines. No bar is painted behind the row any more (until v119 it doubled as a bar chart in `{colors.bar}`; with the ring drawing the proportions, the second set of blocks was what made the card read as saturated). The categories folded into Other follow it as sub-rows: no swatch, indented to the label column, in `{colors.subtle}`, same size so the columns align.
 
-**`budget-table`** — Four columns: bucket, budget, spent, left. Unlike the category bars, its `thead` stays visible because four columns of numbers need their headings. Figures drop to 13px and column padding to 4px to clear 375px. The fill shows how much of a bucket is gone and saturates at full width rather than overflowing when a bucket is overspent. The savings row suppresses its bar and takes a `{colors.border-strong}` top rule, because nothing is charged against savings.
+**`budget-dials`** — The Summary's Budget card, answer first (chosen
+2026-10-06 over rows on a rail and a one-bar month). One row per bucket on
+hairlines — never a bordered pod inside the card, which was a nested card.
+Left, a 32px dial (`pathLength="100"` arc from twelve) for how much of the
+bucket is used, in `{colors.active}`, a full `{colors.destructive}` circle once
+over, `{colors.accent}` for savings against its target. Right, a 12px label
+("Flexible · 135% of Rp 3.960.000") over the answer at 16px: what is left, or
+what is over in `{colors.destructive}`. The percent stays readable while
+amounts are masked, like the ring's shares. The dials draw on arrival
+(`dial-draw`, `--dur-slow`).
 
 ## Do's and don'ts
 
@@ -520,7 +522,7 @@ remembered per device.
 
 ## Responsive behaviour
 
-The layout is a single column at every width; `.view` caps at 620px and centres. There is one breakpoint, 640px, where the Settings rail widens from icons to full names. The other width-sensitive component is the budget table, which is sized to clear 375px and simply gets roomier above it.
+The layout is a single column at every width; `.view` caps at 620px and centres. There is one breakpoint, 640px, where the Settings rail widens from icons to full names.
 
 Tap targets: controls hold 44px, tab items 56px, the amount field 64px.
 

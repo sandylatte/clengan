@@ -39,7 +39,6 @@
   --color-scrim: rgb(0 0 0 / 0.72);
   --color-tabbar: color-mix(in srgb, var(--color-muted) 92%, transparent);
   --color-active: #00EB62;         /* tab label + focus ring, 13.1:1 */
-  --color-bar: color-mix(in srgb, #00EB62 24%, transparent);
   --color-accent: #2ED08A;         /* income, 10.5:1 */
   --color-destructive: #F2543D;    /* spending, 6.1:1 */
   --color-background: #000000;     /* AMOLED: the pixel is off */
@@ -106,7 +105,6 @@
      the card, which is what the graphite mix produces on a light ground. */
   --color-tabbar: #EFC5B7;
   --color-active: #8E3A26;         /* 4.8:1 on the tab strip */
-  --color-bar: #F0C0B0;
   --color-accent: #2D674C;         /* income, 4.57:1 on the page */
   --color-destructive: #9F3B29;    /* spending, 4.60:1 on the page */
   --color-background: #F3CEC2;
@@ -706,6 +704,9 @@ button:active, .chip:active, .seg__button:active { transform: scale(0.97); }
    it to whatever that value is. */
 @keyframes bar-grow { from { width: 0; } }
 .view.is-entering .track__rail i { animation: bar-grow var(--dur-slow) var(--ease); }
+/* The Budget card's dials draw round from twelve, at the same pace. */
+@keyframes dial-draw { from { stroke-dasharray: 0 100; } }
+.view.is-entering .dial__value { animation: dial-draw var(--dur-slow) var(--ease); }
 
 @keyframes slice-in { from { opacity: 0; transform: scale(0.82); } }
 .view.is-entering #pie > * {
@@ -1181,13 +1182,36 @@ button:active, .chip:active, .seg__button:active { transform: scale(0.97); }
   border-radius: var(--radius-md);
   padding: var(--space-3);
 }
-/* Savings is the outcome of the other two, not a third peer, so it spans.
-   Scoped to the budget: in the funds list the last pod is just another fund
-   and spanning it would imply a significance it does not have. */
-#budget .track:last-child { grid-column: 1 / -1; }
 
 /* The funds total is a summary of the pods above it, not a pod. */
 .tracks .figures__row { grid-column: 1 / -1; }
+
+/* The Budget card, answer first: per bucket, a dial for how much is used
+   and the amount left (or over) as the row's big figure. Rows on hairlines,
+   like every other list on the Summary. */
+.dials { display: flex; flex-direction: column; }
+.dial {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) 0;
+}
+.dial + .dial { border-top: 1px solid var(--color-border); }
+.dial:first-child { padding-top: 0; }
+.dial__ring { width: 32px; height: 32px; flex: none; }
+.dial__track { fill: none; stroke: var(--color-border); stroke-width: 4; }
+/* --color-active, not --color-primary: on peach the primary is a pale fill
+   that a 4-unit stroke on the card would barely show. */
+.dial__value { fill: none; stroke: var(--color-active); stroke-width: 4; stroke-linecap: round; }
+.dial__value.is-over { stroke: var(--color-destructive); }
+.dial__value.is-savings { stroke: var(--color-accent); }
+.dial__text { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.dial__label { font-size: 12px; color: var(--color-subtle); }
+.dial__figure { font-size: 16px; font-weight: 400; color: var(--color-foreground); }
+.dial__figure.amount--in { color: var(--color-accent); }
+.dial__figure.amount--out { color: var(--color-destructive); }
+.dial__figure small { font-family: var(--font-ui); font-size: 12px; color: var(--color-subtle); }
+.dial__figure.amount--out small { color: inherit; }
 
 /* Stacked inside a pod: the label sits above its figure rather than beside
    it, because a pod is half the width a row had. */
@@ -1231,7 +1255,6 @@ button:active, .chip:active, .seg__button:active { transform: scale(0.97); }
   justify-content: space-between;
   gap: var(--space-3);
   padding: var(--space-2);
-  border-radius: var(--radius-sm);
   font-size: 13px;
 }
 .figures__row + .figures__row { border-top: 1px solid var(--color-border); }
@@ -1252,14 +1275,6 @@ button:active, .chip:active, .seg__button:active { transform: scale(0.97); }
   margin-top: var(--space-1);
 }
 
-/* The legend doubles as a bar chart: the bar is painted behind the row so it
-   costs no extra element and cannot fall out of step with the figure. */
-.figures--legend .figures__row {
-  background-image: linear-gradient(to right,
-    var(--color-bar) var(--bar, 0%), transparent var(--bar, 0%));
-  background-repeat: no-repeat;
-  border-radius: var(--radius-sm);
-}
 
 /* The space above the two chips belongs to the note, not to one chip: a
    margin on the first chip alone pushed it 9px below its neighbour, and the
@@ -1862,20 +1877,25 @@ label + .hint { margin-top: 0; }
   color: var(--color-subtle);
 }
 
-/* The donut. Hole in the card colour so it reads as a ring on either tone. */
-.pie__hole { fill: var(--color-muted); }
+/* The ring: stroked arcs on the card itself, so there is no hole to paint. */
 #pie text { text-anchor: middle; font-family: var(--font-num); }
 .pie__caption { fill: var(--color-subtle); }
 .pie__total { fill: var(--color-foreground); }
-/* A halo in the card colour keeps the percent legible on any slice, from
-   the full-strength accent to the faintest step of the ramp. */
-.pie__share {
-  fill: var(--color-foreground);
-  stroke: var(--color-muted);
-  stroke-width: 1.4;
-  paint-order: stroke;
-  font-weight: 600;
+
+/* The categories folded into the ring's Other slice, listed under it: no
+   swatch, indented to the label column, tighter and in the quiet tone, so
+   the legend still reads as five lines at a glance. Same size as the rows
+   above, so the share and amount columns stay aligned. */
+.figures__row--sub {
+  padding-top: var(--space-1);
+  padding-bottom: var(--space-1);
+  color: var(--color-subtle);
 }
+.figures__row--sub + .figures__row--sub { border-top: none; }
+.figures__row--sub .figures__label { padding-left: 16px; }
+/* The share sits against the amount, so amounts of different lengths would
+   walk it left and right. A fixed amount column keeps the shares in one. */
+.figures--legend .amount { min-width: 13ch; text-align: right; }
 
 /* Share column in the legend, between the name and the amount. */
 .figures__share {

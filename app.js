@@ -4,7 +4,7 @@ import {
 } from './money.js';
 import {
   filterMonth, monthlyTotals, spendingBreakdown, accountBalances, netTrend, bucketTotals, fundsByYear,
-  lastSixMonths, groupByDay, periodTotals, periodBuckets, searchTransactions,
+  lastSixMonths, groupByDay, periodTotals, periodBuckets, searchTransactions, chartSlices,
 } from './rollup.js';
 import {
   BUCKETS, CATEGORY_KINDS, CATEGORY_COLOURS, DEFAULT_SPLIT, validateSplit, allocateFunds,
@@ -669,72 +669,88 @@ const BUCKET_LABELS = { fixed: 'Fixed', flexible: 'Flexible' };
 function renderBudget(txns) {
   const t = periodBuckets(txns, state.filter.period, state.month, state.split, state.plans);
 
-  // Tracks, not a four-column table. The table had to shrink its type to fit
-  // "Budget / Spent / Left" on a 375px screen, and the reader still had to do
-  // the subtraction themselves to see how far through a bucket they were.
-  const track = ({ label, spent, budget, remaining, tone, fillPercent }) => {
+  // Answer first: what is left (or over) is the big figure, because that is
+  // the question the card is opened to answer. How much of the bucket is
+  // used is the dial beside it and the percent above it. Rows on hairlines,
+  // not pods: a bordered box per bucket inside the card was a card nested
+  // in a card, which DESIGN.md rules out.
+  const SVG = 'http://www.w3.org/2000/svg';
+  const dial = ({ label, detail, figure, unit, used, tone, figureTone }) => {
     const row = document.createElement('div');
-    row.className = 'track';
+    row.className = 'dial';
 
-    const head = document.createElement('div');
-    head.className = 'track__head';
-    const name = document.createElement('span');
-    name.textContent = label;
-    const figures = document.createElement('span');
-    figures.className = 'track__figures amount';
-    figures.textContent = budget > 0
-      ? `${formatIDR(spent)} / ${formatIDR(budget)}`
-      : formatIDR(spent);
-    head.append(name, figures);
+    const svg = document.createElementNS(SVG, 'svg');
+    svg.setAttribute('viewBox', '0 0 36 36');
+    svg.setAttribute('class', 'dial__ring');
+    svg.setAttribute('aria-hidden', 'true');
+    const ring = 'M 18 4 a 14 14 0 1 1 0 28 a 14 14 0 1 1 0 -28';
+    const track = document.createElementNS(SVG, 'path');
+    track.setAttribute('d', ring);
+    track.setAttribute('class', 'dial__track');
+    svg.append(track);
+    // Saturates at a full circle rather than lapping: past 100% the figure
+    // beside it, in red, carries the overspend.
+    if (used > 0) {
+      const value = document.createElementNS(SVG, 'path');
+      value.setAttribute('d', ring);
+      value.setAttribute('pathLength', '100');
+      value.setAttribute('class', `dial__value ${tone ?? ''}`);
+      value.setAttribute('stroke-dasharray', used >= 100 ? '100 0' : `${used} 100`);
+      svg.append(value);
+    }
 
-    const rail = document.createElement('div');
-    rail.className = 'track__rail';
-    const fill = document.createElement('i');
-    // Saturates at full width rather than overflowing: the bar answers "how
-    // much of this bucket is gone", and past 100% the remaining figure below
-    // carries the overspend.
-    // Written inline, so a class cannot supply it: an inline width always
-    // wins, and the savings rail rendered empty until this took the override.
-    fill.style.width = `${fillPercent ?? (budget > 0 ? Math.min(100, Math.round((spent / budget) * 100)) : 0)}%`;
-    if (tone) fill.classList.add(tone);
-    rail.append(fill);
-
-    const foot = document.createElement('div');
-    foot.className = 'track__foot';
-    foot.textContent = remaining;
-    if (budget > 0 && spent > budget) foot.classList.add('budget-note__warning');
-
-    row.append(head, rail, foot);
+    const text = document.createElement('div');
+    text.className = 'dial__text';
+    const head = document.createElement('span');
+    head.className = 'dial__label';
+    head.textContent = detail ? `${label} · ${detail}` : label;
+    const big = document.createElement('span');
+    big.className = `dial__figure amount ${figureTone ?? ''}`;
+    big.textContent = figure;
+    if (unit) {
+      const small = document.createElement('small');
+      small.textContent = ` ${unit}`;
+      big.append(small);
+    }
+    text.append(head, big);
+    row.append(svg, text);
     return row;
   };
 
-  const tracks = BUCKETS.map((bucket) => {
+  const used = (spent, budget) => (budget > 0 ? Math.round((spent / budget) * 100) : 0);
+  const rows = BUCKETS.map((bucket) => {
     const { budget, spent, remaining } = t[bucket];
-    return track({
+    if (budget === 0) {
+      return dial({ label: BUCKET_LABELS[bucket], detail: 'no budget yet — income sets it', figure: formatIDR(spent), unit: 'spent', used: 0 });
+    }
+    const over = remaining < 0;
+    return dial({
       label: BUCKET_LABELS[bucket],
-      spent,
-      budget,
-      remaining: budget === 0
-        ? 'No budget yet — income sets it'
-        : `${formatIDR(Math.abs(remaining))} ${remaining < 0 ? 'over' : 'left'}`,
+      // Proportions are not secret (the bar lengths never were), so the
+      // percent stays readable while the figures are masked.
+      detail: `${used(spent, budget)}% of ${formatIDR(budget)}`,
+      figure: formatIDR(Math.abs(remaining)),
+      unit: over ? 'over' : 'left',
+      used: used(spent, budget),
+      tone: over ? 'is-over' : '',
+      figureTone: over ? 'amount--out' : '',
     });
   });
 
-  // Savings is a target nothing is charged against, so it gets no spend bar —
-  // it shows what actually landed, which is the target plus whatever the two
+  // Savings is a target nothing is charged against: the dial shows how much
+  // of the target actually landed, which is the target plus whatever the two
   // spending buckets left behind.
-  tracks.push(track({
-    label: 'Savings',
-    spent: t.savings.projected,
-    budget: 0,
+  const saved = t.savings.projected;
+  rows.push(dial({
+    label: 'Saved',
+    detail: t.savings.budget > 0 ? `target ${formatIDR(t.savings.budget)}` : 'no income recorded this month',
+    figure: formatIDR(saved),
+    used: t.savings.budget > 0 && saved > 0 ? used(saved, t.savings.budget) : 0,
     tone: 'is-savings',
-    fillPercent: 100,
-    remaining: t.savings.budget > 0
-      ? `target ${formatIDR(t.savings.budget)}`
-      : 'No income recorded this month',
+    figureTone: saved < 0 ? 'amount--out' : 'amount--in',
   }));
 
-  document.getElementById('budget').replaceChildren(...tracks);
+  document.getElementById('budget').replaceChildren(...rows);
 
   const parts = [];
   if (t.income === 0) {
@@ -960,33 +976,18 @@ function figureRow(label, value, { swatch, total, tone, share } = {}) {
   return row;
 }
 
-// DESIGN.md forbids a second chromatic accent, so slices are one hue: the
-// largest takes the accent at full strength and each smaller one steps toward
-// the card behind it. Receding toward the card reads as "less" on a dark tone
-// and a light one alike, which a lightness ramp does not — on graphite the
-// pale end advances, on peach it recedes.
-//
-// color-mix resolves the tokens at paint time, so this follows a tone switch
-// with no JavaScript involved and no colour conversion here.
-// A category's own colour wins. Where one has not been set, the slice falls
-// back to the single-hue ramp: largest at full accent, each smaller one
-// stepping toward the card behind it.
-//
-// The ramp is positional, so it is computed over the UNCOLOURED slices only.
-// Ranking it across all of them would leave gaps in the sequence and hand two
-// neighbouring uncoloured categories near-identical tints.
-function sliceColours(breakdown, categories) {
-  const colourOf = new Map(categories.map((c) => [c.name, c.colour]));
-  const uncoloured = breakdown.filter((b) => !colourOf.get(b.category));
-  const FAINTEST = 35;
-  const ramp = new Map(uncoloured.map((b, i) => {
-    const strength = uncoloured.length === 1
-      ? 100
-      : 100 - ((100 - FAINTEST) * i) / (uncoloured.length - 1);
-    return [b.category, `color-mix(in srgb, var(--color-primary) ${strength.toFixed(1)}%, var(--color-muted))`];
-  }));
-  return breakdown.map((b) => colourOf.get(b.category) || ramp.get(b.category));
-}
+// One hue, as DESIGN.md asks of every chart: the largest slice takes the
+// tone's readable accent at full strength and the next three step toward the
+// card behind it; whatever chartSlices folded into Other (or a lone fifth
+// category) is a neutral grey, so the tail reads as one quiet remainder.
+// Category colours stay on the List's rails — ten saturated hues on one ring
+// was the noise this replaced. --color-active, not --color-primary: on peach
+// the primary is a pale fill that a ring segment would barely show in.
+// color-mix resolves at paint time, so a tone switch needs no JavaScript.
+const RAMP = [100, 72, 50, 32];
+const sliceColour = (i) => (i < RAMP.length
+  ? `color-mix(in srgb, var(--color-active) ${RAMP[i]}%, var(--color-muted))`
+  : 'color-mix(in srgb, var(--color-subtle) 45%, var(--color-muted))');
 
 // The ring's hole fits about nine characters. "Rp 6.880.000" already spills
 // into the slices, so the centre uses the short form a rupiah reader says
@@ -997,9 +998,9 @@ function compactIDR(cents) {
   return state.reveal ? `Rp ${COMPACT.format(Math.round(cents / 100))}` : exact;
 }
 
-function renderPie(breakdown, colours) {
+function renderPie(slices, colours, breakdown) {
   const pie = document.getElementById('pie');
-  const total = breakdown.reduce((sum, b) => sum + b.total, 0);
+  const total = slices.reduce((sum, b) => sum + b.total, 0);
   pie.hidden = total === 0;
   if (total === 0) {
     pie.replaceChildren();
@@ -1007,79 +1008,48 @@ function renderPie(breakdown, colours) {
     return;
   }
 
-  const R = 46;
-  const HOLE = 28;
-  const point = (fraction) => {
-    // Start at twelve o'clock and run clockwise, which is how a reader
-    // expects to pick up the largest slice first.
-    const angle = (fraction * 2 * Math.PI) - Math.PI / 2;
-    return [50 + R * Math.cos(angle), 50 + R * Math.sin(angle)];
-  };
-
-  let cursor = 0;
-  const shapes = breakdown.map(({ total: value }, i) => {
-    const share = value / total;
-    const node = document.createElementNS('http://www.w3.org/2000/svg',
-      share >= 0.999 ? 'circle' : 'path');
-    node.setAttribute('fill', colours[i]);
-    // A hairline in the card colour keeps neighbouring slices of a
-    // single-hue ramp from bleeding into one another.
-    node.setAttribute('stroke', 'var(--color-muted)');
-    node.setAttribute('stroke-width', '1');
-    if (share >= 0.999) {
-      // One category owning everything: an arc from 0 to 360 degrees is
-      // degenerate and renders as nothing at all.
-      node.setAttribute('cx', '50');
-      node.setAttribute('cy', '50');
-      node.setAttribute('r', String(R));
-    } else {
-      const [x0, y0] = point(cursor);
-      const [x1, y1] = point(cursor + share);
-      node.setAttribute('d',
-        `M 50 50 L ${x0.toFixed(2)} ${y0.toFixed(2)} `
-        + `A ${R} ${R} 0 ${share > 0.5 ? 1 : 0} 1 ${x1.toFixed(2)} ${y1.toFixed(2)} Z`);
-    }
-    cursor += share;
+  const SVG = 'http://www.w3.org/2000/svg';
+  // Each slice is the same circle stroked with one dash. pathLength 100 makes
+  // a dash's length its percentage, and the path starts at twelve and runs
+  // clockwise, which is how a reader expects to pick up the largest first.
+  // Neighbours are parted by a small gap rather than outlined: the hairline
+  // strokes around every slice were half the noise.
+  const R = 38;
+  const WIDTH = 14;
+  const gap = slices.length > 1 ? 0.6 : 0;
+  const ring = `M 50 ${50 - R} a ${R} ${R} 0 1 1 0 ${2 * R} a ${R} ${R} 0 1 1 0 ${-2 * R}`;
+  let at = 0;
+  const shapes = slices.map(({ total: value }, i) => {
+    const share = (value / total) * 100;
+    const node = document.createElementNS(SVG, 'path');
+    node.setAttribute('d', ring);
+    node.setAttribute('pathLength', '100');
+    node.setAttribute('fill', 'none');
+    node.setAttribute('stroke', colours[i]);
+    node.setAttribute('stroke-width', String(WIDTH));
+    node.setAttribute('stroke-dasharray', `${Math.max(share - gap, 0.3).toFixed(2)} 100`);
+    node.setAttribute('stroke-dashoffset', (-at).toFixed(2));
+    at += share;
     return node;
   });
-  const SVG = 'http://www.w3.org/2000/svg';
-  // A ring, not a disc: the hole carries the total, which is what the scope
-  // line under the filters used to spell out in a sentence.
-  const hole = document.createElementNS(SVG, 'circle');
-  hole.setAttribute('cx', '50');
-  hole.setAttribute('cy', '50');
-  hole.setAttribute('r', String(HOLE));
-  hole.setAttribute('class', 'pie__hole');
-  const text = (x, y, value, cls) => {
+  const text = (y, value, cls, size) => {
     const node = document.createElementNS(SVG, 'text');
-    node.setAttribute('x', x.toFixed(2));
-    node.setAttribute('y', y.toFixed(2));
+    node.setAttribute('x', '50');
+    node.setAttribute('y', String(y));
     node.setAttribute('class', cls);
     // viewBox units, not CSS pixels: the chart scales with its width, so its
     // type does too, and none of these are sizes from the type ramp.
-    node.setAttribute('font-size', { pie__caption: '5.5', pie__total: '8', pie__share: '6' }[cls]);
+    node.setAttribute('font-size', size);
     node.textContent = value;
     return node;
   };
-  const centre = [
-    text(50, 47, state.filter.period === 'year' ? `Spent in ${state.month.slice(0, 4)}` : `Spent in ${MONTH_ABBR[Number(state.month.slice(5, 7)) - 1]}`, 'pie__caption'),
-    text(50, 56, compactIDR(total), 'pie__total'),
-  ];
-  // Percent on the slice itself, where the eye already is. Slivers under 7%
-  // get none: the label would be wider than the slice, and the legend below
-  // carries every share regardless.
-  let at = 0;
-  const labels = [];
-  for (const { total: value } of breakdown) {
-    const share = value / total;
-    if (share >= 0.07) {
-      const angle = ((at + share / 2) * 2 * Math.PI) - Math.PI / 2;
-      const mid = (R + HOLE) / 2;
-      labels.push(text(50 + mid * Math.cos(angle), 50 + mid * Math.sin(angle) + 1.8, `${Math.round(share * 100)}%`, 'pie__share'));
-    }
-    at += share;
-  }
-  pie.replaceChildren(...shapes, hole, ...labels, ...centre);
+  // No percent on the ring: the legend beside it carries every share, and a
+  // haloed number on each slice was the other half of the noise.
+  pie.replaceChildren(
+    ...shapes,
+    text(46, state.filter.period === 'year' ? `Spent in ${state.month.slice(0, 4)}` : `Spent in ${MONTH_ABBR[Number(state.month.slice(5, 7)) - 1]}`, 'pie__caption', '6'),
+    text(57, compactIDR(total), 'pie__total', '9'),
+  );
 
   document.getElementById('pie-desc').textContent = 'Spending share: '
     + breakdown.map((b) => `${b.category} ${Math.round((b.total / total) * 100)}%`).join(', ') + '.';
@@ -1141,19 +1111,25 @@ function renderSummary(txns, accounts, invalidTxns) {
     account: state.filter.account,
     bucket: state.filter.bucket,
   });
-  const largest = breakdown.length ? breakdown[0].total : 0;
   const spentTotal = breakdown.reduce((sum, b) => sum + b.total, 0);
-  const slices = sliceColours(breakdown, state.categories);
+  const slices = chartSlices(breakdown);
+  const colours = slices.map((_, i) => sliceColour(i));
   document.getElementById('bars-empty').hidden = breakdown.length > 0;
-  renderPie(breakdown, slices);
-  // The swatch makes this list the pie's legend, so the chart needs no labels
-  // of its own and stays readable when a slice is a sliver.
+  renderPie(slices, colours, breakdown);
+  // The swatch makes this list the ring's legend, so the chart needs no
+  // labels of its own. Other is followed by the categories it stands for, in
+  // a quieter row with no swatch, so folding the ring never hides a figure.
   document.getElementById('bars').replaceChildren(
-    ...breakdown.map(({ category, total }, i) => {
-      const row = figureRow(category, formatIDR(total), { swatch: slices[i], share: sharePercent(total, spentTotal) });
-      // largest is 0 only when breakdown is empty, so this never divides by zero
-      row.style.setProperty('--bar', `${Math.round((total / largest) * 100)}%`);
-      return row;
+    // No bar painted behind each row any more: the ring already draws the
+    // proportions, and a second set of green blocks beside it doubled the
+    // saturation the redesign was asked to take away.
+    ...slices.flatMap((slice, i) => {
+      const row = figureRow(slice.category, formatIDR(slice.total), { swatch: colours[i], share: sharePercent(slice.total, spentTotal) });
+      return [row, ...slice.members.map(({ category, total }) => {
+        const sub = figureRow(category, formatIDR(total), { share: sharePercent(total, spentTotal) });
+        sub.classList.add('figures__row--sub');
+        return sub;
+      })];
     }),
   );
 
