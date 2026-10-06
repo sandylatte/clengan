@@ -134,10 +134,11 @@ typography:
     letterSpacing: 0.1em
 
 rounded:
-  xs: 2px
-  sm: 6px
-  md: 8px
-  lg: 12px
+  xs: 3px
+  sm: 8px
+  md: 12px
+  lg: 16px
+  xl: 20px
   pill: 999px
 
 spacing:
@@ -187,13 +188,13 @@ components:
     backgroundColor: "{colors.input}"
     textColor: "{colors.foreground}"
     typography: "{typography.control}"
-    rounded: "{rounded.md}"
+    rounded: "{rounded.sm}"
     minHeight: 44px
   amount-input:
     backgroundColor: "{colors.input}"
     textColor: "{colors.foreground}"
     typography: "{typography.amount-hero}"
-    rounded: "{rounded.md}"
+    rounded: "{rounded.sm}"
     minHeight: 64px
   segmented-option:
     backgroundColor: "{colors.input}"
@@ -442,7 +443,7 @@ Three durations, and every animation uses one of them.
 
 **`row-action`** — `button.ghost`: a word-button inside a list row (Edit on a month plan, Delete on a recurring rule). No fill or border, `{colors.subtle}` label, a 44px target, hover fills `{colors.input}` and the label goes `{colors.foreground}`.
 
-**`card`** — `{colors.muted}` on canvas, 1px `{colors.border}`, `{rounded.lg}` 12px, 24px padding. Cards are never nested.
+**`card`** — `{colors.muted}` on canvas, 1px `{colors.border}`, `{rounded.lg}` 16px, 24px padding. Cards are never nested.
 
 **`amount-input`** — The Add form's first field and the tallest control in the app: `min-height: 64px`, 34px Fira Code. `inputmode="decimal"` so phones open the number pad.
 
