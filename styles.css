@@ -1779,3 +1779,25 @@ label + .hint { margin-top: 0; }
 .backup-nudge__actions { display: flex; gap: var(--space-2); justify-content: flex-end; }
 .backup-nudge__actions button { width: auto; min-height: 44px; padding: 0 var(--space-3); margin: 0; border-radius: var(--radius-md); }
 #storage-status:empty { display: none; }
+
+/* The privacy eye. Sits at the right of every title bar, after the running
+   total it governs. 44px is the touch target; the glyph stays tile-sized. */
+.privacy-toggle {
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  margin: calc(var(--space-2) * -1) calc(var(--space-2) * -1) calc(var(--space-2) * -1) 0;
+  padding: 0;
+  background: none;
+  border: none;
+  border-radius: var(--radius-md);
+  color: var(--color-subtle);
+  cursor: pointer;
+}
+.privacy-toggle[aria-pressed="true"] { color: var(--color-active); }
+.privacy-toggle:focus-visible { outline: 2px solid var(--color-active); outline-offset: -2px; }
+/* Grey while hidden, the accent while figures are showing: the icon's colour
+   is the state, readable at a glance before the shape is. */
+.privacy-toggle .tile__icon { stroke: currentColor; }

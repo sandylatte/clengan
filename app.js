@@ -1,5 +1,7 @@
 import * as db from './db.js';
-import { formatIDR, formatAmount, groupDigits, rupiahToCents, centsToRupiahDigits } from './money.js';
+import {
+  formatIDR as plainIDR, formatAmount as plainAmount, groupDigits, rupiahToCents, centsToRupiahDigits,
+} from './money.js';
 import {
   filterMonth, monthlyTotals, spendingBreakdown, accountBalances, netTrend, bucketTotals, fundsByYear,
   lastSixMonths, groupByDay, periodTotals, periodBuckets, searchTransactions,
@@ -326,8 +328,28 @@ form.addEventListener('submit', async (event) => {
   }
 });
 
+// Every figure the app DISPLAYS goes through these two. Masked, a figure
+// keeps its "Rp" and, for a row, its +/− (the row's colour already says which
+// way the money went) but loses its digits — and a balance loses its sign too,
+// since "in debt" is itself the thing being kept private. The real value is
+// still formatted first, so a corrupt amount throws exactly as it did before.
+// Fields being typed into are not these, and stay readable.
+const MASK = '•••••';
+const formatIDR = (cents) => {
+  const text = plainIDR(cents);
+  return state.reveal ? text : `Rp ${MASK}`;
+};
+const formatAmount = (cents) => {
+  const text = plainAmount(cents);
+  return state.reveal ? text : `${cents > 0 ? '+' : cents < 0 ? '-' : ''}Rp ${MASK}`;
+};
+
 const state = {
   month: new Date().toISOString().slice(0, 7),
+  // Amounts start hidden on every launch and hide again whenever the app
+  // leaves the screen. Never persisted: a reveal that survived a relaunch
+  // would show the balance to whoever picks the phone up next.
+  reveal: false,
   // Month -> its own budget plan. Loaded on every refresh.
   plans: {},
   // List-only, and deliberately not persisted: a search is a question being
@@ -732,7 +754,7 @@ async function editMonthPlan(month) {
     income,
     toCents: rupiahToCents,
     group: groupDigits,
-    validate: (draft) => planBalance(draft, income, formatIDR),
+    validate: (draft) => planBalance(draft, income, plainIDR),
   });
   if (result === undefined) return;
   // Read fresh rather than from state: the stored map is the source of
@@ -1074,6 +1096,32 @@ function renderTrend(points) {
   document.getElementById('trend-desc').textContent =
     'Net by month: ' + points.map((p) => `${p.month} ${formatIDR(p.net)}`).join(', ') + '.';
 }
+
+// One eye per title bar, all in step: hiding on one screen and finding the
+// figures bare on the next would make the control untrustworthy.
+const privacyToggles = document.querySelectorAll('.privacy-toggle');
+function paintPrivacy() {
+  for (const button of privacyToggles) {
+    button.setAttribute('aria-pressed', String(state.reveal));
+    button.setAttribute('aria-label', state.reveal ? 'Hide amounts' : 'Show amounts');
+    button.querySelector('use').setAttribute('href', state.reveal ? '#i-eye' : '#i-eye-off');
+  }
+}
+function setReveal(reveal) {
+  if (state.reveal === reveal) return;
+  state.reveal = reveal;
+  paintPrivacy();
+  refresh();
+}
+for (const button of privacyToggles) {
+  button.addEventListener('click', () => setReveal(!state.reveal));
+}
+// Leaving the app (home button, app switcher, screen off) hides them again,
+// so the app-switcher thumbnail and the next unlock both show nothing.
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') setReveal(false);
+});
+paintPrivacy();
 
 async function refresh() {
   const [txns, accounts, categories, funds, split, defaultAccount] = await Promise.all([
@@ -1826,13 +1874,13 @@ document.getElementById('account-form').addEventListener('submit', async (event)
       : `${clash.name} already exists, and "${name}" differs only by capitalisation.`;
     const confirmed = await confirmDialog({
       title: 'Replace the initial balance',
-      body: `${label} Its initial balance is ${formatIDR(clash.opening_balance)}, and this would make it ${formatIDR(opening)}.`
+      body: `${label} Its initial balance is ${plainIDR(clash.opening_balance)}, and this would make it ${plainIDR(opening)}.`
         + '\n\nEvery transaction already filed under it is kept. Its current balance shifts by the difference.',
       confirmLabel: 'Replace',
       danger: true,
     });
     if (!confirmed) {
-      showAccountStatus(`Kept ${clash.name} at ${formatIDR(clash.opening_balance)}.`, 'ok');
+      showAccountStatus(`Kept ${clash.name} at ${plainIDR(clash.opening_balance)}.`, 'ok');
       return;
     }
     // Written under the EXISTING spelling. Using what was typed would create
