@@ -443,8 +443,13 @@ chart follows a tone switch at paint time with no JavaScript. Receding toward
 the card reads as "less" in both tones, which a lightness ramp cannot do — on
 graphite the pale end advances, on peach it recedes. Slices carry a 1px stroke
 in the card colour so neighbours in a single-hue ramp do not bleed together.
-The chart has no labels; the category table beneath it carries a
-`legend-swatch` per row and serves as the legend.
+It is a ring: the hole (`{colors.muted}`) carries the period's total
+spent, in the short form ("Rp 6,9 jt") because the exact figure does not fit.
+Slices of 7% or more carry their percent, drawn with a halo in the card colour
+so it reads on any slice; slivers carry none. The category table beneath it
+carries a `legend-swatch`, the share and the exact amount per row, and serves
+as the legend. Its two filters are compact pills on one line, labelled for
+screen readers only.
 
 **`select`** — Every picker in the app is a real `<select>` with the app's
 own list drawn over it (`picker.js`). The native control on a phone opens the

@@ -62,12 +62,12 @@
   <symbol id="i-sample" viewBox="0 0 24 24"><path d="m12 3 1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9Z"/><path d="M18 16v4"/><path d="M16 18h4"/></symbol>
   <symbol id="i-sync" viewBox="0 0 24 24"><path d="M12 3a9 9 0 0 1 9 9"/><path d="M12 21a9 9 0 0 1-9-9"/><path d="M18 9h3V6"/><path d="M6 15H3v3"/><circle cx="12" cy="12" r="2.5"/></symbol>
   <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/></symbol>
-  <symbol id="i-eye-off" viewBox="0 0 24 24"><path d="M10.733 5.076a10.744 10.744 0 0 1 11.205 6.575 1 1 0 0 1 0 .696 10.747 10.747 0 0 1-1.444 2.49"/><path d="M14.084 14.158a3 3 0 0 1-4.242-4.242"/><path d="M17.479 17.499a10.75 10.75 0 0 1-15.417-5.151 1 1 0 0 1 0-.696 10.75 10.75 0 0 1 4.446-5.143"/><path d="m2 2 20 20"/></symbol>
+  <symbol id="i-eye-closed" viewBox="0 0 24 24"><path d="m15 18-.722-3.25"/><path d="M2 8a10.645 10.645 0 0 0 20 0"/><path d="m20 15-1.726-2.05"/><path d="m4 15 1.726-2.05"/><path d="m9 18 .722-3.25"/></symbol>
   <symbol id="i-version" viewBox="0 0 24 24"><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/><path d="M3 21v-5h5"/></symbol>
 </svg>
 
 <section class="view" id="view-add">
-  <h1><svg class="mark" aria-hidden="true"><use href="#mark"/></svg><span class="h1-name">Add</span><span class="h1-meta amount" id="head-balance"></span><button type="button" class="privacy-toggle" aria-pressed="false" aria-label="Show amounts"><svg class="tile__icon" aria-hidden="true"><use href="#i-eye-off"/></svg></button></h1>
+  <h1><svg class="mark" aria-hidden="true"><use href="#mark"/></svg><span class="h1-name">Add</span><span class="h1-meta amount" id="head-balance"></span><button type="button" class="privacy-toggle" aria-pressed="false" aria-label="Show amounts"><svg class="tile__icon" aria-hidden="true"><use href="#i-eye-closed"/></svg></button></h1>
   <div id="backup-nudge" class="card backup-nudge" role="status" hidden>
     <p id="backup-nudge-text"></p>
     <div class="backup-nudge__actions">
@@ -155,7 +155,7 @@
   </form>
 </section>
 <section class="view" id="view-list" hidden>
-  <h1><svg class="mark" aria-hidden="true"><use href="#mark"/></svg><span class="h1-name">List</span><span class="h1-meta amount" id="head-list-total"></span><button type="button" class="privacy-toggle" aria-pressed="false" aria-label="Show amounts"><svg class="tile__icon" aria-hidden="true"><use href="#i-eye-off"/></svg></button></h1>
+  <h1><svg class="mark" aria-hidden="true"><use href="#mark"/></svg><span class="h1-name">List</span><span class="h1-meta amount" id="head-list-total"></span><button type="button" class="privacy-toggle" aria-pressed="false" aria-label="Show amounts"><svg class="tile__icon" aria-hidden="true"><use href="#i-eye-closed"/></svg></button></h1>
   <label for="list-search">Search</label>
   <input type="search" id="list-search" placeholder="Name, category, account, note" autocomplete="off" enterkeyhint="search">
   <div class="period">
@@ -184,7 +184,7 @@
   </div>
 </section>
 <section class="view" id="view-summary" hidden>
-  <h1><svg class="mark" aria-hidden="true"><use href="#mark"/></svg><span class="h1-name">Summary</span><button type="button" class="privacy-toggle" aria-pressed="false" aria-label="Show amounts"><svg class="tile__icon" aria-hidden="true"><use href="#i-eye-off"/></svg></button></h1>
+  <h1><svg class="mark" aria-hidden="true"><use href="#mark"/></svg><span class="h1-name">Summary</span><button type="button" class="privacy-toggle" aria-pressed="false" aria-label="Show amounts"><svg class="tile__icon" aria-hidden="true"><use href="#i-eye-closed"/></svg></button></h1>
   <div class="period">
     <div class="datefield monthfield">
       <button type="button" id="summary-month-button" aria-haspopup="dialog" aria-expanded="false" aria-label="Month"></button>
@@ -199,24 +199,30 @@
   <p id="summary-status" role="status"></p>
 
   <div class="spine">
+  <div class="card stats node">
+    <div class="stat stat--balance"><span class="stat__label">Balance</span><span class="amount" id="stat-balance">Rp 0</span></div>
+    <div class="stat stat--net"><span class="stat__label">Net</span><span class="amount" id="stat-net">Rp 0</span></div>
+    <div class="stat"><span class="stat__label">Income</span><span class="amount amount--in" id="stat-income">Rp 0</span></div>
+    <div class="stat"><span class="stat__label">Spent</span><span class="amount amount--out" id="stat-spent">Rp 0</span></div>
+  </div>
+
   <div class="card node">
     <h2>Spending by category</h2>
-    <div class="filters" role="group" aria-label="Filter this chart">
+    <div class="filters filters--compact" role="group" aria-label="Filter this chart">
       <div class="filters__field">
-        <label for="pie-account">Account</label>
+        <label for="pie-account" class="visually-hidden">Account</label>
         <select id="pie-account"></select>
       </div>
       <div class="filters__field">
-        <label for="pie-bucket">Bucket</label>
+        <label for="pie-bucket" class="visually-hidden">Bucket</label>
         <select id="pie-bucket">
-          <option value="">All</option>
+          <option value="">All buckets</option>
           <option value="fixed">Fixed</option>
           <option value="flexible">Flexible</option>
           <option value="none">No bucket</option>
         </select>
       </div>
     </div>
-    <p class="hint" id="pie-scope"></p>
     <svg id="pie" viewBox="0 0 100 100" role="img" aria-labelledby="pie-desc"></svg>
     <p id="pie-desc" class="visually-hidden"></p>
     <div id="bars" class="figures figures--legend"></div>
@@ -225,13 +231,6 @@
       <p class="empty__title">No spending in this view</p>
       <p class="empty__body">Widen the filters above, or record a transaction.</p>
     </div>
-  </div>
-
-  <div class="card stats node">
-    <div class="stat stat--balance"><span class="stat__label">Balance</span><span class="amount" id="stat-balance">Rp 0</span></div>
-    <div class="stat stat--net"><span class="stat__label">Net</span><span class="amount" id="stat-net">Rp 0</span></div>
-    <div class="stat"><span class="stat__label">Income</span><span class="amount amount--in" id="stat-income">Rp 0</span></div>
-    <div class="stat"><span class="stat__label">Spent</span><span class="amount amount--out" id="stat-spent">Rp 0</span></div>
   </div>
 
   <div class="card node">
@@ -263,7 +262,7 @@
   </div>
 </section>
 <section class="view" id="view-settings" hidden>
-  <h1><svg class="mark" aria-hidden="true"><use href="#mark"/></svg><span class="h1-name">Settings</span><button type="button" class="privacy-toggle" aria-pressed="false" aria-label="Show amounts"><svg class="tile__icon" aria-hidden="true"><use href="#i-eye-off"/></svg></button></h1>
+  <h1><svg class="mark" aria-hidden="true"><use href="#mark"/></svg><span class="h1-name">Settings</span><button type="button" class="privacy-toggle" aria-pressed="false" aria-label="Show amounts"><svg class="tile__icon" aria-hidden="true"><use href="#i-eye-closed"/></svg></button></h1>
 
   <!-- One page at a time, chosen from a rail of every section on the right.
        The rail is built by settings.js from the sections below, so a section

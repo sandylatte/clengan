@@ -1801,3 +1801,55 @@ label + .hint { margin-top: 0; }
 /* Grey while hidden, the accent while figures are showing: the icon's colour
    is the state, readable at a glance before the shape is. */
 .privacy-toggle .tile__icon { stroke: currentColor; }
+
+/* Masked figures. The dots stand in for a number; they should read as an
+   absence, not as a value in the figure's own colour and weight. */
+.mask {
+  color: var(--color-subtle);
+  opacity: 0.55;
+  letter-spacing: 0.05em;
+  font-weight: 400;
+}
+
+/* The title-bar figure is this month's net. The month name is its label,
+   quieter than the figure. */
+.h1-meta { display: inline-flex; align-items: baseline; gap: var(--space-1); }
+.h1-meta__label { color: var(--color-subtle); font-family: var(--font-ui); }
+
+/* Chart filters as two quiet pills on one line. Labels move to screen
+   readers: "All accounts" and "All buckets" name themselves. */
+.filters--compact { flex-wrap: nowrap; margin-bottom: var(--space-3); }
+.filters--compact .filters__field { flex: 1 1 0; min-width: 0; }
+.filters--compact .pick { margin-bottom: 0; }
+.filters--compact .pick__button {
+  min-height: 32px;
+  border-radius: 999px;
+  padding-left: var(--space-3);
+  font-size: 13px;
+  color: var(--color-subtle);
+}
+
+/* The donut. Hole in the card colour so it reads as a ring on either tone. */
+.pie__hole { fill: var(--color-muted); }
+#pie text { text-anchor: middle; font-family: var(--font-num); }
+.pie__caption { fill: var(--color-subtle); }
+.pie__total { fill: var(--color-foreground); }
+/* A halo in the card colour keeps the percent legible on any slice, from
+   the full-strength accent to the faintest step of the ramp. */
+.pie__share {
+  fill: var(--color-foreground);
+  stroke: var(--color-muted);
+  stroke-width: 1.4;
+  paint-order: stroke;
+  font-weight: 600;
+}
+
+/* Share column in the legend, between the name and the amount. */
+.figures__share {
+  margin-left: auto;
+  padding-right: var(--space-3);
+  color: var(--color-subtle);
+  font-family: var(--font-num);
+  font-size: 13px;
+}
+#pie .mask { fill: var(--color-subtle); }

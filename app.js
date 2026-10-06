@@ -335,6 +335,43 @@ form.addEventListener('submit', async (event) => {
 // still formatted first, so a corrupt amount throws exactly as it did before.
 // Fields being typed into are not these, and stay readable.
 const MASK = '•••••';
+
+// The dots are a placeholder, not a figure, so they are drawn quieter than
+// the text around them. Formatters hand back plain strings that land in
+// textContent all over the app; rather than teach forty call sites about a
+// span, every masked run that appears in the page is wrapped here.
+function dimMasks(root) {
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  const hits = [];
+  while (walker.nextNode()) {
+    const node = walker.currentNode;
+    if (node.data.includes(MASK) && !node.parentElement?.classList.contains('mask')) hits.push(node);
+  }
+  for (const node of hits) {
+    const parts = node.data.split(MASK);
+    const pieces = parts.flatMap((text, i) => {
+      if (i === 0) return text ? [text] : [];
+      // Inside a chart an HTML span is not drawn at all, which made the donut's
+      // masked total read as a bare "Rp". SVG gets its own inline element.
+      const dots = node.parentElement?.closest('svg')
+        ? document.createElementNS('http://www.w3.org/2000/svg', 'tspan')
+        : document.createElement('span');
+      dots.setAttribute('class', 'mask');
+      dots.textContent = MASK;
+      return text ? [dots, text] : [dots];
+    });
+    node.replaceWith(...pieces);
+  }
+}
+new MutationObserver((records) => {
+  for (const record of records) {
+    if (record.type === 'characterData') dimMasks(record.target.parentNode ?? document.body);
+    for (const added of record.addedNodes) {
+      if (added.nodeType === Node.TEXT_NODE) dimMasks(added.parentNode ?? document.body);
+      else if (added.nodeType === Node.ELEMENT_NODE && !added.classList.contains('mask')) dimMasks(added);
+    }
+  }
+}).observe(document.body, { childList: true, characterData: true, subtree: true });
 const formatIDR = (cents) => {
   const text = plainIDR(cents);
   return state.reveal ? text : `Rp ${MASK}`;
@@ -345,7 +382,9 @@ const formatAmount = (cents) => {
 };
 
 const state = {
-  month: new Date().toISOString().slice(0, 7),
+  // Local, not toISOString: that is UTC, and in Jakarta it named the previous
+  // month until 7am on the 1st.
+  month: toISO(new Date()).slice(0, 7),
   // Amounts start hidden on every launch and hide again whenever the app
   // leaves the screen. Never persisted: a reveal that survived a relaunch
   // would show the balance to whoever picks the phone up next.
@@ -420,21 +459,6 @@ for (const [id, key] of [['pie-account', 'account'], ['pie-bucket', 'bucket']]) 
   });
 }
 
-const BUCKET_FILTER_LABELS = { fixed: 'fixed spending', flexible: 'flexible spending', none: 'spending with no bucket' };
-
-// A filtered chart that does not say it is filtered is a wrong chart. This
-// line names the exact scope, and the total, so the figure can be checked
-// against the ledger rather than taken on trust.
-function renderPieScope(breakdown) {
-  const total = breakdown.reduce((sum, b) => sum + b.total, 0);
-  const { period, account, bucket } = state.filter;
-  const where = period === 'year' ? `all of ${state.month.slice(0, 4)}` : state.month;
-  const parts = [`${formatIDR(total)} across ${where}`];
-  if (account) parts.push(`in ${account}`);
-  if (bucket) parts.push(BUCKET_FILTER_LABELS[bucket]);
-  document.getElementById('pie-scope').textContent = `${parts.join(', ')}.`;
-}
-
 const WEEKDAY_ABBR = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 const MONTH_ABBR = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -478,14 +502,6 @@ function renderList(txns) {
   // month back the moment the query is cleared. "All" has no month either.
   document.getElementById('list-month-button').disabled = searching || state.listPeriod === 'all';
   document.getElementById('list-nomatch').hidden = !searching || rows.length > 0;
-
-  // The header total is the net of what is listed — the month, the year, the
-  // whole ledger, or the matches of a search.
-  const net = rows.reduce((sum, txn) => (txn.transfer_id == null ? sum + txn.amount : sum), 0);
-  const total = document.getElementById('head-list-total');
-  total.textContent = rows.length ? formatAmount(net) : '';
-  total.classList.toggle('amount--in', net >= 0);
-  total.classList.toggle('amount--out', net < 0);
 
   // Date is written once per day rather than on every row, which is what
   // gives the transaction name back the width it was losing.
@@ -892,7 +908,15 @@ function renderFunds(txns) {
 }
 
 // One row of a plain label-and-figure list.
-function figureRow(label, value, { swatch, total, tone } = {}) {
+// Whole percent, but never "0%" for a slice that exists: a real category
+// reading as nothing is worse than a slightly generous "<1%".
+function sharePercent(part, whole) {
+  if (!whole) return '';
+  const pct = (part / whole) * 100;
+  return pct > 0 && pct < 1 ? '<1%' : `${Math.round(pct)}%`;
+}
+
+function figureRow(label, value, { swatch, total, tone, share } = {}) {
   const row = document.createElement('div');
   row.className = `figures__row${total ? ' figures__row--total' : ''}`;
   const name = document.createElement('span');
@@ -907,7 +931,16 @@ function figureRow(label, value, { swatch, total, tone } = {}) {
   const figure = document.createElement('span');
   figure.className = `amount ${tone ?? ''}`;
   figure.textContent = value;
-  row.append(name, figure);
+  if (share !== undefined) {
+    // Proportions are not secret here (the slices already show them), so the
+    // share stays readable while the amount beside it is masked.
+    const pct = document.createElement('span');
+    pct.className = 'figures__share';
+    pct.textContent = share;
+    row.append(name, pct, figure);
+  } else {
+    row.append(name, figure);
+  }
   return row;
 }
 
@@ -939,6 +972,15 @@ function sliceColours(breakdown, categories) {
   return breakdown.map((b) => colourOf.get(b.category) || ramp.get(b.category));
 }
 
+// The ring's hole fits about nine characters. "Rp 6.880.000" already spills
+// into the slices, so the centre uses the short form a rupiah reader says
+// aloud ("6,9 jt"); the legend underneath keeps every figure exact.
+const COMPACT = new Intl.NumberFormat('id-ID', { notation: 'compact', maximumFractionDigits: 1 });
+function compactIDR(cents) {
+  const exact = formatIDR(cents);
+  return state.reveal ? `Rp ${COMPACT.format(Math.round(cents / 100))}` : exact;
+}
+
 function renderPie(breakdown, colours) {
   const pie = document.getElementById('pie');
   const total = breakdown.reduce((sum, b) => sum + b.total, 0);
@@ -949,7 +991,8 @@ function renderPie(breakdown, colours) {
     return;
   }
 
-  const R = 42;
+  const R = 46;
+  const HOLE = 28;
   const point = (fraction) => {
     // Start at twelve o'clock and run clockwise, which is how a reader
     // expects to pick up the largest slice first.
@@ -983,7 +1026,44 @@ function renderPie(breakdown, colours) {
     cursor += share;
     return node;
   });
-  pie.replaceChildren(...shapes);
+  const SVG = 'http://www.w3.org/2000/svg';
+  // A ring, not a disc: the hole carries the total, which is what the scope
+  // line under the filters used to spell out in a sentence.
+  const hole = document.createElementNS(SVG, 'circle');
+  hole.setAttribute('cx', '50');
+  hole.setAttribute('cy', '50');
+  hole.setAttribute('r', String(HOLE));
+  hole.setAttribute('class', 'pie__hole');
+  const text = (x, y, value, cls) => {
+    const node = document.createElementNS(SVG, 'text');
+    node.setAttribute('x', x.toFixed(2));
+    node.setAttribute('y', y.toFixed(2));
+    node.setAttribute('class', cls);
+    // viewBox units, not CSS pixels: the chart scales with its width, so its
+    // type does too, and none of these are sizes from the type ramp.
+    node.setAttribute('font-size', { pie__caption: '5.5', pie__total: '8', pie__share: '6' }[cls]);
+    node.textContent = value;
+    return node;
+  };
+  const centre = [
+    text(50, 47, state.filter.period === 'year' ? `Spent in ${state.month.slice(0, 4)}` : `Spent in ${MONTH_ABBR[Number(state.month.slice(5, 7)) - 1]}`, 'pie__caption'),
+    text(50, 56, compactIDR(total), 'pie__total'),
+  ];
+  // Percent on the slice itself, where the eye already is. Slivers under 7%
+  // get none: the label would be wider than the slice, and the legend below
+  // carries every share regardless.
+  let at = 0;
+  const labels = [];
+  for (const { total: value } of breakdown) {
+    const share = value / total;
+    if (share >= 0.07) {
+      const angle = ((at + share / 2) * 2 * Math.PI) - Math.PI / 2;
+      const mid = (R + HOLE) / 2;
+      labels.push(text(50 + mid * Math.cos(angle), 50 + mid * Math.sin(angle) + 1.8, `${Math.round(share * 100)}%`, 'pie__share'));
+    }
+    at += share;
+  }
+  pie.replaceChildren(...shapes, hole, ...labels, ...centre);
 
   document.getElementById('pie-desc').textContent = 'Spending share: '
     + breakdown.map((b) => `${b.category} ${Math.round((b.total / total) * 100)}%`).join(', ') + '.';
@@ -993,15 +1073,49 @@ function renderPie(breakdown, colours) {
 // so none of the calls below can coerce a bad value into a string/NaN and no
 // try/catch is needed: every section renders fully from clean data. Rows that
 // failed that filter are passed separately, only to name them in the banner.
+// The title bars on Add and List carry this month's net — income in minus
+// spending out since the 1st, transfers excluded — rather than the all-time
+// balance. It answers the question asked while recording: "how is this month
+// going". Always the CALENDAR month, never the month a picker is on, so the
+// figure means the same thing on every screen and every day.
+const currentMonth = () => toISO(new Date()).slice(0, 7);
+
+function renderHeadNet(txns) {
+  const month = currentMonth();
+  const { net } = monthlyTotals(txns, month);
+  const label = `${MONTH_ABBR[Number(month.slice(5, 7)) - 1]}`;
+  for (const id of ['head-balance', 'head-list-total']) {
+    const slot = document.getElementById(id);
+    const name = document.createElement('span');
+    name.className = 'h1-meta__label';
+    name.textContent = label;
+    const value = document.createElement('span');
+    value.className = `amount ${net > 0 ? 'amount--in' : net < 0 ? 'amount--out' : ''}`;
+    value.textContent = formatAmount(net);
+    slot.replaceChildren(name, value);
+    slot.title = 'Net this month: income minus spending since the 1st';
+  }
+}
+
+function netLabel() {
+  const current = currentMonth();
+  if (state.filter.period === 'year') {
+    return state.month.slice(0, 4) === current.slice(0, 4) ? 'Net this year' : `Net in ${state.month.slice(0, 4)}`;
+  }
+  return state.month === current
+    ? 'Net this month'
+    : `Net in ${MONTH_ABBR[Number(state.month.slice(5, 7)) - 1]} ${state.month.slice(0, 4)}`;
+}
+
 function renderSummary(txns, accounts, invalidTxns) {
+  renderHeadNet(txns);
   const totals = periodTotals(txns, state.filter.period, state.month);
   renderBudget(txns);
   renderFunds(txns);
   document.getElementById('stat-income').textContent = formatIDR(totals.income);
   document.getElementById('stat-spent').textContent = formatIDR(-totals.spending);
   const net = document.getElementById('stat-net');
-  document.querySelector('.stat--net .stat__label').textContent =
-    state.filter.period === 'year' ? 'Net this year' : 'Net';
+  document.querySelector('.stat--net .stat__label').textContent = netLabel();
   net.textContent = formatAmount(totals.net);
   net.className = `amount ${totals.net >= 0 ? 'amount--in' : 'amount--out'}`;
 
@@ -1011,8 +1125,8 @@ function renderSummary(txns, accounts, invalidTxns) {
     account: state.filter.account,
     bucket: state.filter.bucket,
   });
-  renderPieScope(breakdown);
   const largest = breakdown.length ? breakdown[0].total : 0;
+  const spentTotal = breakdown.reduce((sum, b) => sum + b.total, 0);
   const slices = sliceColours(breakdown, state.categories);
   document.getElementById('bars-empty').hidden = breakdown.length > 0;
   renderPie(breakdown, slices);
@@ -1020,7 +1134,7 @@ function renderSummary(txns, accounts, invalidTxns) {
   // of its own and stays readable when a slice is a sliver.
   document.getElementById('bars').replaceChildren(
     ...breakdown.map(({ category, total }, i) => {
-      const row = figureRow(category, formatIDR(total), { swatch: slices[i] });
+      const row = figureRow(category, formatIDR(total), { swatch: slices[i], share: sharePercent(total, spentTotal) });
       // largest is 0 only when breakdown is empty, so this never divides by zero
       row.style.setProperty('--bar', `${Math.round((total / largest) * 100)}%`);
       return row;
@@ -1040,11 +1154,6 @@ function renderSummary(txns, accounts, invalidTxns) {
   balanceStat.textContent = formatIDR(total);
   balanceStat.className = `amount ${total < 0 ? 'amount--out' : ''}`;
 
-  // Same figure as the Balances "Total" row, shown in the Add header so the
-  // running total is visible on the view you open the app to.
-  const headBalance = document.getElementById('head-balance');
-  headBalance.textContent = accounts.length ? formatIDR(total) : '';
-  headBalance.classList.toggle('amount--out', total < 0);
 
   document.getElementById('balances').replaceChildren(
     ...sortByPosition(accounts).map(({ name }) => {
@@ -1104,7 +1213,7 @@ function paintPrivacy() {
   for (const button of privacyToggles) {
     button.setAttribute('aria-pressed', String(state.reveal));
     button.setAttribute('aria-label', state.reveal ? 'Hide amounts' : 'Show amounts');
-    button.querySelector('use').setAttribute('href', state.reveal ? '#i-eye' : '#i-eye-off');
+    button.querySelector('use').setAttribute('href', state.reveal ? '#i-eye' : '#i-eye-closed');
   }
 }
 function setReveal(reveal) {
