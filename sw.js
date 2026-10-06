@@ -25,6 +25,7 @@ const SHELL = [
   './sample.js',
   './settings.js',
   './pin.js',
+  './changelog.js',
   './reorder.js',
   './recurring.js',
   './xlsx-io.js',

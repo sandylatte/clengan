@@ -15,12 +15,17 @@ const keyOf = (section) => section.id.replace(/^setting-/, '');
 // paragraph that contains a matching label is not marked as well.
 const HIT_TARGETS = 'h2, h3, label, p, li, button:not(.pick__option):not(.rail__item), .tile__state';
 
+// Text marked data-nosearch is about other things (the version page's list
+// of what changed names half the app) and would match every query.
+const ownText = (section) => [...section.querySelectorAll('[data-nosearch]')]
+  .reduce((text, skip) => text.replace(skip.textContent, ' '), section.textContent);
+
 function words(section) {
   const extra = [...section.querySelectorAll('input[placeholder], [aria-label]')]
     .map((el) => `${el.getAttribute('placeholder') ?? ''} ${el.getAttribute('aria-label') ?? ''}`);
   // The rail's short name counts too: the rail says "Theme" for Appearance,
   // and someone searching for the word they can see should find it.
-  return `${section.dataset.short} ${section.textContent} ${extra.join(' ')}`.toLowerCase();
+  return `${section.dataset.short} ${ownText(section)} ${extra.join(' ')}`.toLowerCase();
 }
 
 export function initSettings() {
@@ -59,7 +64,7 @@ export function initSettings() {
     clearHits();
     if (!query) return;
     const matching = [...section.querySelectorAll(HIT_TARGETS)]
-      .filter((el) => !el.closest('.pick__list') && el.textContent.toLowerCase().includes(query));
+      .filter((el) => !el.closest('.pick__list, [data-nosearch]') && el.textContent.toLowerCase().includes(query));
     const smallest = matching.filter((el) => !matching.some((other) => other !== el && el.contains(other)));
     for (const el of smallest) el.classList.add('is-hit');
     smallest[0]?.scrollIntoView({ block: 'nearest' });

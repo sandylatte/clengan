@@ -1,8 +1,9 @@
 # Handoff
 
-Written 7 October 2026. Everything described here is pushed to `master`
-(`clengan-v124`); check the live `sw.js` names it, and the App version tile
-on a phone, before telling anyone a change is on their device.
+Written 6 October 2026. Everything described here is committed on `master`
+(`clengan-v125`). v124 is pushed and live; v125 is not pushed yet. Check the
+live `sw.js` and the App version tile on a phone before telling anyone a
+change is on their device.
 
 Read [README.md](README.md) for how to run it, [DESIGN.md](DESIGN.md) for the
 design system (it is machine-checked — see the traps below), and
@@ -76,7 +77,9 @@ section below before adding a setting or a dropdown.
 | `f1192e3` `15907de` | DESIGN.md radius scale matches the stylesheet, plus `pill`; the List's tag rail uses `--radius-xs` (v122) |
 | `e752ed6` `e4988f8` | DESIGN.md field heights (40 / 60px), tab items (48px) and tab bar clearance match the stylesheet (docs only) |
 | `4faaf71` | Savings by fund redesigned: one bar for the split, then a this-period / this-year table (owner picked option B of 3) (v123) |
-| (this commit) | Settings rail marks the open page quietly (no box); calendar month and year jump straight to a month or year grid (v124) |
+| `8f44f04` | Settings rail marks the open page quietly (no box); calendar month and year jump straight to a month or year grid (v124) |
+| `7ed2631` | Three more category colours, Azure, Mauve, Slate, chosen by measured distance; a test keeps every pair apart (v125) |
+| (this commit) | App version shows the release date and what's new, from `changelog.js` (v125) |
 
 `680afd6`–`ecff77b` came from a separate cloud session on 1 October. They were
 pulled in and audited, not written here.
@@ -329,7 +332,10 @@ anything — the ledger is simply no longer found. Same for the
 **Bump `CACHE` in `sw.js` on any change to a file in `SHELL`.** Still true with
 auto-reload. The worker is cache-first and only evicts caches whose name
 differs; auto-reload only fires when a *new* worker takes over, and a worker is
-only new if `sw.js` changed. Skip the bump and nothing reloads, ever.
+only new if `sw.js` changed. Skip the bump and nothing reloads, ever. **And
+add the new version to the top of `changelog.js`** (date and plain-language
+notes): Settings → App version shows it, and `test/changelog.test.js` fails
+until it is there.
 
 **Auto-reload (`d480882`) only helps from v113 on.** Any device still on v112
 or older runs code without it and needs one manual **Settings → App version →

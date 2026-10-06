@@ -499,6 +499,18 @@
     <header class="setting__head"><svg class="tile__icon" aria-hidden="true"><use href="#i-version"/></svg><h2 id="setting-version-title">App version</h2><span class="tile__state" id="state-version"></span></header>
     <p class="hint">The shell is served from an offline cache, so a stale one keeps showing old numbers with no sign anything is wrong. This names the version actually running and forces a fresh copy.</p>
     <p id="version-status" role="status"></p>
+    <!-- When the running version was released and what it changed, from
+         changelog.js. Left out of the Settings search (data-nosearch): its
+         words name other sections' features and would match every query. -->
+    <div id="version-news" class="news" data-nosearch hidden>
+      <p class="news__when" id="version-when"></p>
+      <h3 class="group__heading">What&rsquo;s new</h3>
+      <ul class="news__list" id="version-notes"></ul>
+      <details class="news__earlier">
+        <summary>Earlier updates</summary>
+        <div id="version-earlier"></div>
+      </details>
+    </div>
     <button type="button" class="primary" id="update-button">Fetch the latest version</button>
     <h3 class="group__heading">Diagnostics</h3>
     <p class="hint">Read this out if something looks wrong on your device. It is the only way I can see what your phone is actually rendering.</p>

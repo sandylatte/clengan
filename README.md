@@ -57,6 +57,10 @@ pass against code that is no longer on disk.
   whose name differs from `CACHE`, so skipping this leaves every user with
   an already-installed worker stuck on the old code indefinitely — including
   past any money bug the change was meant to fix.
+- Every new `CACHE` gets an entry at the top of `changelog.js`: the date and a
+  line or two of what changed, written for the people using the app.
+  Settings → App version shows it, and `test/changelog.test.js` fails until
+  the entry exists.
 
 ## Installing on a phone
 

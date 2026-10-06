@@ -1935,6 +1935,25 @@ label + .hint { margin-top: 0; }
 .filters--list { align-items: center; }
 .filters--list .privacy-toggle--section { margin: -2px -8px -2px 0; }
 
+/* App version: when, what's new, and the earlier ones folded away. */
+.news { margin: 0 0 var(--space-3); }
+.news__when { margin: 0 0 var(--space-2); font-size: 12px; color: var(--color-subtle); }
+.news__list { margin: 0 0 var(--space-3); padding-left: var(--space-4); font-size: 13px; line-height: 1.5; }
+.news__list li + li { margin-top: var(--space-1); }
+/* Left as a list item, which is what draws the disclosure arrow; a flex
+   summary loses it and stops looking openable. */
+.news__earlier summary {
+  min-height: 44px;
+  padding-top: 12px;
+  font-size: 13px;
+  color: var(--color-subtle);
+  cursor: pointer;
+}
+.news__earlier summary:hover { color: var(--color-foreground); }
+.news__release { margin-top: var(--space-2); }
+.news__release .news__when { margin-bottom: var(--space-1); }
+.news__release .news__list { margin-bottom: 0; color: var(--color-subtle); }
+
 /* PIN for amounts: the frequency is one choice of three, as plain radios —
    a short list read once, not a control used daily. */
 .pin-ask { margin: 0 0 var(--space-3); padding: 0; border: 0; }

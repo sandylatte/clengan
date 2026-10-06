@@ -16,7 +16,8 @@ import { reorderButtons, dragHandle, attachDragReorder } from './reorder.js';
 import { attachSwipe, closeOpenRow } from './swipe.js';
 import { editTransaction } from './editor.js';
 import { exportXlsx, importXlsx, importPlanner } from './xlsx-io.js';
-import { attachCalendar, toISO } from './calendar.js';
+import { attachCalendar, toISO, fromISO, formatDate } from './calendar.js';
+import { RELEASES } from './changelog.js';
 import { attachMonthPicker, enhanceAllSelects } from './picker.js';
 import { initSettings } from './settings.js';
 import {
@@ -2528,6 +2529,7 @@ async function showVersion() {
   // different question — what exists — and during a changeover that briefly
   // includes the cache being deleted, so the card showed two versions at once.
   const serving = await askWorkerForCache();
+  renderNews(serving);
   if (serving) {
     versionStatus.textContent = `Serving ${serving}.`;
     setTileState('state-version', serving);
@@ -2537,6 +2539,38 @@ async function showVersion() {
   versionStatus.textContent = names.length
     ? `Cached: ${names.join(', ')}. No worker is controlling this page yet.`
     : 'No offline cache yet — everything is coming straight from the server.';
+}
+
+// When the running version came out and what it changed. The entry is the
+// one for the cache actually serving the page; with no worker in charge the
+// files came straight from the server, which is the newest entry.
+function renderNews(serving) {
+  const current = RELEASES.find((r) => r.version === serving) ?? RELEASES[0];
+  if (!current) return;
+  const when = formatDate(fromISO(current.date));
+  // The line above already names the version when a worker answered.
+  document.getElementById('version-when').textContent = current.version === serving
+    ? `Updated ${when}.`
+    : `${current.version}, updated ${when}.`;
+  const notes = (list) => list.map((note) => {
+    const item = document.createElement('li');
+    item.textContent = note;
+    return item;
+  });
+  document.getElementById('version-notes').replaceChildren(...notes(current.notes));
+  document.getElementById('version-earlier').replaceChildren(...RELEASES.filter((r) => r !== current).map((release) => {
+    const block = document.createElement('div');
+    block.className = 'news__release';
+    const head = document.createElement('p');
+    head.className = 'news__when';
+    head.textContent = `${release.version} · ${formatDate(fromISO(release.date))}`;
+    const list = document.createElement('ul');
+    list.className = 'news__list';
+    list.append(...notes(release.notes));
+    block.append(head, list);
+    return block;
+  }));
+  document.getElementById('version-news').hidden = false;
 }
 
 // Resolves null rather than hanging if no worker is controlling the page, or

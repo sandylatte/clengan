@@ -545,7 +545,7 @@ what is over in `{colors.destructive}`. The percent stays readable while
 amounts are masked, like the ring's shares. The dials draw on arrival
 (`dial-draw`, `--dur-slow`).
 
-**`funds-table`** — The Summary's Savings by fund card (chosen 2026-10-07
+**`funds-table`** — The Summary's Savings by fund card (chosen 2026-10-06
 over hairline rows and answer-first dials). A 10px bar of the split, one
 segment per fund in proportion to its share, parted by 2px gaps and stepping
 from `{colors.accent}` toward the card (100% down to 25%); it unrolls from the
@@ -557,6 +557,21 @@ hairline. The share is drawn only by the bar, so each name carries it in
 visually hidden text. In the Year view the year column is dropped and the
 one column is exact. The note beneath shares `#budget-note`'s 12px subtle
 style.
+
+**`category-colour`** — Thirteen curated colours (`CATEGORY_COLOURS` in
+`budget.js`), data rather than theme: they paint the same in both tones, on
+the List's rails and legend swatches (not on the spending ring). All sit at
+one lightness, 4.4:1 on the graphite page and 3.3:1 on the peach page, and
+carry identity by hue and saturation. Ten until v125, when Azure, Mauve and
+Slate were added; `test/ordering.test.js` holds every colour to 3:1 on both
+pages and every pair to an OKLab distance of at least 0.055 (the closest
+original pair is 0.058), so a twin cannot slip in.
+
+**`app-version`** — Settings → App version names the cache serving the page,
+then "Updated 6 Oct 2026." and a What's new list for that version from
+`changelog.js`, with every earlier version folded under an "Earlier updates"
+disclosure. The block is `data-nosearch`: its notes name other sections'
+features and would match every Settings search.
 
 ## Do's and don'ts
 
