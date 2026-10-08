@@ -1,9 +1,8 @@
 # Handoff
 
-Written 6 October 2026. Everything described here is committed on `master`
-(`clengan-v125`). v124 is pushed and live; v125 is not pushed yet. Check the
-live `sw.js` and the App version tile on a phone before telling anyone a
-change is on their device.
+Written 6 October 2026. Everything described here is pushed to `master`
+(`clengan-v125`). Check the live `sw.js` and the App version tile on a phone
+before telling anyone a change is on their device.
 
 Read [README.md](README.md) for how to run it, [DESIGN.md](DESIGN.md) for the
 design system (it is machine-checked — see the traps below), and
@@ -79,7 +78,7 @@ section below before adding a setting or a dropdown.
 | `4faaf71` | Savings by fund redesigned: one bar for the split, then a this-period / this-year table (owner picked option B of 3) (v123) |
 | `8f44f04` | Settings rail marks the open page quietly (no box); calendar month and year jump straight to a month or year grid (v124) |
 | `7ed2631` | Three more category colours, Azure, Mauve, Slate, chosen by measured distance; a test keeps every pair apart (v125) |
-| (this commit) | App version shows the release date and what's new, from `changelog.js` (v125) |
+| `6e69313` | App version shows the release date and what's new, from `changelog.js` (v125) |
 
 `680afd6`–`ecff77b` came from a separate cloud session on 1 October. They were
 pulled in and audited, not written here.
