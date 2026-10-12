@@ -31,6 +31,7 @@ const SHELL = [
   './xlsx-io.js',
   './backup.js',
   './vault.js',
+  './argon2.js',
   './sync.js',
   './syncui.js',
   './manifest.json',

@@ -18,23 +18,29 @@
 //      the server can move a blob from one record to another and the client
 //      decrypts it happily.
 
+import { argon2id } from './argon2.js';
+
 const subtle = globalThis.crypto.subtle;
 const utf8 = new TextEncoder();
 
 // Named parameter sets rather than bare numbers, and the name is stored on
-// every identity. Raising the cost later — or moving to Argon2id — then means
-// adding an entry here and re-deriving on next unlock, instead of locking out
-// everyone whose identity was made under the old cost.
+// every identity. Raising the cost later then means adding an entry here,
+// instead of locking out everyone whose identity was made under the old cost.
 //
-// PBKDF2 is the honest weak point of this file. It is native to WebCrypto, so
-// it costs the project no dependency and no build step, but it is cheap to
-// attack on a GPU in a way Argon2id deliberately is not. It defends a stolen
-// blob against a casual attacker, not a funded one. ARCHITECTURE-SYNC.md
-// records this as an open decision; this constant is where it gets settled.
+// Argon2id at OWASP's floor for it: 19 MiB, two passes, one lane. Every guess
+// then costs an attacker 19 MiB of memory, which is what a GPU is short of;
+// PBKDF2 asks only for arithmetic, which a GPU has in bulk. PBKDF2 stays
+// listed so an identity made under it still opens, and its next password
+// change moves it to the current entry.
+//
+// The server answers an unknown email with a made-up identity naming a KDF
+// (server/store.py). It must name this one, or a different answer for real
+// accounts tells anyone asking who has one. test/vault.test.js holds them equal.
 export const KDFS = {
   'pbkdf2-sha256-600k': { name: 'PBKDF2', hash: 'SHA-256', iterations: 600000 },
+  'argon2id-19mib-t2': { name: 'Argon2id', memory: 19456, passes: 2, lanes: 1 },
 };
-export const CURRENT_KDF = 'pbkdf2-sha256-600k';
+export const CURRENT_KDF = 'argon2id-19mib-t2';
 
 // Distinct info strings, so two keys derived from one password cannot collide
 // even by accident. Versioned, because changing what a label means without
@@ -121,6 +127,7 @@ async function aesKey(raw, usages = ['encrypt', 'decrypt']) {
 async function stretch(password, salt, kdfName) {
   const params = KDFS[kdfName];
   if (!params) throw new Error(`unknown kdf "${kdfName}"`);
+  if (params.name === 'Argon2id') return argon2id(utf8.encode(password), salt, params, 32);
   const material = await subtle.importKey('raw', utf8.encode(password), 'PBKDF2', false, ['deriveBits']);
   return new Uint8Array(await subtle.deriveBits(
     { name: params.name, hash: params.hash, iterations: params.iterations, salt },

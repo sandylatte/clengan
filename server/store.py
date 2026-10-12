@@ -32,6 +32,12 @@ SESSION_TTL = 30 * 24 * 3600
 # a table dump being replayed as a login, not against guessing.
 SCRYPT = {"n": 2**14, "r": 8, "p": 1, "dklen": 32}
 
+# What the made-up identity for an unknown email claims to use. It must be the
+# client's CURRENT_KDF (vault.js): if real accounts named a different one, the
+# answer would tell anyone asking which emails have an account.
+# test/vault.test.js holds the two equal.
+FAKE_KDF = "argon2id-19mib-t2"
+
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS meta (
   key   TEXT PRIMARY KEY,
@@ -173,7 +179,7 @@ class Store:
         import base64
 
         return {
-            "kdf": "pbkdf2-sha256-600k",
+            "kdf": FAKE_KDF,
             "salt": base64.b64encode(fake[:16]).decode(),
             "recoverySalt": base64.b64encode(fake[16:32]).decode(),
         }

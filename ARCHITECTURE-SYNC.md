@@ -338,15 +338,18 @@ Not legal advice. Flags, not answers.
 
 ## Open decisions
 
-- ~~**Argon2id or PBKDF2.**~~ **Settled, reversibly.** `vault.js` ships
-  PBKDF2-SHA256 at 600k iterations, because it is native to WebCrypto and costs
-  the project neither a dependency nor a build step. It is the honest weak
-  point of the design: PBKDF2 is cheap to attack on a GPU in a way Argon2id
-  deliberately is not, so it defends a stolen blob against a casual attacker
-  and not a funded one. The parameters are a *named set* stored on every
-  identity, and a password change carries the identity forward to whatever is
-  current, so adding Argon2id later is a new entry in `KDFS` rather than a
-  migration that locks anyone out. Revisit before real users exist.
+- ~~**Argon2id or PBKDF2.**~~ **Settled: Argon2id.** `vault.js` derives with
+  Argon2id at OWASP's floor (19 MiB, two passes, one lane; `argon2id-19mib-t2`
+  in `KDFS`). No browser ships Argon2, so `argon2.js` implements it, with
+  BLAKE2b, in plain JS rather than as a vendored WASM blob: no dependency, no
+  build step, and readable. `test/argon2.test.js` holds it to the RFC 9106
+  vector and to OpenSSL's output, including the shipped parameters. It costs
+  about 0.3 s per unlock on a desktop and runs on the main thread; a phone is
+  several times slower and has not been measured. PBKDF2-SHA256 at 600k stays
+  in `KDFS` so an identity made under it still opens, and a password change
+  moves it to Argon2id. The server's made-up identity for an unknown email
+  names the same KDF (`FAKE_KDF` in `server/store.py`), or the difference
+  would say which emails have accounts; a test holds the two equal.
 - **Email as the account identifier**, which means handling deliverability,
   verification and change-of-address. A username avoids all of it and loses
   password reset by email — though reset is already impossible here by design,

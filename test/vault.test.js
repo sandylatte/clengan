@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import {
   KDFS, CURRENT_KDF, createIdentity, authVerifierFor, unlock, unlockWithRecoveryCode,
   changePassword, rotateRecoveryCode, encryptRecord, decryptRecord,
@@ -231,5 +232,21 @@ test('encrypting the same value twice gives different ciphertext', async () => {
 });
 
 test('the shipped KDF is a real cost, not the test one', () => {
-  assert.ok(KDFS[CURRENT_KDF].iterations >= 600000, 'the default KDF must not be weakened by accident');
+  const kdf = KDFS[CURRENT_KDF];
+  assert.equal(kdf.name, 'Argon2id');
+  assert.ok(kdf.memory >= 19456 && kdf.passes >= 2, 'the default KDF must not be weakened by accident');
+});
+
+test('an identity made under the shipped KDF opens with its password and only that', async () => {
+  const { identity } = await createIdentity('correct horse battery staple');
+  assert.equal(identity.kdf, CURRENT_KDF);
+  const dek = await unlock('correct horse battery staple', identity);
+  assert.equal((await raw(dek)).length, 32);
+  await assert.rejects(unlock('Correct horse battery staple', identity), /wrong password/);
+});
+
+test('the server answers an unknown email with the current KDF', () => {
+  const store = readFileSync(new URL('../server/store.py', import.meta.url), 'utf8');
+  assert.equal(store.match(/^FAKE_KDF = "([^"]+)"$/m)?.[1], CURRENT_KDF,
+    'a made-up identity naming another KDF tells anyone asking which emails are real');
 });
