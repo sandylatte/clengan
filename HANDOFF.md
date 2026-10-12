@@ -1,7 +1,7 @@
 # Handoff
 
-Written 6 October 2026. Everything described here is pushed to `master`
-(`clengan-v125`). Check the live `sw.js` and the App version tile on a phone
+Written 13 October 2026. Everything described here is pushed to `master`
+(`clengan-v126`). Check the live `sw.js` and the App version tile on a phone
 before telling anyone a change is on their device.
 
 Read [README.md](README.md) for how to run it, [DESIGN.md](DESIGN.md) for the
@@ -14,6 +14,12 @@ which is the largest thing in the repo and the least finished.
 Clengan is a local-first PWA money tracker, in rupiah. It works, it is
 deployed, it is installable, and it is in daily use by two people. The last two
 sessions were driven by what they hit using it, not by a roadmap.
+
+**v126 did the three buildable items from the last "What is not done"
+list.** Per-category monthly limits on the Budget card (see "Category limits"
+below); sync no longer carries the backup reminder's two device-only
+settings; and the vault derives keys with Argon2id instead of PBKDF2 (see
+"Argon2id" below). Only the first is visible to anyone; sync is still hidden.
 
 **Encrypted sync is built and hidden.** Five of six build steps are done:
 schema v8, `vault.js`, `server/`, `sync.js`, and a Sync tile. The tile now
@@ -79,6 +85,9 @@ section below before adding a setting or a dropdown.
 | `8f44f04` | Settings rail marks the open page quietly (no box); calendar month and year jump straight to a month or year grid (v124) |
 | `7ed2631` | Three more category colours, Azure, Mauve, Slate, chosen by measured distance; a test keeps every pair apart (v125) |
 | `6e69313` | App version shows the release date and what's new, from `changelog.js` (v125) |
+| `aaa30be` | Sync keeps `last-backup` and `backup-snooze` on the device that wrote them (`DEVICE_SETTINGS` in `sync.js`) |
+| `3977fa3` | Vault KDF is Argon2id (19 MiB, t=2, p=1) from a new `argon2.js`; the server's fake answer for an unknown email names it too |
+| `8030849` | **Category limits**: a monthly limit per spending category, on the Budget card and in Settings → Budget split (v126) |
 
 `680afd6`–`ecff77b` came from a separate cloud session on 1 October. They were
 pulled in and audited, not written here.
@@ -131,6 +140,74 @@ problems. As of `5f6b236` they are identical: 14 rows across 2026-09 and
 The partner's **revised** workbook — the one that prompted all this — was never
 received. The parser has only been proven on the old file and on synthetic
 layouts in `test/planner.test.js`.
+
+## Category limits (v126)
+
+"Food: Rp 2.000.000 a month", watched on the Summary's Budget card. A limit
+is a line to stay under. **It allocates nothing**: the fixed / flexible /
+savings figures still come from income and a limit never moves them.
+
+- **Stored** as one setting, `category-limits`: category → month → cents,
+  `null` meaning "no limit from this month". It rides in the backup's settings
+  sheet and syncs like `month-budgets`.
+- **A limit runs from the month it was set until a later month sets its
+  own** (`limitFor` in `budget.js`). So lowering Food in November leaves
+  October judged by October's limit: the same reason month plans exist. The
+  cost: a one-off month (December's bigger food budget) carries into January
+  until January is set back. The other model, a standing limit plus per-month
+  overrides, handles one-offs in one edit but rewrites past months whenever the
+  standing limit changes. Chosen for the owner's earlier complaint; not asked.
+- `setLimit` writes only real changes: an entry that repeats what the months
+  before already say is not stored, and a category with no entries left is
+  dropped. The editor compares each field with the stored value and skips
+  untouched ones, so saving the dialog unchanged writes nothing.
+- **Shown** in the Month view only, below the Budget card's note: the same
+  dials as the buckets, in the user's category order. Spent is counted by
+  `spendingBreakdown`, so it always agrees with the chart's legend. A zero limit
+  reads "no spending planned" and fills red at the first rupiah. The figures
+  are inside the Budget card's `inScope('budget')`, so the card's eye governs
+  them.
+- **Set** in one dialog (`limitsDialog` in `dialog.js`) listing every
+  spending category, from the card's Category limits chip (month on screen) or
+  Settings → Budget split → Set limits from this month (calendar month). A
+  limit on a since-deleted category is still listed, so it can be cleared. An
+  empty field is "no limit".
+- **Not built:** limits in the Year view (summing monthly limits needs a rule
+  for months not yet started, and nobody asked), and a line on the Add screen
+  after saving ("Rp 600.000 left of Food & Drinks"), which is where a limit
+  would help most in the moment. Both are small if wanted.
+
+Verified in the agent pane at 375×812: set three limits through the real
+dialog; the card's figures matched an independent sum over the raw rows
+(Food 50% of Rp 2.000.000, Rp 993.000 left; Transportation 138%, Rp 191.000
+over; Shopping zero, Rp 380.000 over); a November edit left October intact and
+carried into December; Year view and September showed no limits; Settings
+search "limit" lands on the Budget page; dismissing saved nothing. The pane's
+limits were removed afterwards. **Not seen on a phone.**
+
+## Argon2id (v126)
+
+`argon2.js` is Argon2id (RFC 9106, v0x13) and BLAKE2b in plain JS, about 340
+lines, no dependency. Chosen over a vendored WASM build because an opaque
+blob does not suit a privacy app whose argument is "read the code", and
+because downloading one needed the owner's say-so. Correctness is not taken on
+trust: `test/argon2.test.js` pins the RFC 9106 vector and four OpenSSL 3.5.4
+answers (`openssl kdf ... ARGON2ID`), one at the shipped parameters, and
+during the build 150 random cases (1–4 lanes, 1–4 passes, odd tag lengths,
+secret and associated data) all matched OpenSSL. BLAKE2b matched `b2sum` on
+91 cases.
+
+- `KDFS['argon2id-19mib-t2']` = 19 MiB, two passes, one lane: OWASP's floor
+  for Argon2id. It is `CURRENT_KDF`. PBKDF2-600k stays in `KDFS` so an
+  identity made under it still opens, and a password change moves it on.
+- **About 0.3 s per derivation on this desktop**, in node and in Chromium
+  alike, against 0.06 s for native PBKDF2. It runs on the main thread. A phone
+  is slower and has not been measured; if the unlock freeze shows, move it
+  into a Worker (the `ponytail:` note in `argon2.js`).
+- **The server's made-up identity for an unknown email must name the current
+  KDF** (`FAKE_KDF` in `server/store.py`), or a pbkdf2 answer for fake
+  accounts beside an argon2id one for real ones says which emails exist.
+  `test/vault.test.js` reads `store.py` and fails if they differ.
 
 ## Privacy masking (v115–v116)
 
@@ -384,6 +461,12 @@ page's `fetch` **GET** to a *different* local port (POST gets through), so the
 sync pull path still cannot be verified there; `server/test_integration.mjs`
 covers it from node. Screenshots come back black (the pane runs hidden), so
 check state with `javascript_tool` or `read_page`, never by looking.
+(v126: screenshots worked, but at 375×812 the screenshot is scaled, so a
+click by page coordinates lands somewhere else. One landed on a dialog's
+backdrop and dismissed it. Click by `ref`.) The pane's synthetic **Backspace
+and Escape fire `keydown` but do nothing by default**: no character is
+deleted, even in a bare `<input>`, and no dialog closes. Clear a field by
+setting its value and dispatching `input`; close a dialog with its button.
 
 **A new script file must go in `SHELL`.** `test/` has a check that every file
 the page loads is listed; it caught `picker.js` missing. Without it the app
@@ -398,11 +481,12 @@ Fetch the latest version), then reload it.
 `registration.update()` from the page, and check the page navigated and the
 App version tile names the throwaway. Put `CACHE` back before committing.
 
-**Sync uploads the whole `settings` store.** That is right for `split` and
-`month-budgets`, wrong for the device-local keys added since: `last-backup`
-and `backup-snooze` (backup reminder). Exporting on one device would silence
-the reminder on another. Harmless while sync is hidden; exclude them in
-`sync.js` before sync ever ships.
+**Sync uploads the whole `settings` store, except `DEVICE_SETTINGS`.** That
+set in `sync.js` holds `last-backup` and `backup-snooze`: they are left out of
+the snapshot (so never pushed or tombstoned) and skipped if one ever arrives.
+**A new setting that describes the device rather than the ledger must join
+that set**, or it syncs. Preferences kept per device in `localStorage` (theme,
+PIN, last Settings page) never reach the store at all.
 
 **Never point `test.html` at the real database.** It uses `moneytrack-test`.
 `migration-test.html` uses its own throwaway name and deletes it afterwards.
@@ -415,7 +499,7 @@ refuse to commit until it is set there too.
 
 ```bash
 python3 serve.py 8124              # dev server, sends no-store
-node --test                        # 337 pure-logic tests
+node --test                        # 357 pure-logic tests (about 3 s: some run real Argon2id)
 python3 server/test_server.py      # 34 HTTP tests for the sync backend
 node server/test_integration.mjs   # 14 end-to-end, spawns the server itself
 ```
@@ -427,7 +511,11 @@ http://localhost:8124/test.html            # 30, the IndexedDB layer
 http://localhost:8124/migration-test.html  # 17, the v7 → v8 migration
 ```
 
-Run this cycle (v117–v122): `node --test` at 337/337 after every commit
+Run for v126: `node --test` 357/357, `test.html` 30/30,
+`server/test_server.py` 34/34 and `server/test_integration.mjs` 14/14, all
+after the last edit. `migration-test.html` was not touched and not re-run.
+
+Run in v117–v122: `node --test` at 337/337 after every commit
 (12 tests added: `chartSlices`, `filterRows`, `rowsNet`, `pin.js`, sample
 coverage), and `test.html` at 30/30 before the push. Before that,
 v115–v116 added no tests (display-only) and re-ran `node --test` at 325/325. The two server
@@ -450,7 +538,8 @@ detected table would still import cleanly.
 **Every device needs one manual update to v113.** See the auto-reload trap.
 From v113 on, v114 arrives by itself.
 
-**Not yet seen on a real phone:** everything in v117–v122 (the slides on Add and
+**Not yet seen on a real phone:** the v126 limits card and dialog, and Argon2id's
+unlock time (sync is hidden, so no one meets the second yet). Before that, everything in v117–v122 (the slides on Add and
 List, the new ring and budget card, the filters, the section eyes, the PIN
 dialog and its number pad, and the restyled buttons — the Save button on Add
 now looks different from what the owner is used to). Also the v114 Settings rail, the dropdowns, the
@@ -461,23 +550,12 @@ Chrome and iOS Safari both honour `enterkeyhint`, but only a real device shows
 what it actually says. Animations were only partly watched: the pane renders
 screenshots now, but a frame caught mid-slide is all it shows of motion.
 
-**Per-category monthly limits** ("Food: Rp 2.000.000 in October") were offered
-and not asked for yet. The per-month budget from `fbb8c5e` covers fixed /
-flexible / savings only.
-
 **Step 6 of the sync build order.** Client-side handling of rate limits, account
 deletion in the UI, and conflict behaviour under deliberate offline divergence.
 The engine does last-write-wins and that is **lossy**: two devices editing the
 same record while both offline will silently lose one edit. Acceptable for one
 person with two devices; not acceptable for anything shared, and it needs a CRDT
 rather than a patch if that changes.
-
-**PBKDF2 is the weak point, deliberately and reversibly.** `vault.js` uses
-PBKDF2-SHA256 at 600k because it is native to WebCrypto and costs no dependency
-and no build step. It is cheap to attack on a GPU in a way Argon2id is not. The
-parameters are a named set stored on each identity and a password change carries
-the identity forward, so adding Argon2id is a new entry in `KDFS` rather than a
-migration. **Revisit before real users exist.**
 
 **Play Store, when the owner resumes it.** Run PWABuilder against
 `https://sandylatte.github.io/clengan/`, keep and back up the signing key, and
