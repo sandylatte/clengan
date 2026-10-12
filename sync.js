@@ -22,8 +22,16 @@ import {
 import {
   createIdentity, authVerifierFor, unlock, unlockWithRecoveryCode,
 } from './vault.js';
+import { LAST_BACKUP_KEY, BACKUP_SNOOZE_KEY } from './backup.js';
 
 const utf8 = new TextEncoder();
+
+// Settings that describe this device rather than the ledger. When this phone
+// last exported a backup says nothing about the other one: synced, an export
+// on one phone would silence the reminder on both. They neither leave nor
+// arrive. A new device-only setting belongs here, or it syncs.
+const DEVICE_SETTINGS = new Set([LAST_BACKUP_KEY, BACKUP_SNOOZE_KEY]);
+const deviceOnly = (store, key) => store === 'settings' && DEVICE_SETTINGS.has(key);
 
 // -- pure core ---------------------------------------------------------------
 // Everything below this line to the transport section is deterministic and
@@ -104,6 +112,9 @@ export async function snapshot(stores, keyPaths, idKey) {
     const keyPath = keyPaths[store];
     for (const record of records) {
       const key = record[keyPath];
+      // Left out of the snapshot, so never pushed and never tombstoned, and a
+      // grave for one from elsewhere finds nothing here to dig (see plan).
+      if (deviceOnly(store, key)) continue;
       out[await syncId(idKey, store, key)] = { hash: await hashRecord(record), store, key };
     }
   }
@@ -261,6 +272,8 @@ export async function runSync({ io, transport, dek, keyPaths }) {
     // resetting the cursor to 0 and re-pulling, which is cheap and exact.
     if (!(item.store in keyPaths)) { skipped += 1; continue; }
     const value = await decryptRecord(dek, item.id, item.blob);
+    // Only a client from before DEVICE_SETTINGS would have sent one.
+    if (deviceOnly(item.store, value[keyPaths[item.store]])) { skipped += 1; continue; }
     await io.write(item.store, value);
     applied += 1;
   }

@@ -252,6 +252,33 @@ test('every syncable store round-trips, not just transactions', async () => {
   assert.deepEqual(second.stores.settings, [{ key: 'default-account', value: 'Bank BCA' }]);
 });
 
+// An export on one phone must not silence the backup reminder on the other.
+test('the backup reminder settings stay on the device that wrote them', async () => {
+  const transport = fakeTransport();
+  const dek = await dekFor();
+  const first = fakeIo({
+    settings: [
+      { key: 'split', value: { fixed: 50, flexible: 20, savings: 30 } },
+      { key: 'last-backup', value: 1 },
+      { key: 'backup-snooze', value: 2 },
+    ],
+  });
+  const result = await runSync({ io: first, transport, dek, keyPaths: KEY_PATHS });
+  assert.equal(result.pushed, 1, 'only the split leaves the device');
+
+  const second = fakeIo({ settings: [{ key: 'last-backup', value: 99 }] });
+  await runSync({ io: second, transport, dek, keyPaths: KEY_PATHS });
+  assert.deepEqual(second.stores.settings.map((s) => [s.key, s.value]).sort(),
+    [['last-backup', 99], ['split', { fixed: 50, flexible: 20, savings: 30 }]]);
+
+  // From a client that predates the rule: arrives, and is not applied.
+  const id = await syncId(await deriveIdKey(dek), 'settings', 'last-backup');
+  const blob = await (await import('../vault.js')).encryptRecord(dek, id, { key: 'last-backup', value: 5 });
+  transport.inject({ ...blob, updatedAt: Date.now() });
+  await runSync({ io: second, transport, dek, keyPaths: KEY_PATHS });
+  assert.equal(second.stores.settings.find((s) => s.key === 'last-backup').value, 99);
+});
+
 test('a record from a store this version does not know is skipped, not crashed on', async () => {
   const transport = fakeTransport();
   const dek = await dekFor();
