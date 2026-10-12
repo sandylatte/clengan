@@ -7,6 +7,13 @@
 
 export const RELEASES = [
   {
+    version: 'clengan-v126',
+    date: '2026-10-13',
+    notes: [
+      'Give any spending category a monthly limit: tap Category limits on the Budget card in Summary. A limit carries on into later months until you change it.',
+    ],
+  },
+  {
     version: 'clengan-v125',
     date: '2026-10-06',
     notes: [

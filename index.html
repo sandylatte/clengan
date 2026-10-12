@@ -252,8 +252,13 @@
     <h2 class="section-head">Budget<button type="button" class="privacy-toggle privacy-toggle--section" data-scope="budget" data-name="Budget" aria-pressed="false" aria-label="Show amounts in Budget"><svg class="tile__icon" aria-hidden="true"><use href="#i-eye-closed"/></svg></button></h2>
     <div id="budget" class="dials"></div>
     <p id="budget-note"></p>
+    <div id="limits" hidden>
+      <h3 class="group__heading">Category limits</h3>
+      <div id="limit-dials" class="dials"></div>
+    </div>
     <div class="chips">
       <button type="button" class="chip" id="budget-plan"></button>
+      <button type="button" class="chip" id="budget-limits">Category limits</button>
       <button type="button" class="chip" id="budget-default">Default split</button>
     </div>
   </div>
@@ -369,6 +374,9 @@
       <input type="hidden" id="plan-month">
       <div class="calendar" id="plan-month-popup" role="dialog" aria-label="Choose a month" hidden></div>
     </div>
+    <h3 class="group__heading">Category limits</h3>
+    <p class="hint">A monthly limit for any spending category, a line to stay under that the split above does not change. Each runs from the month it is set until a later month sets its own. The Summary's Budget card shows them and sets them for the month on screen.</p>
+    <button type="button" class="secondary" id="settings-limits">Set limits from this month</button>
   </section>
 
   <section class="setting" id="setting-funds" data-short="Funds" aria-labelledby="setting-funds-title">

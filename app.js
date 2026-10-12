@@ -5,12 +5,13 @@ import {
 import {
   filterMonth, monthlyTotals, spendingBreakdown, accountBalances, netTrend, bucketTotals, fundsByYear,
   lastSixMonths, groupByDay, periodTotals, periodBuckets, searchTransactions, chartSlices,
-  filterRows, rowCategory, rowsNet,
+  filterRows, rowCategory, rowsNet, limitTotals,
 } from './rollup.js';
 import {
   BUCKETS, CATEGORY_KINDS, CATEGORY_COLOURS, DEFAULT_SPLIT, validateSplit, allocateFunds,
   splitBalance, categoryOptions, sortByPosition, normaliseColour, moveTo, UNCATEGORISED,
   categoryCodes, TRANSFER_CATEGORY, MONTH_PLANS_KEY, validateMonthPlan, planBalance,
+  CATEGORY_LIMITS_KEY, limitFor, limitsIn, setLimit,
 } from './budget.js';
 import { reorderButtons, dragHandle, attachDragReorder } from './reorder.js';
 import { attachSwipe, closeOpenRow } from './swipe.js';
@@ -28,7 +29,9 @@ import {
 // Set once the Settings rail is built, near the end of this file.
 let settingsNav = null;
 import { dueOccurrences, occurrenceToRow, runStamps } from './recurring.js';
-import { confirmDialog, alertDialog, pickColour, promptDialog, monthPlanDialog } from './dialog.js';
+import {
+  confirmDialog, alertDialog, pickColour, promptDialog, monthPlanDialog, limitsDialog,
+} from './dialog.js';
 import { initSyncUi } from './syncui.js';
 import {
   LAST_BACKUP_KEY, BACKUP_SNOOZE_KEY, SNOOZE_DAYS, backupReminder, backupAgeText, requestPersistence,
@@ -438,6 +441,8 @@ const state = {
   listFilter: { category: '', account: '' },
   // Month -> its own budget plan. Loaded on every refresh.
   plans: {},
+  // Category -> month -> limit in cents (see budget.js). Loaded with the plans.
+  limits: {},
   // List-only, and deliberately not persisted: a search is a question being
   // asked right now, not a setting. Reopening the app to yesterday's query
   // and an apparently half-empty list is the failure this avoids.
@@ -841,11 +846,32 @@ function renderBudget(txns) {
 
   // A plan belongs to one month, so the control only appears when one month
   // is on screen. In the year view it would have to guess which month.
+  // Limits are monthly too, and go the same way.
+  const monthView = state.filter.period === 'month';
   const planButton = document.getElementById('budget-plan');
-  planButton.hidden = state.filter.period !== 'month';
+  planButton.hidden = !monthView;
   planButton.textContent = state.plans[state.month]
     ? `Edit ${monthName(state.month)} budget`
     : `Set a budget for ${monthName(state.month)}`;
+  document.getElementById('budget-limits').hidden = !monthView;
+
+  // The same dials, one per category with a limit in force. A zero limit is
+  // "nothing planned here", so any spending at all fills its dial red.
+  const order = sortByPosition(state.categories).map((c) => c.name);
+  const limitRows = monthView ? limitTotals(txns, state.limits, state.month, order) : [];
+  document.getElementById('limits').hidden = limitRows.length === 0;
+  document.getElementById('limit-dials').replaceChildren(...limitRows.map(({ category, limit, spent, remaining }) => {
+    const over = remaining < 0;
+    return dial({
+      label: category,
+      detail: limit > 0 ? `${used(spent, limit)}% of ${formatIDR(limit)}` : 'no spending planned',
+      figure: formatIDR(Math.abs(remaining)),
+      unit: over ? 'over' : 'left',
+      used: limit > 0 ? used(spent, limit) : (spent > 0 ? 100 : 0),
+      tone: over ? 'is-over' : '',
+      figureTone: over ? 'amount--out' : '',
+    });
+  }));
 }
 
 const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June',
@@ -885,6 +911,33 @@ document.getElementById('budget-default').addEventListener('click', () => {
   settingsNav?.select('split');
   showView('settings');
 });
+
+// One editor for every category's limit from a month on, opened from the
+// Budget card for the month on screen and from Settings for this month.
+async function editLimits(month) {
+  const spending = sortByPosition(state.categories.filter((c) => c.kind !== 'income')).map((c) => c.name);
+  // A limit left on a deleted category still shows on the card, so it is
+  // offered here too, where it can be cleared.
+  const names = [...new Set([...spending, ...limitsIn(state.limits, month).map((l) => l.category)])];
+  const entered = await limitsDialog({
+    monthLabel: monthName(month),
+    rows: names.map((name) => ({ name, cents: limitFor(state.limits, name, month) })),
+    toCents: rupiahToCents,
+    group: groupDigits,
+  });
+  if (entered === undefined) return;
+  // Read fresh, as editMonthPlan does: writing back a copy from before an
+  // import would undo it.
+  let limits = await db.getSetting(CATEGORY_LIMITS_KEY, {});
+  for (const { name, cents } of entered) {
+    if (cents !== limitFor(limits, name, month)) limits = setLimit(limits, name, month, cents);
+  }
+  await db.putSetting(CATEGORY_LIMITS_KEY, limits);
+  await refresh();
+}
+
+document.getElementById('budget-limits').addEventListener('click', () => editLimits(state.month));
+document.getElementById('settings-limits').addEventListener('click', () => editLimits(currentMonth()));
 
 const planPicker = attachMonthPicker({
   button: document.getElementById('plan-month-button'),
@@ -1529,6 +1582,7 @@ async function refresh() {
   // whole migration: no plans means every month uses the split, as before.
   state.plans = await db.getSetting(MONTH_PLANS_KEY, {});
   if (!state.plans || typeof state.plans !== 'object') state.plans = {};
+  state.limits = await db.getSetting(CATEGORY_LIMITS_KEY, {});
   renderPlans();
   state.defaultAccount = defaultAccount;
   state.categories = categories;
@@ -1640,6 +1694,7 @@ document.getElementById('export-button').addEventListener('click', async () => {
       { key: 'split', value: split },
       { key: 'default-account', value: defaultAccount },
       { key: MONTH_PLANS_KEY, value: await db.getSetting(MONTH_PLANS_KEY, {}) },
+      { key: CATEGORY_LIMITS_KEY, value: await db.getSetting(CATEGORY_LIMITS_KEY, {}) },
     ];
     exportXlsx(txns, accounts, { categories, funds, settings, recurring });
     // Only after the file was written: a failed export must not reset the

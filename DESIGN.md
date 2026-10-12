@@ -543,7 +543,13 @@ over, `{colors.accent}` for savings against its target. Right, a 12px label
 ("Flexible · 135% of Rp 3.960.000") over the answer at 16px: what is left, or
 what is over in `{colors.destructive}`. The percent stays readable while
 amounts are masked, like the ring's shares. The dials draw on arrival
-(`dial-draw`, `--dur-slow`).
+(`dial-draw`, `--dur-slow`). Below the note, in the Month view only, a
+**Category limits** group (a `group__heading`, then the same dials) has one
+row per category with a limit in force: "Food & Drinks · 50% of
+Rp 2.000.000" over what is left or over. A zero limit reads "no spending
+planned" and fills red at the first rupiah. The card's **Category limits**
+chip and Settings → Budget split open one dialog listing every spending
+category, name left and a 150px amount field right on one line each.
 
 **`funds-table`** — The Summary's Savings by fund card (chosen 2026-10-06
 over hairline rows and answer-first dials). A 10px bar of the split, one

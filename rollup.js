@@ -1,4 +1,6 @@
-import { monthBudget, resolveBucket, allocateFunds, UNCATEGORISED, TRANSFER_CATEGORY } from './budget.js';
+import {
+  monthBudget, resolveBucket, allocateFunds, limitsIn, UNCATEGORISED, TRANSFER_CATEGORY,
+} from './budget.js';
 
 // A transfer moves money between the user's own accounts. It is neither
 // income nor spending, and both of its rows must be excluded from every
@@ -131,6 +133,22 @@ export function chartSlices(breakdown, keep = 4) {
     ...breakdown.slice(0, keep).map((b) => ({ ...b, other: false, members: [] })),
     { category: 'Other', total: rest.reduce((sum, b) => sum + b.total, 0), other: true, members: rest },
   ];
+}
+
+// Each limited category's month: its limit, what was spent in it, and what is
+// left (negative once over). Spending is counted exactly as the chart counts
+// it, so the two cards cannot disagree about a category. Rows come in the
+// user's own category order; a limit whose category has since been deleted
+// sorts last.
+export function limitTotals(txns, limits, month, order = []) {
+  const spent = new Map(spendingBreakdown(txns, { period: 'month', month }).map((b) => [b.category, b.total]));
+  const rank = (name) => (order.includes(name) ? order.indexOf(name) : order.length);
+  return limitsIn(limits, month)
+    .map(({ category, limit }) => {
+      const used = spent.get(category) ?? 0;
+      return { category, limit, spent: used, remaining: limit - used };
+    })
+    .sort((a, b) => rank(a.category) - rank(b.category) || a.category.localeCompare(b.category));
 }
 
 // Budget comes from income actually recorded in the month, not from a

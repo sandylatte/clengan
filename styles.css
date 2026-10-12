@@ -1888,6 +1888,27 @@ label + .hint { margin-top: 0; }
 .plan__status { margin: var(--space-2) 0 var(--space-3); }
 .dialog__actions .plan__reset { margin-right: auto; }
 
+/* Category limits: a name and an amount on one line per category, so a dozen
+   of them fit a phone screen rather than stacking label over field twelve
+   times. On the Budget card the group follows the note and keeps the dials'
+   hairlines. */
+.limits__fields { margin-bottom: var(--space-3); }
+.limits__row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 150px;
+  align-items: center;
+  gap: var(--space-2);
+}
+.limits__row label {
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.limits__row input { margin-bottom: var(--space-1); }
+#limits { margin-bottom: var(--space-2); }
+#limits .group__heading { margin-top: 0; }
+
 /* The backup reminder. A card like every other, not a red alarm: nothing has
    gone wrong yet, and the point is that it stays that way. */
 .backup-nudge { margin-bottom: var(--space-3); }

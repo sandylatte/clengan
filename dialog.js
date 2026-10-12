@@ -350,3 +350,60 @@ export function monthPlanDialog({ monthLabel, plan, split, income, toCents, grou
     $('.plan__close').focus();
   });
 }
+
+// Every spending category's limit for one month, in one form, because limits
+// are set a handful at a time. An empty field is "no limit". Resolves to
+// [{ name, cents }] as entered (cents null when empty), or to undefined when
+// dismissed, which must not be read as clearing them all.
+let limitsNode = null;
+
+export function limitsDialog({ monthLabel, rows, toCents, group }) {
+  if (!limitsNode) {
+    limitsNode = document.createElement('dialog');
+    limitsNode.className = 'dialog dialog--editor';
+    limitsNode.innerHTML = `
+      <h2 class="dialog__title"></h2>
+      <p class="dialog__body"></p>
+      <div class="limits__fields"></div>
+      <div class="dialog__actions">
+        <button type="button" class="dialog__cancel">Cancel</button>
+        <button type="button" class="dialog__confirm primary">Save</button>
+      </div>`;
+    document.body.append(limitsNode);
+  }
+  const dialog = limitsNode;
+  dialog.querySelector('.dialog__title').textContent = `Category limits from ${monthLabel}`;
+  dialog.querySelector('.dialog__body').textContent = `A limit carries on into later months until one sets its own, and months before ${monthLabel} keep theirs. It is a line to stay under: the budget split does not change. Leave a field empty for no limit.`;
+
+  const fields = rows.map(({ name, cents }, i) => {
+    const row = document.createElement('div');
+    row.className = 'limits__row';
+    const label = document.createElement('label');
+    label.htmlFor = `limit-${i}`;
+    label.textContent = name;
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.id = `limit-${i}`;
+    input.className = 'moneyfield';
+    input.inputMode = 'numeric';
+    input.autocomplete = 'off';
+    input.placeholder = 'No limit';
+    input.value = cents === null ? '' : group(String(Math.round(cents / 100)));
+    input.addEventListener('input', () => { input.value = group(input.value); });
+    row.append(label, input);
+    return { name, input, row };
+  });
+  dialog.querySelector('.limits__fields').replaceChildren(...fields.map(({ row }) => row));
+
+  return new Promise((resolve) => {
+    const finish = (value) => { dialog.close(); resolve(value); };
+    dialog.querySelector('.dialog__confirm').onclick = () => finish(
+      fields.map(({ name, input }) => ({ name, cents: toCents(input.value) })),
+    );
+    dialog.querySelector('.dialog__cancel').onclick = () => finish(undefined);
+    dialog.oncancel = () => finish(undefined);
+    dialog.onclick = (event) => { if (event.target === dialog) finish(undefined); };
+    dialog.showModal();
+    dialog.querySelector('.dialog__cancel').focus();
+  });
+}

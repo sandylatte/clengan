@@ -323,6 +323,63 @@ export function monthBudget(incomeCents, split, plan) {
   return splitBudget(incomeCents, plan?.mode === 'percent' ? plan : split);
 }
 
+// A category's monthly limit is a line to stay under, watched on the Budget
+// card. It allocates nothing: the fixed, flexible and savings figures still
+// come from income, and a limit never moves them.
+//
+// Stored as ONE setting, category -> month -> cents, where null means "no
+// limit from this month". A limit runs from the month it was set until a
+// later month sets its own, so lowering Food in November leaves October
+// judged by the limit October had. Month plans exist because a change made
+// in October used to rewrite September; limits are built not to.
+export const CATEGORY_LIMITS_KEY = 'category-limits';
+
+const LIMIT_MONTH = /^\d{4}-(0[1-9]|1[0-2])$/;
+const isLimit = (cents) => cents === null || (Number.isInteger(cents) && cents >= 0);
+
+// The limit in force for one category in one month, or null for none.
+// Unreadable entries (a hand-edited backup) are passed over, not trusted:
+// the Summary draws from this on every refresh.
+export function limitFor(limits, category, month) {
+  const history = limits?.[category];
+  if (!history || typeof history !== 'object') return null;
+  let since = '';
+  let found = null;
+  for (const [from, cents] of Object.entries(history)) {
+    if (LIMIT_MONTH.test(from) && from <= month && from > since && isLimit(cents)) {
+      since = from;
+      found = cents;
+    }
+  }
+  return found;
+}
+
+// Every category with a limit in force that month.
+export function limitsIn(limits, month) {
+  if (!limits || typeof limits !== 'object') return [];
+  return Object.keys(limits)
+    .map((category) => ({ category, limit: limitFor(limits, category, month) }))
+    .filter(({ limit }) => limit !== null);
+}
+
+// A copy with `category` limited to `cents` (null for none) from `month` on.
+// Later months that set their own keep it. An entry that would only repeat
+// what the months before already say is not written, so saving an untouched
+// field leaves nothing behind.
+export function setLimit(limits, category, month, cents) {
+  if (!LIMIT_MONTH.test(month) || !isLimit(cents)) {
+    throw new RangeError('a limit is a whole rupiah amount of zero or more, from a month');
+  }
+  const next = limits && typeof limits === 'object' ? { ...limits } : {};
+  const old = next[category];
+  const history = old && typeof old === 'object' ? { ...old } : {};
+  delete history[month];
+  if (cents !== limitFor({ [category]: history }, category, month)) history[month] = cents;
+  if (Object.keys(history).length) next[category] = history;
+  else delete next[category];
+  return next;
+}
+
 // The live line under the month-plan fields, and whether Save is allowed.
 // Percent plans reuse the split's own check. An amount plan is always
 // saveable: spending caps above income are a real choice someone can make,
