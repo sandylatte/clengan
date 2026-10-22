@@ -7,6 +7,13 @@
 
 export const RELEASES = [
   {
+    version: 'clengan-v127',
+    date: '2026-10-13',
+    notes: [
+      'After you save spending in a category with a limit, the Add screen says how much of that limit is left this month, or how far over you are.',
+    ],
+  },
+  {
     version: 'clengan-v126',
     date: '2026-10-13',
     notes: [

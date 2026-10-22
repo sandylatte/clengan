@@ -153,6 +153,19 @@ const categoryWrap = document.getElementById('add-category-wrap');
 const accountLabel = document.getElementById('add-account-label');
 const status = document.getElementById('add-status');
 
+// The last row saved here, when it was spending in a category. The line under
+// the form then also says how much of that category's limit is left, the
+// question the Budget card answers, without leaving the form. It is redrawn
+// on every refresh (paintSaved), so it follows the eye and any later edit,
+// and any other message clears it so a refresh cannot paint over that one.
+let lastSaved = null;
+
+function addWarning(message) {
+  lastSaved = null;
+  status.className = 'budget-note__warning';
+  status.textContent = message;
+}
+
 const selectedKind = () => form.querySelector('input[name="kind"]:checked').value;
 
 const bucketWrap = document.getElementById('add-bucket-wrap');
@@ -308,16 +321,15 @@ form.addEventListener('submit', async (event) => {
     const note = document.getElementById('add-note').value;
     const name = document.getElementById('add-name').value.trim();
     const account = document.getElementById('add-account').value.trim();
+    const category = document.getElementById('add-category').value.trim();
 
     const magnitude = rupiahToCents(document.getElementById('add-amount').value);
     if (magnitude === null) {
-      status.className = 'budget-note__warning';
-      status.textContent = 'Enter an amount before saving.';
+      addWarning('Enter an amount before saving.');
       return;
     }
     if (magnitude <= 0) {
-      status.className = 'budget-note__warning';
-      status.textContent = 'The amount must be more than zero.';
+      addWarning('The amount must be more than zero.');
       return;
     }
 
@@ -334,14 +346,13 @@ form.addEventListener('submit', async (event) => {
           account,
           amount: kind === 'income' ? magnitude : -magnitude,
           name,
-          category: document.getElementById('add-category').value.trim(),
+          category,
           bucket: kind === 'expense' ? chosen : null,
           note,
         });
       }
     } catch (error) {
-      status.className = 'budget-note__warning';
-      status.textContent = `This could not be saved. ${error.message}`;
+      addWarning(`This could not be saved. ${error.message}`);
       return;
     }
 
@@ -350,6 +361,7 @@ form.addEventListener('submit', async (event) => {
     // snapping back to today made every backdated row a second tap.
     addDate.set(date);
     syncKind();
+    lastSaved = kind === 'expense' && category ? { category, month: date.slice(0, 7) } : null;
     status.className = 'is-ok';
     status.textContent = 'Saved.';
     freshen(status);
@@ -359,6 +371,30 @@ form.addEventListener('submit', async (event) => {
     saveButton.disabled = false;
   }
 });
+
+// "Saved.", and when the row went into a category with a limit that month,
+// what is left of it or how far over, counted as the Budget card counts it.
+// The row's own month, not today's: a row dated in September answers to
+// September's limit.
+function paintSaved() {
+  if (!lastSaved) return;
+  const { category, month } = lastSaved;
+  const valid = state.txns.filter((t) => Number.isInteger(t.amount));
+  const row = limitTotals(valid, state.limits, month).find((r) => r.category === category);
+  if (!row) {
+    status.textContent = 'Saved.';
+    return;
+  }
+  const over = row.remaining < 0;
+  const whose = month === currentMonth()
+    ? `this month's ${category} limit`
+    : `the ${category} limit for ${monthName(month)}`;
+  const line = document.createElement('span');
+  // Red only once over, as on the Budget card; "left" keeps the line's tone.
+  if (over) line.className = 'budget-note__warning';
+  line.textContent = `${formatIDR(Math.abs(row.remaining))} ${over ? 'over' : 'left of'} ${whose}.`;
+  status.replaceChildren('Saved. ', line);
+}
 
 // Every figure the app DISPLAYS goes through these two. Masked, a figure
 // keeps its "Rp" and, for a row, its +/− (the row's colour already says which
@@ -1604,6 +1640,7 @@ async function refresh() {
   // fetch rows that have not changed since the previous letter.
   state.txns = txns;
   renderList(txns);
+  paintSaved();
   renderBackupState(txns);
 
   // The List view (renderList above) needs every row, including corrupt ones,

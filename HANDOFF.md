@@ -1,8 +1,9 @@
 # Handoff
 
-Written 13 October 2026. Everything described here is pushed to `master`
-(`clengan-v126`). Check the live `sw.js` and the App version tile on a phone
-before telling anyone a change is on their device.
+Written 13 October 2026. Everything up to `clengan-v126` is pushed to
+`master`. **v127 (the Add screen's limit line) is tested in the working tree
+but not committed or pushed.** Check the live `sw.js` and the App version tile
+on a phone before telling anyone a change is on their device.
 
 Read [README.md](README.md) for how to run it, [DESIGN.md](DESIGN.md) for the
 design system (it is machine-checked — see the traps below), and
@@ -88,6 +89,7 @@ section below before adding a setting or a dropdown.
 | `aaa30be` | Sync keeps `last-backup` and `backup-snooze` on the device that wrote them (`DEVICE_SETTINGS` in `sync.js`) |
 | `3977fa3` | Vault KDF is Argon2id (19 MiB, t=2, p=1) from a new `argon2.js`; the server's fake answer for an unknown email names it too |
 | `8030849` | **Category limits**: a monthly limit per spending category, on the Budget card and in Settings → Budget split (v126) |
+| (uncommitted) | After saving spending under a limited category, the Add screen says what is left of that month's limit (v127) |
 
 `680afd6`–`ecff77b` came from a separate cloud session on 1 October. They were
 pulled in and audited, not written here.
@@ -172,10 +174,16 @@ savings figures still come from income and a limit never moves them.
   Settings → Budget split → Set limits from this month (calendar month). A
   limit on a since-deleted category is still listed, so it can be cleared. An
   empty field is "no limit".
+- **On the Add screen (v127).** After saving spending in a category with a
+  limit that month, the line under Save says "Saved. Rp 893.000 left of this
+  month's Food & Drinks limit." (or "… over …", the over part red). It uses
+  the row's own month, not today's: a November row names "the Food & Drinks
+  limit for November 2026", and a month with no limit says plain "Saved.".
+  `lastSaved` and `paintSaved()` in `app.js` redraw it on every refresh, so it
+  follows the eye and any later edit; `addWarning()` clears it, so an error
+  is never painted over by an old "Saved.".
 - **Not built:** limits in the Year view (summing monthly limits needs a rule
-  for months not yet started, and nobody asked), and a line on the Add screen
-  after saving ("Rp 600.000 left of Food & Drinks"), which is where a limit
-  would help most in the moment. Both are small if wanted.
+  for months not yet started, and nobody asked).
 
 Verified in the agent pane at 375×812: set three limits through the real
 dialog; the card's figures matched an independent sum over the raw rows
@@ -511,6 +519,12 @@ http://localhost:8124/test.html            # 30, the IndexedDB layer
 http://localhost:8124/migration-test.html  # 17, the v7 → v8 migration
 ```
 
+Run for v127: `node --test` 357/357, and the Add screen driven in the pane at
+375×812 (under, over, income, an error surviving the eye, a September row
+with no limit, a November row on October's carried limit; the figures matched
+an independent sum). No unit test: the line is display over `limitTotals`,
+which is tested.
+
 Run for v126: `node --test` 357/357, `test.html` 30/30,
 `server/test_server.py` 34/34 and `server/test_integration.mjs` 14/14, all
 after the last edit. `migration-test.html` was not touched and not re-run.
@@ -538,7 +552,7 @@ detected table would still import cleanly.
 **Every device needs one manual update to v113.** See the auto-reload trap.
 From v113 on, v114 arrives by itself.
 
-**Not yet seen on a real phone:** the v126 limits card and dialog, and Argon2id's
+**Not yet seen on a real phone:** the v126 limits card and dialog, the v127 Add-screen line, and Argon2id's
 unlock time (sync is hidden, so no one meets the second yet). Before that, everything in v117–v122 (the slides on Add and
 List, the new ring and budget card, the filters, the section eyes, the PIN
 dialog and its number pad, and the restyled buttons — the Save button on Add
