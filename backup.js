@@ -5,13 +5,13 @@
 export const LAST_BACKUP_KEY = 'last-backup';
 export const BACKUP_SNOOZE_KEY = 'backup-snooze';
 
-// A month, because the money in here moves monthly: losing more than one
-// month's entries is losing a whole budget cycle the user cannot rebuild from
-// memory.
-export const BACKUP_EVERY_DAYS = 30;
-// "Later" is a real answer, but a short one. A week keeps the nudge from
-// turning into noise without letting it fall silent for good.
-export const SNOOZE_DAYS = 7;
+// A week. A month of entries is a whole budget cycle nobody can rebuild from
+// memory, and the ledger lives only on this phone, so the most a lost phone or
+// cleared site should ever cost is a few days of typing.
+export const BACKUP_EVERY_DAYS = 7;
+// "Later" is a real answer, but a short one, and shorter than the reminder
+// itself so it never skips a whole backup cycle.
+export const SNOOZE_DAYS = 3;
 
 const DAY = 24 * 60 * 60 * 1000;
 

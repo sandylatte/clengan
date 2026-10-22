@@ -11,6 +11,8 @@ export const RELEASES = [
     date: '2026-10-13',
     notes: [
       'After you save spending in a category with a limit, the Add screen says how much of that limit is left this month, or how far over you are.',
+      'Saving no longer fails with "the database connection is closing" after the app has sat in the background. It now reconnects on its own.',
+      'The backup reminder now comes every week instead of every month, and "Later" puts it off for 3 days instead of a week.',
     ],
   },
   {

@@ -113,10 +113,49 @@ export function openDb(name = DB_NAME) {
         database.createObjectStore('sync', { keyPath: 'key' });
       }
     };
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error);
+    request.onsuccess = () => {
+      const database = request.result;
+      // iOS Safari closes a backgrounded web app's connection on its own, and
+      // another tab opening a newer version asks this one to step aside. Either
+      // way the memoised connection is dead, so forget it and let the next
+      // call open a fresh one instead of failing every save until a restart.
+      database.onclose = () => forget(database);
+      database.onversionchange = () => { database.close(); forget(database); };
+      current = database;
+      resolve(database);
+    };
+    request.onerror = () => { dbPromise = null; reject(request.error); };
   });
   return dbPromise;
+}
+
+// The live connection, so a late close event from an old one cannot throw
+// away a newer one.
+let current = null;
+
+function forget(database) {
+  if (current === database) { current = null; dbPromise = null; }
+}
+
+// Every transaction starts here. `body` runs synchronously with the new
+// transaction, the same as the inline Promise executors it replaced.
+//
+// The one retry is data-safe: `database.transaction()` throwing means no
+// transaction exists, so nothing was read or written and none of `body` ran.
+// A failure once the transaction is running is never retried, because by then
+// part of a write may have been attempted and only its own abort undoes it.
+function begin(stores, mode, body, retried = false) {
+  return openDb().then((database) => {
+    let transaction;
+    try {
+      transaction = database.transaction(stores, mode);
+    } catch (error) {
+      if (retried || error.name !== 'InvalidStateError') throw error;
+      forget(database);
+      return begin(stores, mode, body, true);
+    }
+    return new Promise((resolve, reject) => body(transaction, resolve, reject));
+  });
 }
 
 // v5. Fixed and flexible stopped being a property of the category and became
@@ -254,13 +293,12 @@ function migrateBucketsOntoRows(transaction) {
 }
 
 function run(store, mode, work) {
-  return openDb().then((database) => new Promise((resolve, reject) => {
-    const transaction = database.transaction(store, mode);
+  return begin(store, mode, (transaction, resolve, reject) => {
     const result = work(transaction.objectStore(store));
     transaction.oncomplete = () => resolve(result.value);
     transaction.onerror = () => reject(transaction.error);
     transaction.onabort = () => reject(transaction.error);
-  }));
+  });
 }
 
 function readAll(store) {
@@ -487,8 +525,7 @@ export function renameAccount(from, to) {
   const wanted = String(to ?? '').trim();
   if (!wanted) return Promise.reject(new RangeError('an account needs a name'));
 
-  return openDb().then((database) => new Promise((resolve, reject) => {
-    const transaction = database.transaction(['accounts', 'settings'], 'readwrite');
+  return begin(['accounts', 'settings'], 'readwrite', (transaction, resolve, reject) => {
     const accounts = transaction.objectStore('accounts');
     let failure = null;
     const fail = (message) => { failure = new Error(message); transaction.abort(); };
@@ -521,7 +558,7 @@ export function renameAccount(from, to) {
     transaction.oncomplete = () => resolve();
     transaction.onerror = () => reject(failure || transaction.error);
     transaction.onabort = () => reject(failure || transaction.error);
-  }));
+  });
 }
 
 // The unguarded write. Replacing an account's opening balance is a real
@@ -598,8 +635,7 @@ export async function updateTransaction(row) {
   const txn = account === undefined
     ? rest
     : { ...rest, account_id: await idForAccount(account) };
-  return openDb().then((database) => new Promise((resolve, reject) => {
-    const transaction = database.transaction('transactions', 'readwrite');
+  return begin('transactions', 'readwrite', (transaction, resolve, reject) => {
     const store = transaction.objectStore('transactions');
     let failure = null;
     const fail = (message) => { failure = new Error(message); transaction.abort(); };
@@ -641,7 +677,7 @@ export async function updateTransaction(row) {
     transaction.oncomplete = () => resolve();
     transaction.onerror = () => reject(failure || transaction.error);
     transaction.onabort = () => reject(failure || transaction.error);
-  }));
+  });
 }
 
 // Deleting either side of a transfer deletes both. Leaving one half behind
@@ -743,11 +779,10 @@ export function clearSyncMeta() {
 }
 
 export function clearAll() {
-  return openDb().then((database) => new Promise((resolve, reject) => {
-    const transaction = database.transaction(['transactions', 'accounts'], 'readwrite');
+  return begin(['transactions', 'accounts'], 'readwrite', (transaction, resolve, reject) => {
     transaction.objectStore('transactions').clear();
     transaction.objectStore('accounts').clear();
     transaction.oncomplete = () => resolve();
     transaction.onerror = () => reject(transaction.error);
-  }));
+  });
 }

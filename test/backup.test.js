@@ -14,10 +14,10 @@ test('a never-backed-up ledger is due once it holds a week of history', () => {
   assert.equal(backupReminder({ now, lastBackup: null, txnCount: 5, oldestDate: '2026-09-20' }).due, true);
 });
 
-test('a backup is due again after thirty days', () => {
-  assert.equal(backupReminder({ now, lastBackup: now - 29 * DAY, txnCount: 5 }).due, false);
-  const r = backupReminder({ now, lastBackup: now - 30 * DAY, txnCount: 5 });
-  assert.deepEqual(r, { due: true, age: 30 });
+test('a backup is due again after a week', () => {
+  assert.equal(backupReminder({ now, lastBackup: now - 6 * DAY, txnCount: 5 }).due, false);
+  const r = backupReminder({ now, lastBackup: now - 7 * DAY, txnCount: 5 });
+  assert.deepEqual(r, { due: true, age: 7 });
 });
 
 test('Later holds the reminder until the snooze runs out', () => {
