@@ -1,8 +1,7 @@
 # Handoff
 
-Written 13 October 2026. Everything up to `clengan-v126` is pushed to
-`master`. **v127 (the Add screen's limit line) is tested in the working tree
-but not committed or pushed.** Check the live `sw.js` and the App version tile
+Written 22 October 2026. Everything described here is pushed to `master`
+(`clengan-v127`). Check the live `sw.js` and the App version tile
 on a phone before telling anyone a change is on their device.
 
 Read [README.md](README.md) for how to run it, [DESIGN.md](DESIGN.md) for the
@@ -89,7 +88,8 @@ section below before adding a setting or a dropdown.
 | `aaa30be` | Sync keeps `last-backup` and `backup-snooze` on the device that wrote them (`DEVICE_SETTINGS` in `sync.js`) |
 | `3977fa3` | Vault KDF is Argon2id (19 MiB, t=2, p=1) from a new `argon2.js`; the server's fake answer for an unknown email names it too |
 | `8030849` | **Category limits**: a monthly limit per spending category, on the Budget card and in Settings → Budget split (v126) |
-| (uncommitted) | After saving spending under a limited category, the Add screen says what is left of that month's limit (v127) |
+| `790f95b` | After saving spending under a limited category, the Add screen says what is left of that month's limit (v127) |
+| `1018bd7` | Saves reconnect when iOS closes the backgrounded database (`begin()` in `db.js`); backup reminder every 7 days, "Later" 3 days (v127) |
 
 `680afd6`–`ecff77b` came from a separate cloud session on 1 October. They were
 pulled in and audited, not written here.
@@ -407,6 +407,14 @@ still submits.
 
 These have each cost real debugging time. They are not hypothetical.
 
+**Every transaction goes through `begin()` in `db.js`.** iOS Safari closes a
+backgrounded web app's IndexedDB connection, sometimes without a close event;
+the old memoised connection then failed every save with "The database
+connection is closing" until a restart. `begin()` reopens and retries once,
+and only when `database.transaction()` itself throws `InvalidStateError` —
+then nothing was read or written. Never retry after a transaction has started:
+part of a write may have run. Do not call `database.transaction()` directly.
+
 **`DB_NAME` is `'moneytrack'` and must never change.** The app was renamed to
 Clengan; the database was not. That string is the key to every transaction on
 every device that has ever installed this. Renaming it does not migrate
@@ -519,7 +527,11 @@ http://localhost:8124/test.html            # 30, the IndexedDB layer
 http://localhost:8124/migration-test.html  # 17, the v7 → v8 migration
 ```
 
-Run for v127: `node --test` 357/357, and the Add screen driven in the pane at
+Run for v127: `node --test` 357/357 after the last edit. The reconnect was
+driven in the pane against 236 stored rows: a forced `close()` (no close
+event, as on iOS) then a save, and a simulated versionchange then a save; both
+landed and every row read back. The weekly reminder is covered by
+`test/backup.test.js`; the 3-day snooze has no test. Before that, the limit line: the Add screen driven in the pane at
 375×812 (under, over, income, an error surviving the eye, a September row
 with no limit, a November row on October's carried limit; the figures matched
 an independent sum). No unit test: the line is display over `limitTotals`,
@@ -552,7 +564,7 @@ detected table would still import cleanly.
 **Every device needs one manual update to v113.** See the auto-reload trap.
 From v113 on, v114 arrives by itself.
 
-**Not yet seen on a real phone:** the v126 limits card and dialog, the v127 Add-screen line, and Argon2id's
+**Not yet seen on a real phone:** the v126 limits card and dialog, the v127 Add-screen line, the v127 reconnect after the app sits in the background, the weekly backup reminder, and Argon2id's
 unlock time (sync is hidden, so no one meets the second yet). Before that, everything in v117–v122 (the slides on Add and
 List, the new ring and budget card, the filters, the section eyes, the PIN
 dialog and its number pad, and the restyled buttons — the Save button on Add
