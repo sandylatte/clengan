@@ -41,14 +41,19 @@ export const SYNCABLE = {
 // re-derived from the name rather than trusted.
 
 let dbPromise = null;
+// Pinned by the first call. A reconnect must reopen THIS database: test.html
+// points the module at a throwaway one and then clears its stores, so falling
+// back to DB_NAME would clear the user's real ledger.
+let dbName = null;
 
 // name is only honoured on the very first call in the module's lifetime —
 // dbPromise is memoised at module scope, so a later call with a different
-// name silently returns the already-open database.
+// name silently returns the already-open database, or reopens the first one.
 export function openDb(name = DB_NAME) {
   if (dbPromise) return dbPromise;
+  dbName ??= name;
   dbPromise = new Promise((resolve, reject) => {
-    const request = indexedDB.open(name, DB_VERSION);
+    const request = indexedDB.open(dbName, DB_VERSION);
     // Each version's block falls through to the next, so a v1 database and a
     // fresh one both arrive at the same schema by the same path. Seeding
     // happens here because a versionchange transaction is the only point
@@ -124,7 +129,14 @@ export function openDb(name = DB_NAME) {
       current = database;
       resolve(database);
     };
-    request.onerror = () => { dbPromise = null; reject(request.error); };
+    request.onerror = () => {
+      dbPromise = null;
+      // Another tab upgraded the database past this page's code. Nothing was
+      // written; only a reload brings the code that can read the new shape.
+      reject(request.error?.name === 'VersionError'
+        ? new Error('A newer version of the app updated your data. Close and reopen the app, then try again.')
+        : request.error);
+    };
   });
   return dbPromise;
 }
@@ -784,5 +796,6 @@ export function clearAll() {
     transaction.objectStore('accounts').clear();
     transaction.oncomplete = () => resolve();
     transaction.onerror = () => reject(transaction.error);
+    transaction.onabort = () => reject(transaction.error);
   });
 }

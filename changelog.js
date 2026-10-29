@@ -7,6 +7,14 @@
 
 export const RELEASES = [
   {
+    version: 'clengan-v128',
+    date: '2026-10-30',
+    notes: [
+      'If another copy of the app has just updated how your records are stored, a save now tells you to close and reopen the app instead of showing a technical error.',
+      'Erasing all data now says so if it fails, instead of waiting forever.',
+    ],
+  },
+  {
     version: 'clengan-v127',
     date: '2026-10-13',
     notes: [

@@ -1,7 +1,7 @@
 # Handoff
 
-Written 22 October 2026. Everything described here is pushed to `master`
-(`clengan-v127`). Check the live `sw.js` and the App version tile
+Written 30 October 2026. Everything described here is pushed to `master`
+(`clengan-v128`). Check the live `sw.js` and the App version tile
 on a phone before telling anyone a change is on their device.
 
 Read [README.md](README.md) for how to run it, [DESIGN.md](DESIGN.md) for the
@@ -90,6 +90,7 @@ section below before adding a setting or a dropdown.
 | `8030849` | **Category limits**: a monthly limit per spending category, on the Budget card and in Settings → Budget split (v126) |
 | `790f95b` | After saving spending under a limited category, the Add screen says what is left of that month's limit (v127) |
 | `1018bd7` | Saves reconnect when iOS closes the backgrounded database (`begin()` in `db.js`); backup reminder every 7 days, "Later" 3 days (v127) |
+| (next) | A reconnect reopens the database the first call named, never the default (test pages clear their stores); `clearAll` rejects on abort; VersionError reads as "close and reopen"; `test.html` 31 (v128) |
 
 `680afd6`–`ecff77b` came from a separate cloud session on 1 October. They were
 pulled in and audited, not written here.

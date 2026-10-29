@@ -199,6 +199,19 @@ test('updateTransaction allows editing note/date on a transfer half without dist
 // has none. This file does. That was the gap, not the absence of tests.
 // ---------------------------------------------------------------------------
 
+// iOS Safari closes a backgrounded app's connection, often without a close
+// event; every save then failed with "The database connection is closing".
+// close() fires no close event either, so this is the iOS case exactly. The
+// reopen must land on THIS database: falling back to the default name would
+// point the clears in this file at the user's real ledger.
+test('a save after the connection was closed reopens the same database', async () => {
+  (await db.openDb()).close();
+  await db.putSetting('reconnect-test', 7);
+  if (await db.getSetting('reconnect-test', 0) !== 7) throw new Error('the save did not land');
+  const name = (await db.openDb()).name;
+  if (name !== 'moneytrack-test') throw new Error(`reopened ${name}, not moneytrack-test`);
+});
+
 const clearStore = async (name) => {
   const database = await db.openDb();
   await new Promise((resolve, reject) => {
