@@ -262,7 +262,7 @@ h2 {
   border-radius: var(--radius-sm);
 }
 .seg__button {
-  min-height: 34px;
+  min-height: 44px;
   padding: 0 var(--space-2);
   background: none;
   border: none;
@@ -705,6 +705,8 @@ button.ghost {
   transition: background 150ms ease, color 150ms ease, transform var(--dur-fast) var(--ease);
 }
 button.ghost:hover { background: var(--color-input); color: var(--color-foreground); }
+/* Undo after a delete, inline at the end of the List's status line. */
+.status__undo { color: var(--color-foreground); text-decoration: underline; }
 
 /* Every control acknowledges the press itself, not just its result. 3% is
    small enough to read as the surface taking the weight rather than as the
@@ -810,7 +812,7 @@ button:active, .chip:active, .seg__button:active { transform: scale(0.97); }
   align-items: center;
   justify-content: center;
   gap: 6px;
-  min-height: 34px;
+  min-height: 44px;
   margin: 0;
   border-radius: var(--radius-sm);
   font-size: 13px;
@@ -1426,10 +1428,8 @@ label + .hint { margin-top: 0; }
   flex: 0 0 auto;
 }
 
-/* The ordered rows carry three controls plus a name; the delete target
-   shrinks from 44 to 36 there so all three fit beside the name on a phone.
-   Still well above the 24px minimum, and it is not a primary action. */
-.row--ordered .row__delete { min-width: 36px; min-height: 36px; }
+/* The ordered rows carry three controls plus a name. Delete keeps the full
+   44px target there too: it is the one control on the row that loses data. */
 
 .grip {
   display: flex;
@@ -1448,13 +1448,16 @@ label + .hint { margin-top: 0; }
 
 /* Borderless. Two boxed buttons per row read as heavily as the name they sit
    beside; a bare chevron is the smallest thing that still says "move". The
-   tap target stays 32px even though the mark inside it is 14px. */
+   target is the row's full 44px height. Two 44px-wide arrows plus Delete
+   would leave the name about 90px beside the Settings rail at 375px, so the
+   width stays 32: still past WCAG's 24px minimum, and dragging the grip is
+   the other way to move a row. */
 .reorder__button {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 26px;
-  height: 32px;
+  width: 32px;
+  height: 44px;
   padding: 0;
   background: none;
   color: var(--color-subtle);
@@ -1476,7 +1479,7 @@ label + .hint { margin-top: 0; }
 }
 /* Kept in place rather than hidden at the ends, so the controls do not shift
    under the pointer as rows change places. */
-.reorder__button:disabled { opacity: 0.3; cursor: default; }
+.reorder__button:disabled { opacity: 0.4; cursor: default; }
 
 /* The colour, as the control. A select naming ten colours in words was three
    times the width and had to be read rather than seen. */
@@ -1523,8 +1526,11 @@ label + .hint { margin-top: 0; }
 .editor__error:empty { display: none; }
 .editor__error { margin: 0 0 var(--space-2); font-size: 12px; }
 .editor__actions { display: flex; gap: var(--space-1); align-items: center; }
+/* Far left, away from Cancel and Save. Needs the .dialog__actions prefix:
+   `.dialog__actions button { margin: 0 }` outranks a bare class and was
+   pulling Delete in beside Save. */
+.dialog__actions .editor__delete { margin-right: auto; }
 .editor__delete {
-  margin-right: auto;
   min-height: 44px;
   padding: 0 var(--space-2);
   background: none;
@@ -1597,7 +1603,7 @@ label + .hint { margin-top: 0; }
   margin-bottom: var(--space-3);
 }
 .chip {
-  min-height: 36px;
+  min-height: 44px;
   padding: 0 var(--space-2);
   background: var(--color-input);
   color: var(--color-foreground);
@@ -1668,7 +1674,7 @@ label + .hint { margin-top: 0; }
    own grid. A faint fill says so on a touch screen, where there is no hover
    to discover it by. */
 .calendar__jump {
-  min-height: 32px;
+  min-height: 44px;
   padding: 0 var(--space-2);
   background: color-mix(in srgb, var(--color-input) 60%, transparent);
   border: none;
@@ -1679,8 +1685,8 @@ label + .hint { margin-top: 0; }
 }
 .calendar__jump:hover { background: var(--color-input); }
 .calendar__nav {
-  width: 32px;
-  height: 32px;
+  width: 44px;
+  height: 44px;
   background: none;
   border: none;
   color: var(--color-foreground);
@@ -1704,7 +1710,7 @@ label + .hint { margin-top: 0; }
 }
 .calendar__day {
   aspect-ratio: 1;
-  min-height: 34px;
+  min-height: 40px;
   background: none;
   border: none;
   border-radius: var(--radius-sm);
@@ -1724,7 +1730,7 @@ label + .hint { margin-top: 0; }
 }
 .calendar__today {
   width: 100%;
-  min-height: 36px;
+  min-height: 44px;
   margin-top: var(--space-2);
   background: none;
   border: 1px solid var(--color-border);
@@ -1945,9 +1951,9 @@ label + .hint { margin-top: 0; }
    bar's master and pulled into the heading's line by negative margins, so a
    heading with an eye is no taller than one without. */
 .privacy-toggle--section {
-  width: 36px;
-  height: 36px;
-  margin: -10px -8px -10px auto;
+  width: 44px;
+  height: 44px;
+  margin: -14px -12px -14px auto;
   border-radius: var(--radius-sm);
 }
 .privacy-toggle--section .tile__icon { width: 18px; height: 18px; }
@@ -2017,7 +2023,7 @@ label + .hint { margin-top: 0; }
 .filters--compact .filters__field { flex: 1 1 0; min-width: 0; }
 .filters--compact .pick { margin-bottom: 0; }
 .filters--compact .pick__button {
-  min-height: 32px;
+  min-height: 44px;
   border-radius: 999px;
   padding-left: var(--space-3);
   font-size: 13px;

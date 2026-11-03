@@ -732,21 +732,53 @@ async function deleteTransaction(txn) {
   const ok = await confirmDialog({
     title: isTransfer ? 'Delete this transfer' : 'Delete this transaction',
     body: isTransfer
-      ? `${amount} on ${txn.date}. Both sides of the transfer are removed, so the two accounts stay balanced against each other.\n\nThis cannot be undone.`
-      : `${amount} on ${txn.date}. This cannot be undone.`,
+      ? `${amount} on ${formatDate(fromISO(txn.date))}. Both sides of the transfer are removed, so the two accounts stay balanced against each other.`
+      : `${amount} on ${formatDate(fromISO(txn.date))}.`,
     confirmLabel: 'Delete',
     danger: true,
   });
   closeOpenRow();
   if (!ok) return;
+  let removed;
   try {
-    await db.deleteTransaction(txn.id);
+    removed = await db.deleteTransaction(txn.id);
   } catch (error) {
     showListStatus(`This row was not deleted, and nothing changed. ${error.message}`);
     return;
   }
   showListStatus('');
   await refresh();
+  offerUndo(isTransfer ? 'Transfer deleted.' : 'Deleted.', removed);
+}
+
+// A delete beside Save is one slip from losing a row, so for a few seconds
+// the List offers it back. The rows return exactly as stored, ids included.
+const UNDO_MS = 8000;
+let undoTimer = null;
+function offerUndo(message, rows) {
+  if (!rows?.length) return;
+  showListStatus(message);
+  const status = document.getElementById('list-status');
+  const undo = document.createElement('button');
+  undo.type = 'button';
+  undo.className = 'ghost status__undo';
+  undo.textContent = 'Undo';
+  undo.addEventListener('click', async () => {
+    clearTimeout(undoTimer);
+    try {
+      await db.restoreTransactions(rows);
+    } catch (error) {
+      showListStatus(`The row could not be put back. ${error.message}`);
+      return;
+    }
+    await refresh();
+    showListStatus('Restored.');
+    // Good news, so not in the warning red the status line uses for failures.
+    document.getElementById('list-status').classList.remove('budget-note__warning');
+  }, { once: true });
+  status.append(' ', undo);
+  clearTimeout(undoTimer);
+  undoTimer = setTimeout(() => { if (status.contains(undo)) showListStatus(''); }, UNDO_MS);
 }
 
 async function openEditor(txn) {

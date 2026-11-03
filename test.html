@@ -104,6 +104,17 @@ test('deleting one side of a transfer deletes both', async () => {
   if (rows.length !== 0) throw new Error(`orphaned half left behind: ${rows.length} rows remain`);
 });
 
+test('undo puts both halves of a deleted transfer back exactly', async () => {
+  await reset('Bank', 'Savings', 'Bank BCA');
+  await db.addTransfer({ date: '2026-08-06', from: 'Bank', to: 'Savings', amount: 20000, note: 'rent' });
+  const before = JSON.stringify((await db.allTransactions()).sort((a, b) => a.id.localeCompare(b.id)));
+  const removed = await db.deleteTransaction((await db.allTransactions())[0].id);
+  if (removed.length !== 2) throw new Error(`delete handed back ${removed.length} rows, expected both halves`);
+  await db.restoreTransactions(removed);
+  const after = JSON.stringify((await db.allTransactions()).sort((a, b) => a.id.localeCompare(b.id)));
+  if (after !== before) throw new Error('the restored rows differ from the ones deleted');
+});
+
 test('deleting a flow leaves other rows untouched', async () => {
   await reset('Bank', 'Savings', 'Bank BCA');
   const keep = await db.addFlow({ date: '2026-08-01', account: 'Bank', amount: 300000, category: 'Salary', note: '' });

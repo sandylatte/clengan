@@ -706,15 +706,32 @@ export async function updateTransaction(row) {
 
 // Deleting either side of a transfer deletes both. Leaving one half behind
 // would unbalance the two accounts against each other permanently.
+// Resolves to the rows exactly as stored, both halves of a transfer, so
+// restoreTransactions can put them back unchanged if the user taps Undo.
 export function deleteTransaction(id) {
   return run('transactions', 'readwrite', (store) => {
+    const result = { value: [] };
     const request = store.get(id);
     request.onsuccess = () => {
       const txn = request.result;
       if (!txn) return;
+      result.value.push(txn);
       store.delete(id);
-      if (txn.transfer_id) store.delete(txn.transfer_id);
+      if (!txn.transfer_id) return;
+      const partner = store.get(txn.transfer_id);
+      partner.onsuccess = () => {
+        if (partner.result) result.value.push(partner.result);
+        store.delete(txn.transfer_id);
+      };
     };
+    return result;
+  });
+}
+
+// Undo for deleteTransaction: raw rows, ids and account_ids as they were.
+export function restoreTransactions(rows) {
+  return run('transactions', 'readwrite', (store) => {
+    for (const row of rows) store.put(row);
     return { value: undefined };
   });
 }

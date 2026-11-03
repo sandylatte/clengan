@@ -7,6 +7,15 @@
 
 export const RELEASES = [
   {
+    version: 'clengan-v134',
+    date: '2026-11-03',
+    notes: [
+      'Buttons are bigger and easier to tap.',
+      'When editing an entry, Delete now sits on the far left, away from Save.',
+      'After deleting an entry, tap Undo within a few seconds to bring it back exactly as it was.',
+    ],
+  },
+  {
     version: 'clengan-v133',
     date: '2026-11-03',
     notes: [
