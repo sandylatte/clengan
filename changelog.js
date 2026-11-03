@@ -7,6 +7,13 @@
 
 export const RELEASES = [
   {
+    version: 'clengan-v133',
+    date: '2026-11-03',
+    notes: [
+      'Editing an entry now uses the same calendar as the Add screen, with dates like "26 Nov 2026", and the calendar opens upward so it is never cut off.',
+    ],
+  },
+  {
     version: 'clengan-v132',
     date: '2026-11-03',
     notes: [

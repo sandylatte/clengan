@@ -227,6 +227,12 @@ export function attachCalendar({ button, input, popup, onChange }) {
       render();
       popup.hidden = false;
       button.setAttribute('aria-expanded', 'true');
+      // Opens upward when there is no room below, as picker.js does. Inside a
+      // dialog the floor is the dialog's own edge: it clips its contents, so
+      // the edit pop-up's date field near its bottom would open half-hidden.
+      popup.classList.remove('is-up');
+      const floor = Math.min(window.innerHeight, button.closest('dialog')?.getBoundingClientRect().bottom ?? Infinity);
+      if (floor - button.getBoundingClientRect().bottom < popup.offsetHeight + 8) popup.classList.add('is-up');
     } else {
       close();
     }

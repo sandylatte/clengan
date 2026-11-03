@@ -1,5 +1,6 @@
 import { groupDigits, rupiahToCents, centsToRupiahDigits } from './money.js';
 import { BUCKETS, TRANSFER_CATEGORY, categoryOptions } from './budget.js';
+import { attachCalendar, fromISO, formatDate } from './calendar.js';
 
 // Opening a transaction to read and change it. Until now the only way to fix
 // a typo was to delete the row and type it again, which loses its id and its
@@ -10,6 +11,7 @@ import { BUCKETS, TRANSFER_CATEGORY, categoryOptions } from './budget.js';
 // how an accidental swipe becomes an accidental edit.
 
 let node = null;
+let editDate = null;
 
 function build() {
   if (node) return node;
@@ -42,8 +44,12 @@ function build() {
       <label for="edit-account" id="edit-account-label">Account</label>
       <select id="edit-account"></select>
 
-      <label for="edit-date">Date</label>
-      <input type="date" id="edit-date" required>
+      <label for="edit-date-button">Date</label>
+      <div class="datefield">
+        <button type="button" id="edit-date-button" aria-haspopup="dialog" aria-expanded="false"></button>
+        <input type="hidden" id="edit-date">
+        <div class="calendar" id="edit-date-popup" role="dialog" aria-label="Choose a date" hidden></div>
+      </div>
 
       <label for="edit-note">Note</label>
       <input type="text" id="edit-note">
@@ -57,6 +63,13 @@ function build() {
       </div>
     </form>`;
   document.body.append(node);
+  // The app's own calendar, as on Add: the native date popup is browser chrome
+  // and showed "11/27/2026" beside the Add screen's "27 Nov 2026".
+  editDate = attachCalendar({
+    button: node.querySelector('#edit-date-button'),
+    input: node.querySelector('#edit-date'),
+    popup: node.querySelector('#edit-date-popup'),
+  });
   return node;
 }
 
@@ -81,7 +94,7 @@ export function editTransaction({ txn, accounts, categories, usedCategories }) {
     // Saying this up front is cheaper than letting someone discover it by
     // finding the other side changed underneath them.
     ? 'Both sides of this transfer move together. Changing the amount or the date here changes the matching row in the other account too.'
-    : `${isIncome ? 'Income' : 'Expense'} recorded on ${txn.date}.`;
+    : `${isIncome ? 'Income' : 'Expense'} recorded on ${formatDate(fromISO(txn.date))}.`;
 
   // The amount is edited as a positive figure and the sign is restored on
   // save from what the row already is. Typing a minus to mean "expense" is
@@ -89,7 +102,7 @@ export function editTransaction({ txn, accounts, categories, usedCategories }) {
   $('edit-amount').value = groupDigits(centsToRupiahDigits(Math.abs(txn.amount)));
   $('edit-name').value = txn.name ?? '';
   $('edit-note').value = txn.note ?? '';
-  $('edit-date').value = txn.date;
+  editDate.set(txn.date);
 
   fill($('edit-account'), accounts, txn.account);
   dialog.querySelector('#edit-account-label').textContent = isTransfer
