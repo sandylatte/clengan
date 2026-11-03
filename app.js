@@ -986,9 +986,18 @@ document.getElementById('plan-month').addEventListener('change', async (event) =
   if (month) await editMonthPlan(month);
 });
 
+// A row's meta line is words in the UI face; any money or share inside it is
+// a figure, set in the figure face and never broken across lines.
+const figureSpan = (text) => {
+  const span = document.createElement('span');
+  span.className = 'row__figure';
+  span.textContent = text;
+  return span;
+};
+
 const describePlan = (plan) => (plan.mode === 'percent'
-  ? `${plan.fixed} / ${plan.flexible} / ${plan.savings}`
-  : `Fixed ${formatIDR(plan.fixed)} · Flexible ${formatIDR(plan.flexible)}`);
+  ? [figureSpan(`${plan.fixed} / ${plan.flexible} / ${plan.savings}`)]
+  : ['Fixed ', figureSpan(formatIDR(plan.fixed)), ' · Flexible ', figureSpan(formatIDR(plan.flexible))]);
 
 function renderPlans() {
   const months = Object.keys(state.plans).sort().reverse();
@@ -1002,7 +1011,7 @@ function renderPlans() {
     title.textContent = monthName(month);
     const meta = document.createElement('span');
     meta.className = 'row__meta';
-    meta.textContent = describePlan(state.plans[month]);
+    meta.append(...describePlan(state.plans[month]));
     main.append(title, meta);
     const edit = document.createElement('button');
     edit.type = 'button';
@@ -2457,7 +2466,9 @@ async function renderAccounts(accounts) {
     // Summary and is usually a different number.
     const meta = document.createElement('span');
     meta.className = 'row__meta';
-    meta.textContent = `Initial balance ${formatIDR(opening_balance)}`;
+    // Beside the Settings rail the line wraps at 375px; the figure span makes
+    // it break before "Rp", never after it.
+    meta.append('Initial balance ', figureSpan(formatIDR(opening_balance)));
     main.append(title, meta);
 
     const remove = document.createElement('button');

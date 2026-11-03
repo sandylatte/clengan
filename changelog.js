@@ -7,6 +7,14 @@
 
 export const RELEASES = [
   {
+    version: 'clengan-v129',
+    date: '2026-11-03',
+    notes: [
+      'The small grey line under each entry is easier to read: words use the normal font, and only amounts keep the number font.',
+      'In Settings, an account\'s starting balance no longer splits "Rp" from the amount.',
+    ],
+  },
+  {
     version: 'clengan-v128',
     date: '2026-10-30',
     notes: [

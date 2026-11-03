@@ -1145,9 +1145,9 @@ button:active, .chip:active, .seg__button:active { transform: scale(0.97); }
 .row__meta {
   display: block;
   font-size: 11px;
-  font-family: var(--font-num);
   color: var(--color-subtle);
 }
+.row__figure { font-family: var(--font-num); white-space: nowrap; }
 
 .row__delete {
   min-width: 44px;
@@ -2024,7 +2024,8 @@ label + .hint { margin-top: 0; }
 
 /* The ring: stroked arcs on the card itself, so there is no hole to paint. */
 #pie text { text-anchor: middle; font-family: var(--font-num); }
-.pie__caption { fill: var(--color-subtle); }
+/* "Spent in Nov" is words, so it takes the UI face; only the total is a figure. */
+#pie .pie__caption { fill: var(--color-subtle); font-family: var(--font-ui); }
 .pie__total { fill: var(--color-foreground); }
 
 /* The categories folded into the ring's Other slice, listed under it: no
