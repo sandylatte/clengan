@@ -7,6 +7,13 @@
 
 export const RELEASES = [
   {
+    version: 'clengan-v132',
+    date: '2026-11-03',
+    notes: [
+      'In Category limits, the "No limit" hint uses the normal font; amounts you type keep the number font.',
+    ],
+  },
+  {
     version: 'clengan-v131',
     date: '2026-11-03',
     notes: [

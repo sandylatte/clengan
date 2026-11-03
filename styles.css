@@ -1906,6 +1906,8 @@ label + .hint { margin-top: 0; }
   white-space: nowrap;
 }
 .limits__row input { margin-bottom: var(--space-1); }
+/* "No limit" is words; a typed limit is a figure and keeps the figure face. */
+.limits__row input::placeholder { font-family: var(--font-ui); }
 #limits { margin-bottom: var(--space-2); }
 #limits .group__heading { margin-top: 0; }
 
