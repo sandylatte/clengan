@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   syncId, storeOf, deriveIdKey, canonical, hashRecord, snapshot, outbox, plan, runSync,
+  stampEdits,
 } from '../sync.js';
 import { KDFS, createIdentity, unlock, decryptRecord } from '../vault.js';
 
@@ -46,6 +47,9 @@ function fakeTransport() {
     async push(records) {
       this.pushes.push(records);
       for (const record of records) {
+        // The server's rule (server/store.py push): an older updatedAt than
+        // the one held is skipped, not stored.
+        if ((held.get(record.id)?.updatedAt ?? -Infinity) > record.updatedAt) continue;
         seq += 1;
         held.set(record.id, { ...record, seq });
       }
@@ -309,4 +313,85 @@ test('the pushed blob decrypts to exactly the record that went in', async () => 
   const id = await syncId(await deriveIdKey(dek), 'transactions', 'a');
   const blob = transport.held.get(id);
   assert.deepEqual(await decryptRecord(dek, id, blob), row);
+});
+
+test('a row saved while a sync is in flight is pushed by the next sync', async () => {
+  const transport = fakeTransport();
+  const dek = await dekFor();
+  const io = fakeIo({ transactions: [{ id: 'a', v: 1 }] });
+  // The user saves a row while the push is on the network.
+  const push = transport.push.bind(transport);
+  transport.push = async (records) => {
+    io.stores.transactions.push({ id: 'mid', v: 1 });
+    return push(records);
+  };
+  await runSync({ io, transport, dek, keyPaths: KEY_PATHS });
+  transport.push = push;
+
+  const second = await runSync({ io, transport, dek, keyPaths: KEY_PATHS });
+  assert.equal(second.pushed, 1, 'the mid-sync row must still count as unsent');
+
+  const other = fakeIo();
+  await runSync({ io: other, transport, dek, keyPaths: KEY_PATHS });
+  assert.deepEqual(other.stores.transactions.map((r) => r.id).sort(), ['a', 'mid']);
+});
+
+test('an edit made during a sync is not overwritten by the echo of our own push', async () => {
+  const transport = fakeTransport();
+  const dek = await dekFor();
+  const io = fakeIo({ transactions: [{ id: 'a', v: 1 }] });
+  const push = transport.push.bind(transport);
+  transport.push = async (records) => {
+    const result = await push(records);
+    io.stores.transactions[0] = { id: 'a', v: 2 };
+    return result;
+  };
+  await runSync({ io, transport, dek, keyPaths: KEY_PATHS });
+  transport.push = push;
+  assert.deepEqual(io.stores.transactions, [{ id: 'a', v: 2 }]);
+
+  await runSync({ io, transport, dek, keyPaths: KEY_PATHS });
+  const other = fakeIo();
+  await runSync({ io: other, transport, dek, keyPaths: KEY_PATHS });
+  assert.deepEqual(other.stores.transactions, [{ id: 'a', v: 2 }]);
+});
+
+test('the newer edit wins even when the older one syncs last', async () => {
+  const transport = fakeTransport();
+  const dek = await dekFor();
+  const laptop = fakeIo({ transactions: [{ id: 'a', amount: -100 }] });
+  await runSync({ io: laptop, transport, dek, keyPaths: KEY_PATHS, now: 1000 });
+  const phone = fakeIo();
+  await runSync({ io: phone, transport, dek, keyPaths: KEY_PATHS, now: 1000 });
+
+  // Monday, offline: the laptop's edit is stamped when it is saved.
+  laptop.stores.transactions[0] = { id: 'a', amount: -200 };
+  await stampEdits({ io: laptop, keyPaths: KEY_PATHS, now: 2000 });
+  // Tuesday: the phone edits the same row and syncs.
+  phone.stores.transactions[0] = { id: 'a', amount: -300 };
+  await stampEdits({ io: phone, keyPaths: KEY_PATHS, now: 3000 });
+  await runSync({ io: phone, transport, dek, keyPaths: KEY_PATHS, now: 3000 });
+  // Wednesday: the laptop comes back online.
+  await runSync({ io: laptop, transport, dek, keyPaths: KEY_PATHS, now: 4000 });
+
+  assert.deepEqual(laptop.stores.transactions, [{ id: 'a', amount: -300 }]);
+});
+
+test('a delete is stamped when it happens, not when it syncs', async () => {
+  const transport = fakeTransport();
+  const dek = await dekFor();
+  const laptop = fakeIo({ transactions: [{ id: 'a', v: 1 }] });
+  await runSync({ io: laptop, transport, dek, keyPaths: KEY_PATHS, now: 1000 });
+  const phone = fakeIo();
+  await runSync({ io: phone, transport, dek, keyPaths: KEY_PATHS, now: 1000 });
+
+  laptop.stores.transactions = [];
+  await stampEdits({ io: laptop, keyPaths: KEY_PATHS, now: 2000 });
+  phone.stores.transactions[0] = { id: 'a', v: 2 };
+  await stampEdits({ io: phone, keyPaths: KEY_PATHS, now: 3000 });
+  await runSync({ io: phone, transport, dek, keyPaths: KEY_PATHS, now: 3000 });
+  await runSync({ io: laptop, transport, dek, keyPaths: KEY_PATHS, now: 4000 });
+
+  // The phone's later edit beats the laptop's earlier delete.
+  assert.deepEqual(laptop.stores.transactions, [{ id: 'a', v: 2 }]);
 });

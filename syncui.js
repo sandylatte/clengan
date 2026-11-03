@@ -9,7 +9,7 @@
 // the app re-locks the vault, which is the point: a key sitting in IndexedDB
 // beside the ciphertext it opens is not encryption, it is filing.
 
-import { Transport, signUp, signIn, signOut, syncNow, session } from './sync.js';
+import { Transport, signUp, signIn, signOut, syncNow, session, watchEdits } from './sync.js';
 import { getSyncMeta, putSyncMeta } from './db.js';
 import { showRecoveryCode, alertDialog, confirmDialog } from './dialog.js';
 
@@ -97,6 +97,7 @@ function credentials() {
 }
 
 export async function initSyncUi() {
+  watchEdits();
   const server = await getSyncMeta('server', '');
   $('sync-server').value = server;
 

@@ -7,6 +7,13 @@
 
 export const RELEASES = [
   {
+    version: 'clengan-v130',
+    date: '2026-11-03',
+    notes: [
+      'Groundwork for syncing between your devices, which is not switched on yet: it now keeps every entry and the newest edit when two devices change the same thing.',
+    ],
+  },
+  {
     version: 'clengan-v129',
     date: '2026-11-03',
     notes: [

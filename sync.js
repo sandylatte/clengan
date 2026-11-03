@@ -17,7 +17,7 @@
 
 import { encryptRecord, decryptRecord } from './vault.js';
 import {
-  SYNCABLE, readStoreRaw, putRaw, deleteRaw, getSyncMeta, putSyncMeta, clearSyncMeta,
+  SYNCABLE, readStoreRaw, putRaw, deleteRaw, getSyncMeta, putSyncMeta, clearSyncMeta, onWrite,
 } from './db.js';
 import {
   createIdentity, authVerifierFor, unlock, unlockWithRecoveryCode,
@@ -168,6 +168,45 @@ export function plan(records, localIds) {
   return { writes, tombstones };
 }
 
+// -- edit times --------------------------------------------------------------
+
+const editKey = (store, key) => JSON.stringify([store, key]);
+
+/**
+ * Notes the time each record was first seen in its current form, as
+ * {[store, key]: {hash, at}} in the local `edits` meta; a deleted record keeps
+ * an entry with a null hash. Run after every local write (watchEdits) and at
+ * the start of every sync, so `at` is when the user made the change, not when
+ * the device next got a network. The server keeps the version with the later
+ * `at`, so an edit stamped at sync time would let Monday's offline edit beat
+ * Tuesday's just by syncing on Wednesday.
+ *
+ * Keyed by the plain store and key, not the sync id: this never leaves the
+ * device, and the sync id needs the DEK, which is only in memory while unlocked.
+ */
+export async function stampEdits({ io, keyPaths, now = Date.now() }) {
+  const edits = { ...(await io.getMeta('edits', {})) };
+  const seen = new Set();
+  for (const [store, records] of Object.entries(await io.readAll())) {
+    if (!(store in keyPaths)) continue;
+    for (const record of records) {
+      const key = record[keyPaths[store]];
+      if (deviceOnly(store, key)) continue;
+      const at = editKey(store, key);
+      seen.add(at);
+      const hash = await hashRecord(record);
+      if (edits[at]?.hash !== hash) edits[at] = { hash, at: now };
+    }
+  }
+  // shortcut: one entry per record ever deleted on this device stays forever;
+  // prune null entries once pushed if the map ever grows large enough to notice.
+  for (const at of Object.keys(edits)) {
+    if (!seen.has(at) && edits[at].hash !== null) edits[at] = { hash: null, at: now };
+  }
+  await io.setMeta('edits', edits);
+  return edits;
+}
+
 // -- transport ---------------------------------------------------------------
 
 export class Transport {
@@ -218,8 +257,10 @@ export class Transport {
  * that pushed but failed to pull is a real and recoverable state and the UI
  * has to be able to say which half happened.
  */
-export async function runSync({ io, transport, dek, keyPaths }) {
+export async function runSync({ io, transport, dek, keyPaths, now = Date.now() }) {
   const idKey = await deriveIdKey(dek);
+  const edits = await stampEdits({ io, keyPaths, now });
+  const editedAt = (store, key) => edits[editKey(store, key)]?.at ?? now;
   const [baseline, cursor] = await Promise.all([
     io.getMeta('snapshot', {}),
     io.getMeta('cursor', 0),
@@ -239,11 +280,10 @@ export async function runSync({ io, transport, dek, keyPaths }) {
     }
   }
 
-  const now = Date.now();
   const payload = [];
   for (const id of changed) {
     const blob = await encryptRecord(dek, id, byId.get(id).record);
-    payload.push({ ...blob, updatedAt: now });
+    payload.push({ ...blob, updatedAt: editedAt(current[id].store, current[id].key) });
   }
   for (const id of deleted) {
     // The tombstone carries the store and key INSIDE its ciphertext. It has to:
@@ -253,13 +293,21 @@ export async function runSync({ io, transport, dek, keyPaths }) {
     const blob = await encryptRecord(dek, id, {
       deleted: true, store: gone?.store ?? storeOf(id), key: gone?.key,
     });
-    payload.push({ ...blob, updatedAt: now, deleted: true });
+    payload.push({ ...blob, updatedAt: editedAt(gone?.store, gone?.key), deleted: true });
   }
 
   if (payload.length) await transport.push(payload);
 
   const pulled = await transport.pull(cursor);
   const { writes, tombstones } = plan(pulled.records, new Set(Object.keys(current)));
+
+  // The new baseline is built from what this sync actually sent and received,
+  // never from a fresh read of the database: a row the user saved while the
+  // push was on the network was never sent, and a re-read would file it as
+  // synced, leaving it on this device alone with nothing to say so.
+  const settled = { ...baseline };
+  for (const id of changed) settled[id] = current[id];
+  for (const id of deleted) delete settled[id];
 
   let applied = 0;
   let skipped = 0;
@@ -273,7 +321,13 @@ export async function runSync({ io, transport, dek, keyPaths }) {
     if (!(item.store in keyPaths)) { skipped += 1; continue; }
     const value = await decryptRecord(dek, item.id, item.blob);
     // Only a client from before DEVICE_SETTINGS would have sent one.
-    if (deviceOnly(item.store, value[keyPaths[item.store]])) { skipped += 1; continue; }
+    const key = value[keyPaths[item.store]];
+    if (deviceOnly(item.store, key)) { skipped += 1; continue; }
+    const hash = await hashRecord(value);
+    settled[item.id] = { hash, store: item.store, key };
+    // The echo of our own push, or a version we already hold. Writing it would
+    // only overwrite an edit made since the sync read the database.
+    if (current[item.id]?.hash === hash) continue;
     await io.write(item.store, value);
     applied += 1;
   }
@@ -282,12 +336,10 @@ export async function runSync({ io, transport, dek, keyPaths }) {
     const marker = await decryptRecord(dek, item.id, item.blob);
     if (marker.key === undefined) continue;
     await io.remove(marker.store ?? item.store, marker.key);
+    delete settled[item.id];
     removed += 1;
   }
 
-  // The new baseline is what is on disk AFTER applying the pull, so the next
-  // sync does not re-push everything the server just sent us.
-  const settled = await snapshot(await io.readAll(), keyPaths, idKey);
   await io.setMeta('snapshot', settled);
   await io.setMeta('cursor', pulled.seq ?? cursor);
 
@@ -384,6 +436,23 @@ export async function signOut(transport) {
   }
   transport.token = null;
   await clearSyncMeta();
+}
+
+/**
+ * Stamps edits shortly after every local write while an account is signed in,
+ * so an edit made offline carries the time it was made. Writes to the `sync`
+ * store are this module's own bookkeeping and are ignored, or stamping would
+ * trigger itself forever.
+ */
+export function watchEdits() {
+  let timer = null;
+  return onWrite((stores) => {
+    if ([].concat(stores).every((store) => store === 'sync')) return;
+    clearTimeout(timer);
+    timer = setTimeout(async () => {
+      if (await session()) await stampEdits({ io: dbIo, keyPaths: SYNCABLE }).catch(() => {});
+    }, 1000);
+  });
 }
 
 export async function syncNow(transport, dek) {

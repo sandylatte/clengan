@@ -166,8 +166,20 @@ function begin(stores, mode, body, retried = false) {
       forget(database);
       return begin(stores, mode, body, true);
     }
+    if (mode === 'readwrite') {
+      transaction.addEventListener('complete', () => writeListeners.forEach((listener) => listener(stores)));
+    }
     return new Promise((resolve, reject) => body(transaction, resolve, reject));
   });
+}
+
+// Told after every committed write, with the stores it touched. Every write
+// goes through begin(), so a listener cannot miss one. Sync uses it to stamp
+// when an edit was made (watchEdits in sync.js).
+const writeListeners = new Set();
+export function onWrite(listener) {
+  writeListeners.add(listener);
+  return () => writeListeners.delete(listener);
 }
 
 // v5. Fixed and flexible stopped being a property of the category and became

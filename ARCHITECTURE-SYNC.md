@@ -167,6 +167,14 @@ multi-user system they are attacker-controlled.
 Last-write-wins per record, on a client-supplied `updated_at` used only as a
 tiebreak within a pull.
 
+`updated_at` is when the edit was MADE, not when it synced. `stampEdits()`
+runs after every local write (via `onWrite` in `db.js`, which every
+transaction passes through) and records the first time each record was seen
+in its current form; a delete is stamped the same way. The first version
+stamped at sync time, so a laptop's Monday edit, synced on Wednesday, beat
+the phone's Tuesday edit of the same row. An edit made before sign-in, or
+while the app was closed between write and stamp, falls back to sync time.
+
 This is lossy and the doc should say so plainly: two devices editing the same
 transaction while both offline will silently lose one edit. For one person with
 a phone and a laptop that is an acceptable v1. It is not acceptable for a shared
@@ -321,6 +329,19 @@ Each step is verifiable before the next one starts.
    dialog and every UI state are verifiable in the pane; pull is not.
 6. **Hardening** — rate limiting, account deletion, conflict behaviour under
    deliberate offline divergence.
+
+   **Conflict behaviour — done.** Two ways to lose an edit, each now pinned by
+   a test verified to fail with its fix removed (`test/sync.test.js`, last
+   four). **A row saved mid-sync was filed as synced**: the baseline was a
+   fresh read of the database after the pull, so it included a save made
+   while the push was on the network, and that row never left the device. The
+   baseline is now built from what the sync actually sent and received. The
+   same test caught a second case: the pull's echo of our own push overwrote
+   an edit made during the sync, so a pulled record identical to what we read
+   at the start is no longer written. **And edits are stamped when made**
+   (see Conflicts). Still lossy by design: two devices editing the same row
+   offline keep the later edit and drop the other. Rate limiting and account
+   deletion in the UI are not done.
 
 ## Outside the code
 
