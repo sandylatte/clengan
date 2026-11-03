@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   syncId, storeOf, deriveIdKey, canonical, hashRecord, snapshot, outbox, plan, runSync,
-  stampEdits,
+  stampEdits, PUSH_BATCH,
 } from '../sync.js';
 import { KDFS, createIdentity, unlock, decryptRecord } from '../vault.js';
 
@@ -45,6 +45,8 @@ function fakeTransport() {
   return {
     pushes: [],
     async push(records) {
+      // The server's cap (MAX_RECORDS_PER_PUSH in server/store.py).
+      if (records.length > 2000) throw Object.assign(new Error('at most 2000 records per push'), { status: 400 });
       this.pushes.push(records);
       for (const record of records) {
         // The server's rule (server/store.py push): an older updatedAt than
@@ -394,4 +396,16 @@ test('a delete is stamped when it happens, not when it syncs', async () => {
 
   // The phone's later edit beats the laptop's earlier delete.
   assert.deepEqual(laptop.stores.transactions, [{ id: 'a', v: 2 }]);
+});
+
+test('a ledger bigger than one push goes up in batches', async () => {
+  const transport = fakeTransport();
+  const dek = await dekFor();
+  const rows = Array.from({ length: 2500 }, (_, i) => ({ id: `t${i}`, amount: -i }));
+  const io = fakeIo({ transactions: rows });
+  const result = await runSync({ io, transport, dek, keyPaths: KEY_PATHS });
+
+  assert.equal(result.pushed, 2500);
+  assert.ok(transport.pushes.every((batch) => batch.length <= PUSH_BATCH));
+  assert.equal(transport.held.size, 2500);
 });

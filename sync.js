@@ -168,6 +168,10 @@ export function plan(records, localIds) {
   return { writes, tombstones };
 }
 
+// Well under the server's MAX_RECORDS_PER_PUSH, and small enough that a batch
+// of the largest records stays under its body limit.
+export const PUSH_BATCH = 500;
+
 // -- edit times --------------------------------------------------------------
 
 const editKey = (store, key) => JSON.stringify([store, key]);
@@ -296,7 +300,13 @@ export async function runSync({ io, transport, dek, keyPaths, now = Date.now() }
     payload.push({ ...blob, updatedAt: editedAt(gone?.store, gone?.key), deleted: true });
   }
 
-  if (payload.length) await transport.push(payload);
+  // The server refuses more than 2,000 records in one push (and bodies over
+  // 8 MB), so a first sync of a long ledger goes up in batches. A batch that
+  // fails stops the run before the baseline moves, and the next sync resends
+  // everything; the server takes an identical updatedAt again, so that is safe.
+  for (let start = 0; start < payload.length; start += PUSH_BATCH) {
+    await transport.push(payload.slice(start, start + PUSH_BATCH));
+  }
 
   const pulled = await transport.pull(cursor);
   const { writes, tombstones } = plan(pulled.records, new Set(Object.keys(current)));

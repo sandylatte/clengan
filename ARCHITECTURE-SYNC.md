@@ -340,8 +340,18 @@ Each step is verifiable before the next one starts.
    an edit made during the sync, so a pulled record identical to what we read
    at the start is no longer written. **And edits are stamped when made**
    (see Conflicts). Still lossy by design: two devices editing the same row
-   offline keep the later edit and drop the other. Rate limiting and account
-   deletion in the UI are not done.
+   offline keep the later edit and drop the other.
+
+   **Rate limits** were already handled where the server has them (salt,
+   signup, login: a 429 reads "Too many attempts"); push and pull are not
+   limited. **The push cap was not:** the server refuses more than 2,000
+   records per push, and the engine sent everything at once, so a first sync
+   of a long ledger failed every time. It now goes in batches of `PUSH_BATCH`
+   (500). **Delete sync account** is a button on the signed-in tile, behind a
+   danger confirm; it signs out only after the server confirms, so a failed
+   delete leaves the device signed in. Checked in the pane against a real
+   local server: the users, blobs and sessions tables came back empty and all
+   236 local rows stayed.
 
 ## Outside the code
 

@@ -7,6 +7,13 @@
 
 export const RELEASES = [
   {
+    version: 'clengan-v131',
+    date: '2026-11-03',
+    notes: [
+      'More groundwork for syncing, which is still not switched on: a long history now uploads in parts instead of failing, and you will be able to delete your sync account.',
+    ],
+  },
+  {
     version: 'clengan-v130',
     date: '2026-11-03',
     notes: [

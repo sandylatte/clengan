@@ -150,6 +150,30 @@ export async function initSyncUi() {
     say('Signed out on this device.');
   });
 
+  $('sync-delete').addEventListener('click', () => withBusy($('sync-delete'), async () => {
+    const sure = await confirmDialog({
+      title: 'Delete your sync account',
+      body: 'This erases the account and every encrypted copy of your records on the server. Other devices signed in to it will stop syncing.\n\nThe records on this device are not touched. This cannot be undone.',
+      confirmLabel: 'Delete account',
+      danger: true,
+    });
+    if (!sure) return;
+    transport = transport ?? await currentTransport();
+    try {
+      await transport.deleteAccount();
+    } catch (error) {
+      // withBusy reads a 401 as a wrong password, which is not what it means here.
+      if (error.status === 401) throw new Error('Your session has expired. Sign in again, then delete the account.');
+      throw error;
+    }
+    // Only after the server confirmed: a failed delete leaves this device
+    // signed in, so the user can see it did not happen and try again.
+    await signOut(transport);
+    dek = null;
+    await paint();
+    say('Sync account deleted. Every record is still on this device.', true);
+  }));
+
   await paint();
 }
 
