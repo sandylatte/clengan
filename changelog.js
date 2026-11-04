@@ -7,6 +7,13 @@
 
 export const RELEASES = [
   {
+    version: 'clengan-v140',
+    date: '2026-11-05',
+    notes: [
+      'When one card shows its amounts, the eye in the title bar now opens in grey to say some amounts are showing. Tapping it then hides them all.',
+    ],
+  },
+  {
     version: 'clengan-v139',
     date: '2026-11-04',
     notes: [

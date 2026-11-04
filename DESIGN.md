@@ -482,7 +482,9 @@ into its heading's line by negative margins) sits at the end of each Summary
 card heading (Balance in the stats card's label row, Spending by category,
 Budget, Savings by fund, Balances) and at the end of the List's filter row
 for the rows' amounts. A section eye overrides the master for its section
-only; tapping the master sets every section back to following it. Title-bar
+only; tapping the master sets every section back to following it. While a
+section disagrees, the master shows **mixed**: open eye in `{colors.subtle}`,
+`aria-pressed="mixed"`, and its tap hides everything. Title-bar
 figures, Settings and dialogs answer to the master alone. Leaving the app
 hides everything.
 

@@ -1437,8 +1437,13 @@ function paintEye(button, on, label) {
   button.querySelector('use').setAttribute('href', on ? '#i-eye' : '#i-eye-closed');
 }
 function paintPrivacy() {
+  // Mixed: a section eye disagrees with the master, so the title bar says so.
+  const mixed = Object.values(state.sections).some((v) => v !== null && v !== state.reveal);
   for (const button of masterToggles) {
-    paintEye(button, state.reveal, state.reveal ? 'Hide all amounts' : 'Show all amounts');
+    if (mixed) {
+      paintEye(button, true, 'Some amounts showing. Hide all amounts');
+      button.setAttribute('aria-pressed', 'mixed');
+    } else paintEye(button, state.reveal, state.reveal ? 'Hide all amounts' : 'Show all amounts');
   }
   for (const button of sectionToggles) {
     const on = revealed(button.dataset.scope);
@@ -1461,7 +1466,8 @@ async function toggleSection(scope) {
   paintPrivacy();
   refresh();
 }
-for (const button of masterToggles) button.addEventListener('click', () => setReveal(!state.reveal));
+// From mixed, the tap hides everything: the safe way out.
+for (const button of masterToggles) button.addEventListener('click', () => setReveal(!anyRevealed()));
 for (const button of sectionToggles) button.addEventListener('click', () => toggleSection(button.dataset.scope));
 
 // Leaving the app (home button, app switcher, screen off) hides them again,
