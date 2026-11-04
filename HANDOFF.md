@@ -1,6 +1,6 @@
 # Handoff
 
-Written 3 November 2026. Everything described here is pushed to `master`
+Written 4 November 2026. Everything described here is pushed to `master`
 (`clengan-v136`). Check the live `sw.js` and the App version tile
 on a phone before telling anyone a change is on their device.
 
@@ -10,6 +10,18 @@ design system (it is machine-checked — see the traps below), and
 which is the largest thing in the repo and the least finished.
 
 ## Where the project actually is
+
+**v127–v136 (the 3–4 November session) started from a real bug on the
+owner's iPhone:** "Failed to execute 'transaction' on 'IDBDatabase': The
+database connection is closing." iOS Safari closes a backgrounded app's
+connection and the memoised one was reused forever; every transaction now
+goes through `begin()` in `db.js`, which reopens (see Traps). Then: weekly
+backup reminder, sync step 6 finished (still hidden), font and date-field
+polish, and two impeccable critiques of the whole app — **25/40, then 31/40**
+after tap-safety (44px targets, Delete away from Save, Undo after delete), a
+deeper pink primary with a 3:1 edge, and named dialogs. Snapshots are in
+`.impeccable/critique/`. The owner's standing rule from this session: **never
+risk ledger data, and keep backup/redundancy in place.**
 
 Clengan is a local-first PWA money tracker, in rupiah. It works, it is
 deployed, it is installable, and it is in daily use by two people. The last two
@@ -91,6 +103,14 @@ section below before adding a setting or a dropdown.
 | `790f95b` | After saving spending under a limited category, the Add screen says what is left of that month's limit (v127) |
 | `1018bd7` | Saves reconnect when iOS closes the backgrounded database (`begin()` in `db.js`); backup reminder every 7 days, "Later" 3 days (v127) |
 | `f0d154c` | A reconnect reopens the database the first call named, never the default (test pages clear their stores); `clearAll` rejects on abort; VersionError reads as "close and reopen"; `test.html` 31 (v128) |
+| `896dee6` | Row meta lines in Fira Sans; figures inside them (`.row__figure`) stay Fira Code; ring caption in the UI face (v129) |
+| `315bc29` | Sync: baseline from what was sent and received (a mid-sync save was filed as synced), skip our own echo, edits stamped when made via `onWrite` + `stampEdits` (v130) |
+| `4b02790` | Sync pushes in batches of 500 under the server's 2,000 cap; Delete sync account button (v131). Sync step 6 done |
+| `e64a28f` | Limits dialog "No limit" placeholder in the UI face (v132) |
+| `bb6c255` | Edit dialog uses the app's calendar, not `<input type=date>`; calendar opens upward inside a dialog when it would be clipped (v133) |
+| `bd1e01e` | 44px targets; editor Delete far left (a `.dialog__actions button` margin rule had overridden it); Undo for 8 s after a delete via `restoreTransactions` (v134) |
+| `38f822e` | Peach primary #CF9F94 with a 1px `--color-primary-edge` #A26A5B at 3:1; the owner asked for pink, so a cocoa fill was tried and reverted (v135) |
+| `60fb33e` | Every dialog named by its title (`appendNamed` in `dialog.js`); reorder arrows 44px, account name basis 6rem so rows stay on one line (v136) |
 
 `680afd6`–`ecff77b` came from a separate cloud session on 1 October. They were
 pulled in and audited, not written here.
@@ -408,6 +428,12 @@ still submits.
 
 These have each cost real debugging time. They are not hypothetical.
 
+**Never break code on purpose with `test.html` open on the real origin.**
+Proving the reconnect test could fail, a deliberately broken `db.js` reopened
+the default `moneytrack` database and the test page's clears wiped the pane's
+236 sample rows. The dbName pin now prevents that path; break things in node
+tests or a private window, never against a database someone uses.
+
 **Every transaction goes through `begin()` in `db.js`.** iOS Safari closes a
 backgrounded web app's IndexedDB connection, sometimes without a close event;
 the old memoised connection then failed every save with "The database
@@ -556,17 +582,21 @@ and a simulated Enter on a touch screen closes the field without saving.
 
 ## What is not done
 
-**Test the planner import on the revised workbook.** It is the only real test
-of `6754e21`. Ask for the file, put it in `~/Downloads`, and run it through
-`importPlanner` from node before anyone imports it on a phone — the import
-dialog lists every adjusted row before anything is written, but a wrongly
-detected table would still import cleanly.
+**From the 2026-11-04 critique (31/40), still open, all minor:** the backup
+card takes about a quarter of Add (collapse to one line after the first
+"Later"); the Summary ring's greens are hard to tell apart; budget controls
+live on both Summary and Settings → Budget; `#funds-note` sits 13px from the
+edge against the 16px gutter. Questions the critique raised for the owner:
+mask amounts on every launch or only on request; one row per transfer
+instead of two; fewer than 11 Settings sections.
+
+**The planner import test is skipped** — the owner said it is not needed.
 
 **Every device needs one manual update to v113.** See the auto-reload trap.
 From v113 on, v114 arrives by itself.
 
-**Not yet seen on a real phone:** the v126 limits card and dialog, the v127 Add-screen line, the v127 reconnect after the app sits in the background, the weekly backup reminder, and Argon2id's
-unlock time (sync is hidden, so no one meets the second yet). Before that, everything in v117–v122 (the slides on Add and
+**Not yet seen on a real phone:** the v127 reconnect after the app really sits in the background (simulated on the live site in the pane with a forced `close()`: saved), v129–v136's look on the iPhone itself, and Argon2id's
+unlock time. The v126–v132 checklist (limits, Add line, weekly reminder, fonts) was driven on the live site at 390×844 in the pane and passed (sync is hidden, so no one meets the second yet). Before that, everything in v117–v122 (the slides on Add and
 List, the new ring and budget card, the filters, the section eyes, the PIN
 dialog and its number pad, and the restyled buttons — the Save button on Add
 now looks different from what the owner is used to). Also the v114 Settings rail, the dropdowns, the
@@ -577,12 +607,10 @@ Chrome and iOS Safari both honour `enterkeyhint`, but only a real device shows
 what it actually says. Animations were only partly watched: the pane renders
 screenshots now, but a frame caught mid-slide is all it shows of motion.
 
-**Step 6 of the sync build order.** Client-side handling of rate limits, account
-deletion in the UI, and conflict behaviour under deliberate offline divergence.
-The engine does last-write-wins and that is **lossy**: two devices editing the
-same record while both offline will silently lose one edit. Acceptable for one
-person with two devices; not acceptable for anything shared, and it needs a CRDT
-rather than a patch if that changes.
+**Sync needs a host before it can be switched on.** All six build steps are
+done (see ARCHITECTURE-SYNC.md). Last-write-wins is still **lossy** by design:
+two devices editing the same record offline keep the later edit, now by when
+it was made rather than when it synced. A CRDT if it ever becomes shared.
 
 **Play Store, when the owner resumes it.** Run PWABuilder against
 `https://sandylatte.github.io/clengan/`, keep and back up the signing key, and
