@@ -7,6 +7,13 @@
 
 export const RELEASES = [
   {
+    version: 'clengan-v141',
+    date: '2026-11-05',
+    notes: [
+      'Settings → Budget reads shorter. Your savings funds are listed first, with the form to add or change one below them.',
+    ],
+  },
+  {
     version: 'clengan-v140',
     date: '2026-11-05',
     notes: [

@@ -370,7 +370,7 @@
     </form>
     <p id="split-status" role="status"></p>
     <h3 class="group__heading">Months with their own plan</h3>
-    <p class="hint">Any month can have its own split, or rupiah limits for fixed and flexible. Months without one use the split above.</p>
+    <p class="hint">A month can have its own split or rupiah limits. Others use the split above.</p>
     <ul id="plan-list" class="rows"></ul>
     <label for="plan-month-button">Give a month its own plan</label>
     <div class="datefield monthfield">
@@ -379,7 +379,7 @@
       <div class="calendar" id="plan-month-popup" role="dialog" aria-label="Choose a month" hidden></div>
     </div>
     <h3 class="group__heading">Category limits</h3>
-    <p class="hint">A monthly limit for any spending category, a line to stay under that the split above does not change. Each runs from the month it is set until a later month sets its own. The Summary's Budget card shows them.</p>
+    <p class="hint">A monthly cap per spending category, shown on the Budget card. It holds until a later month sets its own.</p>
     <label for="limits-month-button">Set limits from a month</label>
     <div class="datefield monthfield">
       <button type="button" id="limits-month-button" aria-haspopup="dialog" aria-expanded="false"></button>
@@ -390,7 +390,9 @@
 
   <section class="setting" id="setting-funds" data-short="Funds" aria-labelledby="setting-funds-title">
     <header class="setting__head"><svg class="tile__icon" aria-hidden="true"><use href="#i-funds"/></svg><h2 id="setting-funds-title">Savings funds</h2><span class="tile__state" id="state-funds"></span></header>
-    <p class="hint">Shares of whatever savings a month actually produces, including budget you did not spend. Must total 100%.</p>
+    <p class="hint">Shares of what each month actually saves, unspent budget included. Must total 100%.</p>
+    <ul id="fund-list" class="rows"></ul>
+    <h3 class="group__heading">Add or change a fund</h3>
     <form id="fund-form">
       <label for="fund-name">Name</label>
       <input type="text" id="fund-name" required>
@@ -398,8 +400,8 @@
       <input type="number" id="fund-percent" min="0" max="100" step="1" required>
       <button type="submit" class="primary">Save fund</button>
     </form>
+    <p class="hint">Using an existing name changes that fund's share.</p>
     <p id="fund-status" role="status"></p>
-    <ul id="fund-list" class="rows"></ul>
   </section>
 
   <section class="setting" id="setting-categories" data-short="Categories" aria-labelledby="setting-categories-title">
