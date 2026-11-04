@@ -613,10 +613,18 @@ function renderList(txns) {
 
     // Date is written once per day rather than on every row, which is what
     // gives the transaction name back the width it was losing.
+    // A transfer whose two halves are both listed reads as one row, drawn
+    // from its outgoing half. Storage keeps both; a filter that lists one
+    // account still shows that account's half on its own, signed.
+    const listed = new Map(rows.map((t) => [t.id, t]));
     const items = [];
     for (const day of groupByDay(rows)) {
       items.push(dayHeading(day, searching || state.listPeriod === 'all'));
-      for (const txn of day.rows) items.push(transactionRow(txn));
+      for (const txn of day.rows) {
+        const partner = txn.transfer_id ? listed.get(txn.transfer_id) : null;
+        if (partner && txn.amount > 0) continue;
+        items.push(transactionRow(txn, partner));
+      }
     }
     list.replaceChildren(...items);
   });
@@ -656,7 +664,7 @@ function dayHeading({ date, net }, withYear = false) {
   return item;
 }
 
-function transactionRow(txn) {
+function transactionRow(txn, partner = null) {
   const item = document.createElement('li');
   item.className = 'swipe';
 
@@ -701,14 +709,17 @@ function transactionRow(txn) {
   // the tag is a colour rail, and a colour alone cannot tell ten categories
   // apart for every reader. Skipped when the name is already the title.
   const namedCategory = txn.name && category ? category : '';
-  meta.textContent = [namedCategory, txn.account, txn.bucket === 'fixed' ? 'Fixed' : '',
+  const account = partner ? `${txn.account} → ${partner.account}` : txn.account;
+  meta.textContent = [namedCategory, account, txn.bucket === 'fixed' ? 'Fixed' : '',
     txn.note && txn.note !== SAMPLE_NOTE ? txn.note : '']
     .filter(Boolean).join(' · ');
   mid.append(title, meta);
 
   const amount = document.createElement('span');
-  amount.className = `amount ${txn.amount > 0 ? 'amount--in' : 'amount--out'}`;
-  amount.textContent = formatAmount(txn.amount);
+  // Money moved between the user's own accounts: no sign, no income or
+  // spending colour, because the net did not change.
+  amount.className = `amount ${partner ? 'amount--move' : txn.amount > 0 ? 'amount--in' : 'amount--out'}`;
+  amount.textContent = partner ? formatIDR(-txn.amount) : formatAmount(txn.amount);
 
   row.append(tag, mid, amount);
   surface.append(row);
@@ -1463,7 +1474,7 @@ for (const button of sectionToggles) button.addEventListener('click', () => togg
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState !== 'hidden') return;
   if (readPin()?.ask === ASK_LEAVE) unlockedAt = 0;
-  if (anyRevealed()) setReveal(false);
+  if (anyRevealed() && hidesOnOpen()) setReveal(false);
 });
 
 // ---- PIN ----------------------------------------------------------------
@@ -1471,6 +1482,15 @@ document.addEventListener('visibilitychange', () => {
 // (pin.js has the reasoning). When it was last entered correctly, for the
 // "once" choices; in memory, so a relaunch asks again.
 let unlockedAt = 0;
+
+// "Shown" on open is a per-device choice, kept beside the PIN in
+// localStorage so sync never carries it. A PIN overrides it: opening shown
+// would walk straight past the PIN.
+const OPEN_MODE_KEY = 'clengan-open-mode';
+function hidesOnOpen() {
+  try { if (localStorage.getItem(OPEN_MODE_KEY) !== 'shown') return true; } catch { return true; }
+  return Boolean(readPin());
+}
 
 function readPin() {
   let pin = null;
@@ -1543,7 +1563,7 @@ function unlock() {
   return askPin({ title: 'Enter your PIN', confirmLabel: 'Show amounts' });
 }
 
-// Settings → PIN for amounts.
+// Settings → Privacy.
 const pinStatus = document.getElementById('pin-status');
 const pinSay = (text, tone = 'is-ok') => { pinStatus.className = tone; pinStatus.textContent = text; };
 const clock = (ms) => new Date(ms).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -1553,7 +1573,13 @@ function renderPinSetting() {
   document.getElementById('pin-off').hidden = Boolean(pin);
   document.getElementById('pin-on').hidden = !pin;
   // Not setTileState: this runs at load, above where that is defined.
-  document.getElementById('state-pin').textContent = !pin ? 'Off' : pin.resetAt ? `Removed at ${clock(pin.resetAt)}` : 'On';
+  document.getElementById('state-pin').textContent = !pin ? 'No PIN' : pin.resetAt ? `PIN removed at ${clock(pin.resetAt)}` : 'PIN on';
+  const shown = !hidesOnOpen();
+  for (const radio of document.querySelectorAll('input[name="open-mode"]')) {
+    radio.checked = radio.value === (shown ? 'shown' : 'hidden');
+    radio.disabled = Boolean(pin);
+  }
+  document.getElementById('open-mode-pin').hidden = !pin;
   if (!pin) return;
   for (const radio of document.querySelectorAll('input[name="pin-ask"]')) radio.checked = radio.value === (pin.ask || ASK_EVERY);
   document.getElementById('pin-minutes').value = pin.minutes || DEFAULT_MINUTES;
@@ -1646,6 +1672,13 @@ document.querySelector('.pin-ask').addEventListener('change', (event) => {
   pinSay('Saved.');
 });
 renderPinSetting();
+for (const radio of document.querySelectorAll('input[name="open-mode"]')) {
+  radio.addEventListener('change', () => {
+    try { localStorage.setItem(OPEN_MODE_KEY, radio.value); } catch { /* private mode: stays hidden */ }
+    renderPinSetting();
+  });
+}
+if (!hidesOnOpen()) state.reveal = true;
 paintPrivacy();
 
 async function refresh() {

@@ -453,7 +453,7 @@ Three durations, and every animation uses one of them.
 
 **`tab-item`** — Four fixed items, flex column, icon over label, `min-height: 48px`, `max-width: 155px` each. Icons are inline Lucide SVG at 20px, stroke 1.75, one consistent weight. The active item is marked by `aria-current="page"` and takes `{colors.active}`.
 
-**`ledger-row`** — `min-height: 44px`, `{rounded.md}`, title over meta on the left, amount right, delete button at the end. Hover lifts to `{colors.muted}`.
+**`ledger-row`** — `min-height: 44px`, `{rounded.md}`, title over meta on the left, amount right, delete button at the end. Hover lifts to `{colors.muted}`. A transfer whose two halves are both listed is one row, drawn from its outgoing half: meta `From → To`, amount unsigned in `{colors.subtle}` (net unchanged). With an account filter showing one half, that half shows alone, signed.
 
 **`pie`** — Spending share on Summary, a ring capped at 240px (chosen
 2026-10-06 over a softened category-colour ring and a stacked bar). One hue:
@@ -492,7 +492,7 @@ filter is on.
 **`pin-dialog`** — The shared prompt dialog in PIN mode: a password field
 with the number pad, four digits, Fira Code with 0.5em tracking, centred. A
 wrong try clears the field and says how many tries are left; while locked it
-says how long. Settings → PIN for amounts holds set / change / remove, a
+says how long. Settings → Privacy holds whether amounts open hidden (the default) or shown — per device, forced hidden while a PIN is set — and set / change / remove, a
 "Forgot the PIN?" that removes it after an hour, and the frequency as three
 plain radios at 44px rows.
 
@@ -519,7 +519,10 @@ years paged by twelve, and a choice returns to the days. The month picker's
 year does the same. The popover always opens on its first view.
 
 **`settings-rail`** — Settings is one page at a time, chosen from a rail of
-every section on the right (chosen 2026-10-06 over a slide-in index and a wide
+five pages on the right (Money, Budget, Look & privacy, Data, About; `GROUPS`
+in `settings.js`, v138 — eleven was too many to scan). A page shows its
+sections stacked, one card each, 12px apart; a section in no group gets a page
+of its own. The rail (chosen 2026-10-06 over a slide-in index and a wide
 labelled list). On a phone the rail is 64px: each section's icon over a
 one-word name at 11px, so the page keeps most of the width. At 640px and up it
 widens to 172px and shows full names in a row. The open section is

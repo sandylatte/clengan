@@ -329,9 +329,15 @@
 
   <!-- Kept on this device only (localStorage), never in the settings store
        that sync would upload: a PIN is about who is holding this phone. -->
-  <section class="setting" id="setting-pin" data-short="PIN" aria-labelledby="setting-pin-title">
-    <header class="setting__head"><svg class="tile__icon" aria-hidden="true"><use href="#i-lock"/></svg><h2 id="setting-pin-title">PIN for amounts</h2><span class="tile__state" id="state-pin"></span></header>
-    <p class="hint">Amounts stay hidden until an eye is tapped. With a PIN, showing them asks for four digits first. It is a privacy screen, not a lock: nothing is encrypted, and exports still carry every figure.</p>
+  <section class="setting" id="setting-pin" data-short="Privacy" aria-labelledby="setting-pin-title">
+    <header class="setting__head"><svg class="tile__icon" aria-hidden="true"><use href="#i-lock"/></svg><h2 id="setting-pin-title">Privacy</h2><span class="tile__state" id="state-pin"></span></header>
+    <fieldset class="pin-ask" id="open-mode">
+      <legend>When the app opens, amounts are</legend>
+      <label><input type="radio" name="open-mode" value="hidden" checked> Hidden until an eye is tapped</label>
+      <label><input type="radio" name="open-mode" value="shown"> Shown</label>
+    </fieldset>
+    <p class="hint" id="open-mode-pin" hidden>Always hidden while a PIN is set, or opening the app would skip it.</p>
+    <p class="hint">With a PIN, showing them asks for four digits first. It is a privacy screen, not a lock: nothing is encrypted, and exports still carry every figure.</p>
     <div id="pin-off">
       <button type="button" class="primary" id="pin-set">Set a PIN</button>
     </div>

@@ -7,6 +7,15 @@
 
 export const RELEASES = [
   {
+    version: 'clengan-v138',
+    date: '2026-11-04',
+    notes: [
+      'You can choose to have amounts shown when the app opens (Settings → Privacy). They stay hidden by default, and always while a PIN is set.',
+      'A transfer now shows as one row in the List, from one account to the other.',
+      'Settings has five pages instead of eleven: Money, Budget, Look & privacy, Data and About.',
+    ],
+  },
+  {
     version: 'clengan-v137',
     date: '2026-11-04',
     notes: [

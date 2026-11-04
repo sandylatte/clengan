@@ -239,6 +239,7 @@ h2 {
 
 .amount--in { color: var(--color-accent); }
 .amount--out { color: var(--color-destructive); }
+.amount--move { color: var(--color-subtle); }
 
 /* Phone-first, but a laptop should not get 1400px-wide inputs. */
 .view {
@@ -381,6 +382,8 @@ h2 {
   padding: var(--space-3);
 }
 .setting[hidden] { display: none; }
+/* A rail page shows several sections, one card each. */
+.setting:not([hidden]) ~ .setting:not([hidden]) { margin-top: var(--space-3); }
 .setting__head {
   display: flex;
   align-items: center;

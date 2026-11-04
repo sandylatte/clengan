@@ -586,9 +586,11 @@ and a simulated Enter on a touch screen closes the field without saving.
 sits 13px from the edge against the 16px gutter. (v137 did the other three:
 the backup card is one line once "Later" was tapped, the ring's steps are
 100/65/40/20 by OKLab lightness, and the Budget card's one Edit budget chip
-opens Settings → Budget split, now the only place to edit plans and limits.) Questions the critique raised for the owner:
-mask amounts on every launch or only on request; one row per transfer
-instead of two; fewer than 11 Settings sections.
+opens Settings → Budget split, now the only place to edit plans and limits.) The owner answered the critique's three questions, built in v138: amounts open
+hidden by default, switchable per device in Settings → Privacy
+(`clengan-open-mode` in localStorage, forced hidden while a PIN is set); a
+listed transfer pair is one row (display only, storage keeps two halves); and
+Settings has five rail pages (`GROUPS` in `settings.js`).
 
 **The planner import test is skipped** — the owner said it is not needed.
 
