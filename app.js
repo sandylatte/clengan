@@ -1198,20 +1198,15 @@ function figureRow(label, value, { swatch, total, tone, share } = {}) {
   return row;
 }
 
-// One hue, as DESIGN.md asks of every chart: the largest slice takes the
-// tone's readable accent at full strength and the next three step toward the
-// card behind it; whatever chartSlices folded into Other (or a lone fifth
-// category) is a neutral grey, so the tail reads as one quiet remainder.
+// One hue, as DESIGN.md asks of every chart: the four largest categories
+// take the tone's --ring-1..4 steps (styles.css; each holds 3:1 on the card)
+// and whatever chartSlices folded into Other (or a lone fifth category) is a
+// grey drawn as a thinner ring, so it is told apart by shape as well as tone.
 // Category colours stay on the List's rails — ten saturated hues on one ring
-// was the noise this replaced. --color-active, not --color-primary: on peach
-// the primary is a pale fill that a ring segment would barely show in.
-// color-mix resolves at paint time, so a tone switch needs no JavaScript.
-// Steps measured in OKLab lightness: 100/72/50/32 left neighbours ~0.12 apart
-// and read as one green; these are ~0.15–0.21 apart in both tones.
-const RAMP = [100, 65, 40, 20];
-const sliceColour = (i) => (i < RAMP.length
-  ? `color-mix(in srgb, var(--color-active) ${RAMP[i]}%, var(--color-muted))`
-  : 'color-mix(in srgb, var(--color-subtle) 45%, var(--color-muted))');
+// was the noise this replaced. CSS variables resolve at paint time, so a tone
+// switch needs no JavaScript.
+const RING_STEPS = 4;
+const sliceColour = (i) => (i < RING_STEPS ? `var(--ring-${i + 1})` : 'var(--ring-other)');
 
 // The ring's hole fits about nine characters. "Rp 6.880.000" already spills
 // into the slices, so the centre uses the short form a rupiah reader says
@@ -1253,7 +1248,7 @@ function renderPie(slices, colours, breakdown) {
     node.setAttribute('pathLength', '100');
     node.setAttribute('fill', 'none');
     node.setAttribute('stroke', colours[i]);
-    node.setAttribute('stroke-width', String(WIDTH));
+    node.setAttribute('stroke-width', String(i < RING_STEPS ? WIDTH : WIDTH / 2));
     node.setAttribute('stroke-dasharray', `${Math.max(share - gap, 0.3).toFixed(2)} 100`);
     node.setAttribute('stroke-dashoffset', (-at).toFixed(2));
     at += share;
@@ -1355,6 +1350,7 @@ function renderSummary(txns, accounts, invalidTxns) {
     // saturation the redesign was asked to take away.
     ...slices.flatMap((slice, i) => {
       const row = figureRow(slice.category, formatIDR(slice.total), { swatch: colours[i], share: sharePercent(slice.total, spentTotal) });
+      if (i >= RING_STEPS) row.querySelector('.swatch').classList.add('swatch--other');
       return [row, ...slice.members.map(({ category, total }) => {
         const sub = figureRow(category, formatIDR(total), { share: sharePercent(total, spentTotal) });
         sub.classList.add('figures__row--sub');

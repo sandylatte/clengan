@@ -7,6 +7,13 @@
 
 export const RELEASES = [
   {
+    version: 'clengan-v139',
+    date: '2026-11-04',
+    notes: [
+      'Every slice of the spending ring is now easy to see in the rose tone too, and Other is drawn as a thinner ring.',
+    ],
+  },
+  {
     version: 'clengan-v138',
     date: '2026-11-04',
     notes: [

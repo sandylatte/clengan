@@ -457,10 +457,14 @@ Three durations, and every animation uses one of them.
 
 **`pie`** — Spending share on Summary, a ring capped at 240px (chosen
 2026-10-06 over a softened category-colour ring and a stacked bar). One hue:
-the four largest categories step from `{colors.active}` at full strength
-toward `{colors.muted}` (100 / 65 / 40 / 20%, steps chosen by OKLab lightness so neighbours stay apart), and everything past them folds
-into one Other slice in a neutral (`{colors.subtle}` at 45% over the card) —
-`chartSlices()` in `rollup.js`. A tail of one category is left as itself.
+the four largest categories take the tone's `--ring-1..4` steps, every one
+3:1 or more on the card. Carbon steps from `{colors.active}` toward
+`{colors.muted}` (75 / 57 / 45%); peach steps *darker*, from
+`{colors.foreground}` through `{colors.active}`, because the rust is only
+5.8:1 on the card and a paler step vanished there (v139). Everything past the
+four folds into one Other slice in a grey (`--ring-other`), drawn at half the
+ring's width, with an outlined legend swatch — told apart by shape, not only
+tone. `chartSlices()` in `rollup.js`. A tail of one category is left as itself.
 Category colours are not used on the ring; they stay on the List's rails.
 `--color-active`, not `--color-primary`, because the peach primary is a pale
 pink fill a ring segment would barely show in. Each slice is the same circle path
