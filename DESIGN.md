@@ -458,14 +458,14 @@ Three durations, and every animation uses one of them.
 **`pie`** — Spending share on Summary, a ring capped at 240px (chosen
 2026-10-06 over a softened category-colour ring and a stacked bar). One hue:
 the four largest categories step from `{colors.active}` at full strength
-toward `{colors.muted}` (100 / 72 / 50 / 32%), and everything past them folds
+toward `{colors.muted}` (100 / 65 / 40 / 20%, steps chosen by OKLab lightness so neighbours stay apart), and everything past them folds
 into one Other slice in a neutral (`{colors.subtle}` at 45% over the card) —
 `chartSlices()` in `rollup.js`. A tail of one category is left as itself.
 Category colours are not used on the ring; they stay on the List's rails.
 `--color-active`, not `--color-primary`, because the peach primary is a pale
 pink fill a ring segment would barely show in. Each slice is the same circle path
 stroked with one dash (`pathLength="100"`, so a dash is its percentage),
-starting at twelve and running clockwise; neighbours are parted by a 0.6%
+starting at twelve and running clockwise; neighbours are parted by a 1.2%
 gap, never outlined. No percentages on the ring — the legend carries every
 share. The centre carries the period's total spent in the short form
 ("Rp 13,5 jt"). Its two filters are compact pills (`{rounded.pill}`) on one
@@ -549,9 +549,11 @@ amounts are masked, like the ring's shares. The dials draw on arrival
 **Category limits** group (a `group__heading`, then the same dials) has one
 row per category with a limit in force: "Food & Drinks · 50% of
 Rp 2.000.000" over what is left or over. A zero limit reads "no spending
-planned" and fills red at the first rupiah. The card's **Category limits**
-chip and Settings → Budget split open one dialog listing every spending
-category, name left and a 150px amount field right on one line each.
+planned" and fills red at the first rupiah. The card shows; it does not
+edit. Its one **Edit budget** chip opens Settings → Budget split, the single
+home for the split, month plans and limits; there a month picker opens one
+dialog listing every spending category, name left and a 150px amount field
+right on one line each.
 
 **`funds-table`** — The Summary's Savings by fund card (chosen 2026-10-06
 over hairline rows and answer-first dials). A 10px bar of the split, one

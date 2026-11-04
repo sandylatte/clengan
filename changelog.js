@@ -7,6 +7,15 @@
 
 export const RELEASES = [
   {
+    version: 'clengan-v137',
+    date: '2026-11-04',
+    notes: [
+      'After you tap Later once, the backup reminder on Add shrinks to one line. It still shows until you back up.',
+      'The slices of the spending ring are easier to tell apart.',
+      'Budget settings now live in one place: the Budget card has an Edit budget button that opens Settings → Budget split, where you can also set category limits for any month.',
+    ],
+  },
+  {
     version: 'clengan-v136',
     date: '2026-11-04',
     notes: [

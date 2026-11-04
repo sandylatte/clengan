@@ -257,9 +257,7 @@
       <div id="limit-dials" class="dials"></div>
     </div>
     <div class="chips">
-      <button type="button" class="chip" id="budget-plan"></button>
-      <button type="button" class="chip" id="budget-limits">Category limits</button>
-      <button type="button" class="chip" id="budget-default">Default split</button>
+      <button type="button" class="chip" id="budget-edit">Edit budget</button>
     </div>
   </div>
 
@@ -366,7 +364,7 @@
     </form>
     <p id="split-status" role="status"></p>
     <h3 class="group__heading">Months with their own plan</h3>
-    <p class="hint">Any month can have its own split, or rupiah limits for fixed and flexible. Months without one use the split above. The Budget card on the Summary edits the same plan for the month it is showing.</p>
+    <p class="hint">Any month can have its own split, or rupiah limits for fixed and flexible. Months without one use the split above.</p>
     <ul id="plan-list" class="rows"></ul>
     <label for="plan-month-button">Give a month its own plan</label>
     <div class="datefield monthfield">
@@ -375,8 +373,13 @@
       <div class="calendar" id="plan-month-popup" role="dialog" aria-label="Choose a month" hidden></div>
     </div>
     <h3 class="group__heading">Category limits</h3>
-    <p class="hint">A monthly limit for any spending category, a line to stay under that the split above does not change. Each runs from the month it is set until a later month sets its own. The Summary's Budget card shows them and sets them for the month on screen.</p>
-    <button type="button" class="secondary" id="settings-limits">Set limits from this month</button>
+    <p class="hint">A monthly limit for any spending category, a line to stay under that the split above does not change. Each runs from the month it is set until a later month sets its own. The Summary's Budget card shows them.</p>
+    <label for="limits-month-button">Set limits from a month</label>
+    <div class="datefield monthfield">
+      <button type="button" id="limits-month-button" aria-haspopup="dialog" aria-expanded="false"></button>
+      <input type="hidden" id="limits-month">
+      <div class="calendar" id="limits-month-popup" role="dialog" aria-label="Choose a month" hidden></div>
+    </div>
   </section>
 
   <section class="setting" id="setting-funds" data-short="Funds" aria-labelledby="setting-funds-title">

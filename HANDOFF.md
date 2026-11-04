@@ -582,11 +582,11 @@ and a simulated Enter on a touch screen closes the field without saving.
 
 ## What is not done
 
-**From the 2026-11-04 critique (31/40), still open, all minor:** the backup
-card takes about a quarter of Add (collapse to one line after the first
-"Later"); the Summary ring's greens are hard to tell apart; budget controls
-live on both Summary and Settings → Budget; `#funds-note` sits 13px from the
-edge against the 16px gutter. Questions the critique raised for the owner:
+**From the 2026-11-04 critique (31/40), still open, minor:** `#funds-note`
+sits 13px from the edge against the 16px gutter. (v137 did the other three:
+the backup card is one line once "Later" was tapped, the ring's steps are
+100/65/40/20 by OKLab lightness, and the Budget card's one Edit budget chip
+opens Settings → Budget split, now the only place to edit plans and limits.) Questions the critique raised for the owner:
 mask amounts on every launch or only on request; one row per transfer
 instead of two; fewer than 11 Settings sections.
 

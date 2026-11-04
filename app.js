@@ -912,16 +912,7 @@ function renderBudget(txns) {
   }
   document.getElementById('budget-note').replaceChildren(...children);
 
-  // A plan belongs to one month, so the control only appears when one month
-  // is on screen. In the year view it would have to guess which month.
-  // Limits are monthly too, and go the same way.
   const monthView = state.filter.period === 'month';
-  const planButton = document.getElementById('budget-plan');
-  planButton.hidden = !monthView;
-  planButton.textContent = state.plans[state.month]
-    ? `Edit ${monthName(state.month)} budget`
-    : `Set a budget for ${monthName(state.month)}`;
-  document.getElementById('budget-limits').hidden = !monthView;
 
   // The same dials, one per category with a limit in force. A zero limit is
   // "nothing planned here", so any spending at all fills its dial red.
@@ -946,9 +937,7 @@ const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December'];
 const monthName = (month) => `${MONTH_NAMES[Number(month.slice(5, 7)) - 1]} ${month.slice(0, 4)}`;
 
-// One editor for a month's plan, opened from the Summary's Budget card for
-// the month on screen and from Settings for any month. Both write the same
-// stored map, so the two can never disagree.
+// One editor for a month's plan, opened from Settings for any month.
 async function editMonthPlan(month) {
   const { income } = monthlyTotals(state.txns.filter((t) => Number.isInteger(t.amount)), month);
   const result = await monthPlanDialog({
@@ -970,18 +959,17 @@ async function editMonthPlan(month) {
   await refresh();
 }
 
-document.getElementById('budget-plan').addEventListener('click', () => editMonthPlan(state.month));
-
-// The default split lives in Settings; the Summary only points there.
+// Every budget control lives on Settings → Budget split; the Summary's card
+// only shows the figures and points there.
 // The page is picked before the view is shown, so it arrives with the view's
 // slide rather than sliding in a second time inside it.
-document.getElementById('budget-default').addEventListener('click', () => {
+document.getElementById('budget-edit').addEventListener('click', () => {
   settingsNav?.select('split');
   showView('settings');
 });
 
-// One editor for every category's limit from a month on, opened from the
-// Budget card for the month on screen and from Settings for this month.
+// One editor for every category's limit from a month on, opened for the
+// month picked on Settings → Budget split.
 async function editLimits(month) {
   const spending = sortByPosition(state.categories.filter((c) => c.kind !== 'income')).map((c) => c.name);
   // A limit left on a deleted category still shows on the card, so it is
@@ -1004,8 +992,16 @@ async function editLimits(month) {
   await refresh();
 }
 
-document.getElementById('budget-limits').addEventListener('click', () => editLimits(state.month));
-document.getElementById('settings-limits').addEventListener('click', () => editLimits(currentMonth()));
+const limitsPicker = attachMonthPicker({
+  button: document.getElementById('limits-month-button'),
+  input: document.getElementById('limits-month'),
+  popup: document.getElementById('limits-month-popup'),
+});
+document.getElementById('limits-month').addEventListener('change', async (event) => {
+  const month = event.target.value;
+  limitsPicker.set('');
+  if (month) await editLimits(month);
+});
 
 const planPicker = attachMonthPicker({
   button: document.getElementById('plan-month-button'),
@@ -1199,7 +1195,9 @@ function figureRow(label, value, { swatch, total, tone, share } = {}) {
 // was the noise this replaced. --color-active, not --color-primary: on peach
 // the primary is a pale fill that a ring segment would barely show in.
 // color-mix resolves at paint time, so a tone switch needs no JavaScript.
-const RAMP = [100, 72, 50, 32];
+// Steps measured in OKLab lightness: 100/72/50/32 left neighbours ~0.12 apart
+// and read as one green; these are ~0.15–0.21 apart in both tones.
+const RAMP = [100, 65, 40, 20];
 const sliceColour = (i) => (i < RAMP.length
   ? `color-mix(in srgb, var(--color-active) ${RAMP[i]}%, var(--color-muted))`
   : 'color-mix(in srgb, var(--color-subtle) 45%, var(--color-muted))');
@@ -1234,7 +1232,7 @@ function renderPie(slices, colours, breakdown) {
   // strokes around every slice were half the noise.
   const R = 38;
   const WIDTH = 14;
-  const gap = slices.length > 1 ? 0.6 : 0;
+  const gap = slices.length > 1 ? 1.2 : 0;
   const ring = `M 50 ${50 - R} a ${R} ${R} 0 1 1 0 ${2 * R} a ${R} ${R} 0 1 1 0 ${-2 * R}`;
   let at = 0;
   const shapes = slices.map(({ total: value }, i) => {
@@ -1731,7 +1729,13 @@ async function renderBackupState(txns) {
   setTileState('state-io', backupAgeText(age));
   const nudge = document.getElementById('backup-nudge');
   nudge.hidden = !due;
-  if (due) {
+  // A snooze is cleared by an export, so one still stored means "Later" was
+  // already tapped since the last backup: the reminder stays, in one line.
+  const compact = snoozedUntil !== null;
+  nudge.classList.toggle('is-compact', compact);
+  if (due && compact) {
+    document.getElementById('backup-nudge-text').textContent = age === null ? 'Never backed up' : `Last backup ${age} days ago`;
+  } else if (due) {
     document.getElementById('backup-nudge-text').textContent = age === null
       ? 'Your records are only on this phone and have never been backed up. Export a copy so a cleared browser or a lost phone does not take them.'
       : `Your last backup was ${age} days ago. Export a fresh copy so the entries since then are not only on this phone.`;
