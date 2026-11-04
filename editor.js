@@ -1,6 +1,7 @@
 import { groupDigits, rupiahToCents, centsToRupiahDigits } from './money.js';
 import { BUCKETS, TRANSFER_CATEGORY, categoryOptions } from './budget.js';
 import { attachCalendar, fromISO, formatDate } from './calendar.js';
+import { appendNamed } from './dialog.js';
 
 // Opening a transaction to read and change it. Until now the only way to fix
 // a typo was to delete the row and type it again, which loses its id and its
@@ -62,7 +63,7 @@ function build() {
         <button type="button" class="dialog__confirm primary">Save</button>
       </div>
     </form>`;
-  document.body.append(node);
+  appendNamed(node);
   // The app's own calendar, as on Add: the native date popup is browser chrome
   // and showed "11/27/2026" beside the Add screen's "27 Nov 2026".
   editDate = attachCalendar({

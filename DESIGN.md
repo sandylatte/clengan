@@ -613,6 +613,5 @@ Tap targets: buttons hold 44px, tab items 48px, the amount field 60px. Text fiel
 
 ## Known gaps
 
-- Tone B's primary button is 1.5:1 against its card, below the 3:1 non-text floor. Documented above as a deliberate, user-directed exception carried by a shadow and a 6.66:1 label.
 - Hover states are unverified on a real device. The agent browser pane runs hidden, so CSS transitions never complete and `getComputedStyle` returns the pre-transition value indefinitely. Tab and button states are worth a glance on a phone.
 - There is no loading state anywhere. Every read is IndexedDB on the local device and completes within a frame.

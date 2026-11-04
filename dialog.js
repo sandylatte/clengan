@@ -12,6 +12,17 @@
 //   No "Error:", no "please", no exclamation marks, no raw exception text
 //   without a sentence around it explaining what it means.
 
+// Every dialog is named by its own title, so a screen reader announces
+// "Delete this transaction, dialog" rather than a bare "dialog". Each is
+// built once, so the id is fixed even though the title text changes.
+let titleIds = 0;
+export function appendNamed(dialog) {
+  const title = dialog.querySelector('.dialog__title');
+  title.id ||= `dialog-title-${++titleIds}`;
+  dialog.setAttribute('aria-labelledby', title.id);
+  document.body.append(dialog);
+}
+
 let node = null;
 
 function build() {
@@ -25,7 +36,7 @@ function build() {
       <button type="button" class="dialog__cancel"></button>
       <button type="button" class="dialog__confirm primary"></button>
     </div>`;
-  document.body.append(node);
+  appendNamed(node);
   return node;
 }
 
@@ -95,7 +106,7 @@ export function promptDialog({ title, body, label, value = '', confirmLabel, val
         <button type="button" class="dialog__cancel">Cancel</button>
         <button type="button" class="dialog__confirm primary"></button>
       </div>`;
-    document.body.append(promptNode);
+    appendNamed(promptNode);
   }
   const dialog = promptNode;
   dialog.querySelector('.dialog__title').textContent = title;
@@ -171,7 +182,7 @@ export function pickColour({ title, colours, current }) {
       <div class="dialog__actions">
         <button type="button" class="dialog__cancel">Cancel</button>
       </div>`;
-    document.body.append(pickerNode);
+    appendNamed(pickerNode);
   }
   const dialog = pickerNode;
   dialog.querySelector('.dialog__title').textContent = title;
@@ -234,7 +245,7 @@ export function showRecoveryCode({ code }) {
       <div class="dialog__actions">
         <button type="button" class="dialog__confirm primary" disabled>Finish</button>
       </div>`;
-    document.body.append(recoveryNode);
+    appendNamed(recoveryNode);
   }
   const dialog = recoveryNode;
   dialog.querySelector('#recovery-code').textContent = code;
@@ -290,7 +301,7 @@ export function monthPlanDialog({ monthLabel, plan, split, income, toCents, grou
         <button type="button" class="dialog__cancel plan__close">Cancel</button>
         <button type="button" class="dialog__confirm primary">Save</button>
       </div>`;
-    document.body.append(planNode);
+    appendNamed(planNode);
     for (const field of planNode.querySelectorAll('.moneyfield')) {
       field.addEventListener('input', () => { field.value = group(field.value); });
     }
@@ -369,7 +380,7 @@ export function limitsDialog({ monthLabel, rows, toCents, group }) {
         <button type="button" class="dialog__cancel">Cancel</button>
         <button type="button" class="dialog__confirm primary">Save</button>
       </div>`;
-    document.body.append(limitsNode);
+    appendNamed(limitsNode);
   }
   const dialog = limitsNode;
   dialog.querySelector('.dialog__title').textContent = `Category limits from ${monthLabel}`;

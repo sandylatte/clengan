@@ -7,6 +7,14 @@
 
 export const RELEASES = [
   {
+    version: 'clengan-v136',
+    date: '2026-11-04',
+    notes: [
+      'Screen readers now announce each pop-up by its title.',
+      'The arrows for reordering accounts are bigger and easier to tap.',
+    ],
+  },
+  {
     version: 'clengan-v135',
     date: '2026-11-04',
     notes: [

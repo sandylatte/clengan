@@ -1147,6 +1147,9 @@ button:active, .chip:active, .seg__button:active { transform: scale(0.97); }
 .empty__title { margin: 0; font-size: 14px; font-weight: 600; }
 .empty__body { margin: 0; font-size: 12px; color: var(--color-subtle); max-width: 34ch; }
 .row__title { display: block; }
+/* Beside three 44px controls an account name gets ~100px at 375px; a long
+   one without spaces must wrap rather than push the controls off the row. */
+.row--ordered .row__title { overflow-wrap: anywhere; }
 .row > .amount { font-size: 14px; font-weight: 500; white-space: nowrap; }
 .row__meta {
   display: block;
@@ -1423,7 +1426,9 @@ label + .hint { margin-top: 0; }
   padding-left: var(--space-0);
   padding-right: var(--space-0);
 }
-.row--ordered .row__main { flex: 1 1 7rem; min-width: 0; }
+/* 6rem, not 7: with three 44px controls the name gets ~106px at 375px, and
+   a 112px basis wrapped the controls onto a second line under every name. */
+.row--ordered .row__main { flex: 1 1 6rem; min-width: 0; }
 
 .row__controls {
   display: flex;
@@ -1452,15 +1457,14 @@ label + .hint { margin-top: 0; }
 
 /* Borderless. Two boxed buttons per row read as heavily as the name they sit
    beside; a bare chevron is the smallest thing that still says "move". The
-   target is the row's full 44px height. Two 44px-wide arrows plus Delete
-   would leave the name about 90px beside the Settings rail at 375px, so the
-   width stays 32: still past WCAG's 24px minimum, and dragging the grip is
-   the other way to move a row. */
+   full 44px target, as everywhere: beside the Settings rail at 375px that
+   leaves the name about 100px, which every seeded account name fits, and a
+   longer one wraps rather than shrinking the target beside the bin. */
 .reorder__button {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
+  width: 44px;
   height: 44px;
   padding: 0;
   background: none;
