@@ -7,6 +7,13 @@
 
 export const RELEASES = [
   {
+    version: 'clengan-v135',
+    date: '2026-11-04',
+    notes: [
+      'In the Rose room theme, Save is a deeper pink with a fine edge, so it no longer looks switched off.',
+    ],
+  },
+  {
     version: 'clengan-v134',
     date: '2026-11-03',
     notes: [

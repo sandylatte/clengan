@@ -17,8 +17,9 @@ colors:
   subtle: "#7E938A"
   border: "#1C2420"
   border-strong: "#313D37"
-  peach-primary: "#D7B4AD"
-  peach-primary-hover: "#E0C2BC"
+  peach-primary: "#CF9F94"
+  peach-primary-hover: "#D7B4AD"
+  peach-primary-edge: "#A26A5B"
   peach-on-primary: "#4A2A22"
   peach-active: "#8E3A26"
   peach-accent: "#2D674C"
@@ -243,7 +244,7 @@ The system ships **two tones the user switches in Settings**. They share one tok
 **Key characteristics:**
 - **Two tones, one token set.** `--color-primary`, `--color-foreground`, and the rest resolve per tone. Consuming rules are token-only; there are no hardcoded colours below the palette blocks.
 - **`--color-active` is split from `--color-primary`.** A fill dark enough to carry white label text is too dark to read as an 11px tab label. One token cannot do both jobs.
-- **`--shadow-primary` is a token, not a constant.** Tone A's brass separates from graphite unaided and sets it to `none`; Tone B's pale fill on a pale card reaches only 1.5:1 and is lifted by a shadow instead.
+- **`--shadow-primary` is a token, not a constant.** Tone A's brass separates from graphite unaided and sets it to `none`; Tone B's pale fill on a pale card is lifted by a shadow as well as bounded by `--color-primary-edge`.
 - **The amount field is the tallest thing in the app** at 34px and 60px tall. Headings are 17px and below. This is an app, not a page.
 - **Every figure is Fira Code with `tabular-nums`.** Columns of money must align.
 - **Money displays as rupiah and stores as cents.** `formatIDR` renders `Rp 300.000` for the screen; `fromCents` renders `300000.00` for the Excel export, which the importer reads back. The two must never be swapped.
@@ -295,9 +296,10 @@ The canvas is `#F3CEC2`. The palette holds one hue family throughout; income gre
 
 | Token | Value | Ratio | Use |
 |---|---|---|---|
-| `{colors.peach-primary}` | #D7B4AD | 1.5:1 on card | Primary button fill |
-| `{colors.peach-primary-hover}` | #E0C2BC | | Hovered primary button |
-| `{colors.peach-on-primary}` | #4A2A22 | 6.66:1 on primary | Label on the primary fill |
+| `{colors.peach-primary}` | #CF9F94 | 1.78:1 on card | Primary button fill, and the selected segment. A step deeper than the #D7B4AD it replaced on 2026-11-03, which read as a disabled button beside Delete |
+| `{colors.peach-primary-hover}` | #D7B4AD | | Hovered primary button |
+| `{colors.peach-primary-edge}` | #A26A5B | 3.4:1 on card, 3.04:1 on page | 1px edge of the primary fill and the selected segment; carries the boundary the pink cannot. Tone A's edge is the volt fill itself |
+| `{colors.peach-on-primary}` | #4A2A22 | 5.49:1 on primary | Label on the primary fill |
 | `{colors.peach-active}` | #8E3A26 | 4.8:1 on the tab strip | Active tab label and icon |
 | `{colors.peach-accent}` | #2D674C | 4.57:1 | Income figures |
 | `{colors.peach-destructive}` | #9F3B29 | 4.60:1 | Spending figures, errors |
@@ -310,7 +312,7 @@ The canvas is `#F3CEC2`. The palette holds one hue family throughout; income gre
 | `{colors.peach-border-strong}` | #D9A493 | | Field borders |
 | `{colors.peach-tabbar}` | #EFC5B7 | | Tab strip, a step off the canvas |
 
-**The one accepted contrast shortfall.** Tone B's button fill is 1.5:1 against the card, below the 3:1 WCAG floor for a non-text UI boundary. The user asked repeatedly for a light pink button, and no pink light enough to read as pink reaches 3:1 on a pale card. The button is therefore bounded by `--shadow-primary` rather than an outline, and its label carries identification at 6.66:1. This is a documented, deliberate exception, not an oversight — it is the only one in the system.
+**The pink button and the 3:1 floor.** The user asked repeatedly for a light pink button, and no pink light enough to read as pink reaches 3:1 on a pale card. Until 2026-11-03 that was an accepted shortfall (fill #D7B4AD, 1.5:1, bounded only by a shadow), and a critique found it read as disabled beside the edit dialog's red Delete. The fill is now a step deeper (#CF9F94) and a 1px `--color-primary-edge` (#A26A5B) carries the boundary at 3.4:1 on the card and 3.04:1 on the page, so the button stays pink and the exception is gone. The label holds 5.49:1.
 
 ## Typography
 
@@ -461,7 +463,7 @@ into one Other slice in a neutral (`{colors.subtle}` at 45% over the card) —
 `chartSlices()` in `rollup.js`. A tail of one category is left as itself.
 Category colours are not used on the ring; they stay on the List's rails.
 `--color-active`, not `--color-primary`, because the peach primary is a pale
-fill a ring segment would barely show in. Each slice is the same circle path
+pink fill a ring segment would barely show in. Each slice is the same circle path
 stroked with one dash (`pathLength="100"`, so a dash is its percentage),
 starting at twelve and running clockwise; neighbours are parted by a 0.6%
 gap, never outlined. No percentages on the ring — the legend carries every
