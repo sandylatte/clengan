@@ -1766,7 +1766,9 @@ async function renderBackupState(txns) {
   nudge.hidden = !due;
   // A snooze is cleared by an export, so one still stored means "Later" was
   // already tapped since the last backup: the reminder stays, in one line.
-  const compact = snoozedUntil !== null;
+  // Before the first backup it is one line too: a new user's first look at
+  // Add should be the form, not a paragraph about losing data.
+  const compact = snoozedUntil !== null || lastBackup === null;
   nudge.classList.toggle('is-compact', compact);
   if (due && compact) {
     document.getElementById('backup-nudge-text').textContent = age === null ? 'Never backed up' : `Last backup ${age} days ago`;

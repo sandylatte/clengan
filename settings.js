@@ -34,7 +34,7 @@ function words(section) {
 const GROUPS = [
   { key: 'money', title: 'Money', sections: ['accounts', 'categories', 'recurring'] },
   { key: 'budget', title: 'Budget', sections: ['split', 'funds'] },
-  { key: 'look', title: 'Look & privacy', short: 'Look', sections: ['appearance', 'pin'] },
+  { key: 'look', title: 'Privacy & look', short: 'Privacy', sections: ['appearance', 'pin'] },
   { key: 'data', title: 'Data', sections: ['io', 'planner', 'sample'] },
   { key: 'about', title: 'About', sections: ['version'] },
 ];

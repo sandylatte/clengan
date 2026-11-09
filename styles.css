@@ -342,7 +342,7 @@ h2 {
   border-radius: var(--radius-sm);
   color: var(--color-subtle);
   font: inherit;
-  font-size: 11px;
+  font-size: 13px;
   line-height: 1.2;
   text-align: center;
   cursor: pointer;

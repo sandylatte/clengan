@@ -7,6 +7,14 @@
 
 export const RELEASES = [
   {
+    version: 'clengan-v142',
+    date: '2026-11-09',
+    notes: [
+      'Until your first backup, the backup reminder on Add is a single line, so the form comes first.',
+      'Settings: the names beside the icons are bigger, and the page with the PIN and amount hiding is now called Privacy.',
+    ],
+  },
+  {
     version: 'clengan-v141',
     date: '2026-11-05',
     notes: [

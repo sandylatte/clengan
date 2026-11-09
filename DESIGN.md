@@ -525,12 +525,12 @@ years paged by twelve, and a choice returns to the days. The month picker's
 year does the same. The popover always opens on its first view.
 
 **`settings-rail`** — Settings is one page at a time, chosen from a rail of
-five pages on the right (Money, Budget, Look & privacy, Data, About; `GROUPS`
+five pages on the right (Money, Budget, Privacy & look, Data, About; `GROUPS`
 in `settings.js`, v138 — eleven was too many to scan). A page shows its
 sections stacked, one card each, 12px apart; a section in no group gets a page
 of its own. The rail (chosen 2026-10-06 over a slide-in index and a wide
 labelled list). On a phone the rail is 64px: each section's icon over a
-one-word name at 11px, so the page keeps most of the width. At 640px and up it
+one-word name at 13px (11px until v142), so the page keeps most of the width. At 640px and up it
 widens to 172px and shows full names in a row. The open section is
 `aria-current="page"`, marked quietly (v124, asked for as subtler): no fill
 and no box; its name goes `{colors.foreground}` at weight 600, its icon
