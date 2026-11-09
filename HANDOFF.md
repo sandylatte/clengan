@@ -1,7 +1,7 @@
 # Handoff
 
-Written 4 November 2026, updated 9 November (v142). Everything described here is
-pushed to `master` (`clengan-v142`). Check the live `sw.js` and the App version tile
+Written 4 November 2026, updated 9 November (v143). Everything described here is
+pushed to `master` (`clengan-v143`). Check the live `sw.js` and the App version tile
 on a phone before telling anyone a change is on their device.
 
 Read [README.md](README.md) for how to run it, [DESIGN.md](DESIGN.md) for the
@@ -11,20 +11,24 @@ which is the largest thing in the repo and the least finished.
 
 ## Next, in order (2026-11-09)
 
-1. **See v142 on a real phone, in both tones.** It was checked only in the
+1. **See v142–v143 on a real phone, in both tones.** Checked only in the
    pane at 390×844. On the phone: open the App version tile and confirm
-   `clengan-v142`; with no backup yet, Add shows the one-line reminder; the
+   `clengan-v143`; every screen's content sits 16px in from each edge with the
+   title bar still edge to edge; with no backup yet, Add shows the one-line reminder; the
    Settings rail reads Money / Budget / Privacy / Data / About at 13px with
    nothing cut off. Needs the owner's phone.
-2. **Owner call: the 12px gutter.** Left alone on purpose. Change it only on
-   the owner's word; it touches every screen, so re-check all of them at
-   390×844 in both tones if it moves.
-3. **The older real-device list** under "What is not done" (v127 background
+2. **The older real-device list** under "What is not done" (v127 background
    reconnect, Argon2id unlock time, v129–v136 on the iPhone) still stands.
 
 Sync and the Play Store stay on hold by the owner's word.
 
 ## Where the project actually is
+
+**v143 (9 November) moved the side gutter from 12px to 16px** on the owner's
+word: one `--gutter` token in `styles.css`, used by `.view` and the sticky
+title bar's bleed. Pane check at 390×844, both tones, all four views and all
+five Settings pages: content 16..374, no sideways scroll. Lists with real rows
+were not seen (the pane's data was empty).
 
 **v142 (9 November) closed the two buildable critique items.** Before the
 first backup, the reminder on Add is the one-line form (`lastBackup === null`
@@ -151,6 +155,7 @@ section below before adding a setting or a dropdown.
 | `662966b` | Title-bar eye mixed state (v140) |
 | `8a6689d` | Shorter Settings → Budget copy; fund list above its form (v141) |
 | `9f7e22d` | Backup reminder one line until first backup; rail names 13px, Privacy page (v142) |
+| `285f15f` | 16px side gutter on every screen (v143) |
 
 `680afd6`–`ecff77b` came from a separate cloud session on 1 October. They were
 pulled in and audited, not written here.
@@ -622,8 +627,7 @@ and a simulated Enter on a touch screen closes the field without saving.
 
 ## What is not done
 
-**From the 2026-11-04 critiques, still open:** the app-wide gutter is 12px, not 16px — an owner
-call on looks, not a bug. Sync and the Play Store are on hold by the owner's
+**From the 2026-11-04 critiques:** nothing buildable is left open (the gutter went to 16px in v143). Sync and the Play Store are on hold by the owner's
 word.
 
 **The planner import test is skipped** — the owner said it is not needed.
@@ -631,7 +635,7 @@ word.
 **Every device needs one manual update to v113.** See the auto-reload trap.
 From v113 on, v114 arrives by itself.
 
-**Not yet seen on a real phone:** v142 (checked only in the pane at 390×844, both tones), the v127 reconnect after the app really sits in the background (simulated on the live site in the pane with a forced `close()`: saved), v129–v136's look on the iPhone itself, and Argon2id's
+**Not yet seen on a real phone:** v142–v143 (checked only in the pane at 390×844, both tones), the v127 reconnect after the app really sits in the background (simulated on the live site in the pane with a forced `close()`: saved), v129–v136's look on the iPhone itself, and Argon2id's
 unlock time. The v126–v132 checklist (limits, Add line, weekly reminder, fonts) was driven on the live site at 390×844 in the pane and passed (sync is hidden, so no one meets the second yet). Before that, everything in v117–v122 (the slides on Add and
 List, the new ring and budget card, the filters, the section eyes, the PIN
 dialog and its number pad, and the restyled buttons — the Save button on Add
