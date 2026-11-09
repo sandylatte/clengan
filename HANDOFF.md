@@ -1,6 +1,6 @@
 # Handoff
 
-Written 4 November 2026, updated 9 November. Everything described here is
+Written 4 November 2026, updated 9 November (v142). Everything described here is
 pushed to `master` (`clengan-v142`). Check the live `sw.js` and the App version tile
 on a phone before telling anyone a change is on their device.
 
@@ -8,6 +8,21 @@ Read [README.md](README.md) for how to run it, [DESIGN.md](DESIGN.md) for the
 design system (it is machine-checked — see the traps below), and
 [ARCHITECTURE-SYNC.md](ARCHITECTURE-SYNC.md) for the encrypted-sync design,
 which is the largest thing in the repo and the least finished.
+
+## Next, in order (2026-11-09)
+
+1. **See v142 on a real phone, in both tones.** It was checked only in the
+   pane at 390×844. On the phone: open the App version tile and confirm
+   `clengan-v142`; with no backup yet, Add shows the one-line reminder; the
+   Settings rail reads Money / Budget / Privacy / Data / About at 13px with
+   nothing cut off. Needs the owner's phone.
+2. **Owner call: the 12px gutter.** Left alone on purpose. Change it only on
+   the owner's word; it touches every screen, so re-check all of them at
+   390×844 in both tones if it moves.
+3. **The older real-device list** under "What is not done" (v127 background
+   reconnect, Argon2id unlock time, v129–v136 on the iPhone) still stands.
+
+Sync and the Play Store stay on hold by the owner's word.
 
 ## Where the project actually is
 
