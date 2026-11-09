@@ -1,7 +1,7 @@
 # Handoff
 
-Written 4 November 2026. Everything described here is pushed to `master`
-(`clengan-v136`). Check the live `sw.js` and the App version tile
+Written 4 November 2026, updated 9 November. Everything described here is
+pushed to `master` (`clengan-v141`). Check the live `sw.js` and the App version tile
 on a phone before telling anyone a change is on their device.
 
 Read [README.md](README.md) for how to run it, [DESIGN.md](DESIGN.md) for the
@@ -10,6 +10,18 @@ design system (it is machine-checked — see the traps below), and
 which is the largest thing in the repo and the least finished.
 
 ## Where the project actually is
+
+**v137–v141 (the 4–5 November session) worked through the 2026-11-04
+critique.** v137: backup card one line after "Later"; budget edits live only
+in Settings → Budget. v138: amounts can open shown (Settings → Privacy,
+per device, forced hidden under a PIN); a transfer pair lists as one row;
+Settings has five rail pages. v139: ring steps hold 3:1 on the card in both
+tones (`--ring-1..4`, `--ring-other` per tone), Other drawn thinner with an
+outlined swatch. v140: the title-bar eye has a **mixed** state
+(`aria-pressed="mixed"`, open eye in subtle) when any section eye disagrees;
+its tap then hides everything. v141: Settings → Budget copy halved, fund
+list above its form. Re-critique after v138 scored 31/40 again; snapshot in
+`.impeccable/critique/` (gitignored).
 
 **v127–v136 (the 3–4 November session) started from a real bug on the
 owner's iPhone:** "Failed to execute 'transaction' on 'IDBDatabase': The
@@ -111,6 +123,11 @@ section below before adding a setting or a dropdown.
 | `bd1e01e` | 44px targets; editor Delete far left (a `.dialog__actions button` margin rule had overridden it); Undo for 8 s after a delete via `restoreTransactions` (v134) |
 | `38f822e` | Peach primary #CF9F94 with a 1px `--color-primary-edge` #A26A5B at 3:1; the owner asked for pink, so a cocoa fill was tried and reverted (v135) |
 | `60fb33e` | Every dialog named by its title (`appendNamed` in `dialog.js`); reorder arrows 44px, account name basis 6rem so rows stay on one line (v136) |
+| `af9eaf8` | Backup card one line after Later; ring steps apart; budget edits live in Settings (v137) |
+| `d4ce8ba` | Amounts can open shown; one row per transfer; Settings in five pages (v138) |
+| `11ad71f` | Ring steps hold 3:1 per tone; Other thinner (v139) |
+| `662966b` | Title-bar eye mixed state (v140) |
+| `8a6689d` | Shorter Settings → Budget copy; fund list above its form (v141) |
 
 `680afd6`–`ecff77b` came from a separate cloud session on 1 October. They were
 pulled in and audited, not written here.
@@ -582,15 +599,11 @@ and a simulated Enter on a touch screen closes the field without saving.
 
 ## What is not done
 
-**From the 2026-11-04 critique (31/40), still open, minor:** `#funds-note`
-sits 13px from the edge against the 16px gutter. (v137 did the other three:
-the backup card is one line once "Later" was tapped, the ring's steps are
-100/65/40/20 by OKLab lightness, and the Budget card's one Edit budget chip
-opens Settings → Budget split, now the only place to edit plans and limits.) The owner answered the critique's three questions, built in v138: amounts open
-hidden by default, switchable per device in Settings → Privacy
-(`clengan-open-mode` in localStorage, forced hidden while a PIN is set); a
-listed transfer pair is one row (display only, storage keeps two halves); and
-Settings has five rail pages (`GROUPS` in `settings.js`).
+**From the 2026-11-04 critiques, still open:** the full backup card shows on
+first-run Add before any "Later" (P2); Settings rail labels are 11px and
+"Look" hides Privacy (P3); the app-wide gutter is 12px, not 16px — an owner
+call on looks, not a bug. Sync and the Play Store are on hold by the owner's
+word.
 
 **The planner import test is skipped** — the owner said it is not needed.
 
