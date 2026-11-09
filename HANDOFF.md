@@ -1,7 +1,7 @@
 # Handoff
 
 Written 4 November 2026, updated 9 November. Everything described here is
-pushed to `master` (`clengan-v141`). Check the live `sw.js` and the App version tile
+pushed to `master` (`clengan-v142`). Check the live `sw.js` and the App version tile
 on a phone before telling anyone a change is on their device.
 
 Read [README.md](README.md) for how to run it, [DESIGN.md](DESIGN.md) for the
@@ -10,6 +10,13 @@ design system (it is machine-checked — see the traps below), and
 which is the largest thing in the repo and the least finished.
 
 ## Where the project actually is
+
+**v142 (9 November) closed the two buildable critique items.** Before the
+first backup, the reminder on Add is the one-line form (`lastBackup === null`
+counts as compact in `renderBackupState`); the full card only appears for a
+due backup after at least one export and before any "Later". The Settings
+rail names are 13px on a phone, and the Look page is now "Privacy & look",
+short name "Privacy". All five names fit the 64px rail at 390px.
 
 **v137–v141 (the 4–5 November session) worked through the 2026-11-04
 critique.** v137: backup card one line after "Later"; budget edits live only
@@ -128,6 +135,7 @@ section below before adding a setting or a dropdown.
 | `11ad71f` | Ring steps hold 3:1 per tone; Other thinner (v139) |
 | `662966b` | Title-bar eye mixed state (v140) |
 | `8a6689d` | Shorter Settings → Budget copy; fund list above its form (v141) |
+| `9f7e22d` | Backup reminder one line until first backup; rail names 13px, Privacy page (v142) |
 
 `680afd6`–`ecff77b` came from a separate cloud session on 1 October. They were
 pulled in and audited, not written here.
@@ -599,9 +607,7 @@ and a simulated Enter on a touch screen closes the field without saving.
 
 ## What is not done
 
-**From the 2026-11-04 critiques, still open:** the full backup card shows on
-first-run Add before any "Later" (P2); Settings rail labels are 11px and
-"Look" hides Privacy (P3); the app-wide gutter is 12px, not 16px — an owner
+**From the 2026-11-04 critiques, still open:** the app-wide gutter is 12px, not 16px — an owner
 call on looks, not a bug. Sync and the Play Store are on hold by the owner's
 word.
 
@@ -610,7 +616,7 @@ word.
 **Every device needs one manual update to v113.** See the auto-reload trap.
 From v113 on, v114 arrives by itself.
 
-**Not yet seen on a real phone:** the v127 reconnect after the app really sits in the background (simulated on the live site in the pane with a forced `close()`: saved), v129–v136's look on the iPhone itself, and Argon2id's
+**Not yet seen on a real phone:** v142 (checked only in the pane at 390×844, both tones), the v127 reconnect after the app really sits in the background (simulated on the live site in the pane with a forced `close()`: saved), v129–v136's look on the iPhone itself, and Argon2id's
 unlock time. The v126–v132 checklist (limits, Add line, weekly reminder, fonts) was driven on the live site at 390×844 in the pane and passed (sync is hidden, so no one meets the second yet). Before that, everything in v117–v122 (the slides on Add and
 List, the new ring and budget card, the filters, the section eyes, the PIN
 dialog and its number pad, and the restyled buttons — the Save button on Add
