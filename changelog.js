@@ -7,6 +7,13 @@
 
 export const RELEASES = [
   {
+    version: 'clengan-v143',
+    date: '2026-11-09',
+    notes: [
+      'Every screen has a little more room at the left and right edges.',
+    ],
+  },
+  {
     version: 'clengan-v142',
     date: '2026-11-09',
     notes: [

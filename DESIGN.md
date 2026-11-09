@@ -359,7 +359,7 @@ Every step moved down one notch when the app read as too zoomed-in on a phone. T
 
 Base unit 4px. Tokens run `{spacing.space-0}` 4px through `{spacing.space-6}` 48px.
 
-Card interior padding is `{spacing.space-4}` 24px. View padding is `{spacing.space-4}` vertical and `{spacing.space-2}` 12px horizontal.
+Card interior padding is `{spacing.space-4}` 24px. View padding is 12px on top and a 16px side gutter (`--gutter`); the sticky title bar bleeds out by the same gutter.
 
 ### Container
 

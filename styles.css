@@ -72,6 +72,8 @@
   --space-4: 18px;
   --space-5: 24px;
   --space-6: 30px;
+  /* Side gutter of every view; the title bar bleeds back out by the same. */
+  --gutter: 16px;
 
   /* For marks small enough that 6px would round them into circles. */
   --radius-xs: 3px;
@@ -181,8 +183,8 @@ h1 {
   position: sticky;
   top: 0;
   z-index: 5;
-  margin: calc(var(--space-3) * -1) calc(var(--space-3) * -1) var(--space-3);
-  padding: var(--space-2) var(--space-3);
+  margin: calc(var(--space-3) * -1) calc(var(--gutter) * -1) var(--space-3);
+  padding: var(--space-2) var(--gutter);
   background: color-mix(in srgb, var(--color-background) 88%, transparent);
   backdrop-filter: blur(12px);
   font-size: 16px;
@@ -259,7 +261,7 @@ h2 {
 .view {
   max-width: 620px;
   margin: 0 auto;
-  padding: var(--space-3) var(--space-3) var(--space-6);
+  padding: var(--space-3) var(--gutter) var(--space-6);
 }
 /* The period control: month picker and a two-way switch on one line, above
    everything they govern. */
