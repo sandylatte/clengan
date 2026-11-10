@@ -1,7 +1,7 @@
 # Handoff
 
-Written 4 November 2026, updated 9 November (v143). Everything described here is
-pushed to `master` (`clengan-v143`). Check the live `sw.js` and the App version tile
+Written 4 November 2026, updated 10 November (v145). Everything described here is
+pushed to `master` (`clengan-v145`). Check the live `sw.js` and the App version tile
 on a phone before telling anyone a change is on their device.
 
 Read [README.md](README.md) for how to run it, [DESIGN.md](DESIGN.md) for the
@@ -9,20 +9,34 @@ design system (it is machine-checked — see the traps below), and
 [ARCHITECTURE-SYNC.md](ARCHITECTURE-SYNC.md) for the encrypted-sync design,
 which is the largest thing in the repo and the least finished.
 
-## Next, in order (2026-11-09)
+## Next, in order (2026-11-10)
 
-1. **See v142–v143 on a real phone, in both tones.** Checked only in the
+1. **See v142–v145 on a real phone, in both tones.** Checked only in the
    pane at 390×844. On the phone: open the App version tile and confirm
-   `clengan-v143`; every screen's content sits 16px in from each edge with the
+   `clengan-v145`; swipe a row in Rose and read "Delete" easily; Year and All
+   are easy to tap; every screen's content sits 16px in from each edge with the
    title bar still edge to edge; with no backup yet, Add shows the one-line reminder; the
    Settings rail reads Money / Budget / Privacy / Data / About at 13px with
    nothing cut off. Needs the owner's phone.
-2. **The older real-device list** under "What is not done" (v127 background
+2. **Open design items from the 2026-11-10 critique** (owner's call, none
+   broken): savings funds drawn in six shades of one colour; the category ring
+   in greens while the List uses each category's own colour; "Net, last 6
+   months" has no labels; Summary is ~2,300px with Balances last; two or three
+   eye toggles per screen; Add's Account placeholder truncates.
+3. **The older real-device list** under "What is not done" (v127 background
    reconnect, Argon2id unlock time, v129–v136 on the iPhone) still stands.
 
 Sync and the Play Store stay on hold by the owner's word.
 
 ## Where the project actually is
+
+**v144–v145 (10 November) came from two design critiques.** v144: with no
+account, Add opens with a one-line card (`#add-setup`, same look as the
+backup nudge) whose button picks Settings → Money (`settingsNav.select
+('accounts')`); the old hint under Category is gone. v145: in Rose the swipe
+"Delete" label takes `--color-foreground` (6.5:1; Rose's red is 4.60:1 even on
+the bare page, 3.4:1 on its tint), and `.seg__button` has `min-width: 44px`.
+Card hiding once an account exists was not exercised (code unchanged).
 
 **v143 (9 November) moved the side gutter from 12px to 16px** on the owner's
 word: one `--gutter` token in `styles.css`, used by `.view` and the sticky
@@ -156,6 +170,7 @@ section below before adding a setting or a dropdown.
 | `8a6689d` | Shorter Settings → Budget copy; fund list above its form (v141) |
 | `9f7e22d` | Backup reminder one line until first backup; rail names 13px, Privacy page (v142) |
 | `285f15f` | 16px side gutter on every screen (v143) |
+| `054fc3e` | Account warning on top of Add (v144); Rose Delete contrast, 44px seg buttons (v145) |
 
 `680afd6`–`ecff77b` came from a separate cloud session on 1 October. They were
 pulled in and audited, not written here.
@@ -627,7 +642,7 @@ and a simulated Enter on a touch screen closes the field without saving.
 
 ## What is not done
 
-**From the 2026-11-04 critiques:** nothing buildable is left open (the gutter went to 16px in v143). Sync and the Play Store are on hold by the owner's
+**From the 2026-11-04 critiques:** the gutter went to 16px in v143. The 2026-11-10 critique items are listed under "Next". Sync and the Play Store are on hold by the owner's
 word.
 
 **The planner import test is skipped** — the owner said it is not needed.
@@ -635,7 +650,7 @@ word.
 **Every device needs one manual update to v113.** See the auto-reload trap.
 From v113 on, v114 arrives by itself.
 
-**Not yet seen on a real phone:** v142–v143 (checked only in the pane at 390×844, both tones), the v127 reconnect after the app really sits in the background (simulated on the live site in the pane with a forced `close()`: saved), v129–v136's look on the iPhone itself, and Argon2id's
+**Not yet seen on a real phone:** v142–v145 (checked only in the pane at 390×844, both tones), the v127 reconnect after the app really sits in the background (simulated on the live site in the pane with a forced `close()`: saved), v129–v136's look on the iPhone itself, and Argon2id's
 unlock time. The v126–v132 checklist (limits, Add line, weekly reminder, fonts) was driven on the live site at 390×844 in the pane and passed (sync is hidden, so no one meets the second yet). Before that, everything in v117–v122 (the slides on Add and
 List, the new ring and budget card, the filters, the section eyes, the PIN
 dialog and its number pad, and the restyled buttons — the Save button on Add
