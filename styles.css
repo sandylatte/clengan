@@ -283,6 +283,7 @@ h2 {
 }
 .seg__button {
   min-height: 44px;
+  min-width: 44px;
   padding: 0 var(--space-2);
   background: none;
   border: none;
@@ -1108,6 +1109,9 @@ button:active, .chip:active, .seg__button:active { transform: scale(0.97); }
   font-weight: 600;
   cursor: pointer;
 }
+/* Rose's red is only 4.60:1 on the bare page, so on its own red tint the
+   label drops to 3.4:1. The tint still says "delete"; the words take the ink. */
+:root[data-theme="peach"] .swipe__under { color: var(--color-foreground); }
 .swipe__under svg { width: 18px; height: 18px; }
 
 .swipe__over {

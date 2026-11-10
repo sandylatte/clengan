@@ -267,7 +267,6 @@ async function fillPickers() {
   // no explanation is a dead end. Name the way out.
   const setup = document.getElementById('add-setup');
   setup.hidden = names.length > 0;
-  setup.textContent = 'Add an account in Settings before recording anything.';
 }
 
 // A money field is text, not a number input: type="number" cannot render
@@ -969,6 +968,11 @@ async function editMonthPlan(month) {
   await db.putSetting(MONTH_PLANS_KEY, plans);
   await refresh();
 }
+
+document.getElementById('add-setup-go').addEventListener('click', () => {
+  settingsNav?.select('accounts');
+  showView('settings');
+});
 
 // Every budget control lives on Settings → Budget split; the Summary's card
 // only shows the figures and points there.

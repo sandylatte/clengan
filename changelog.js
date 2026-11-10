@@ -7,6 +7,21 @@
 
 export const RELEASES = [
   {
+    version: 'clengan-v145',
+    date: '2026-11-10',
+    notes: [
+      'In the Rose tone, the Delete label behind a swiped row is easier to read.',
+      'The short Year and All buttons are a little wider, so they are easier to tap.',
+    ],
+  },
+  {
+    version: 'clengan-v144',
+    date: '2026-11-09',
+    notes: [
+      'Before your first account, Add says so at the top, with a button that takes you to Settings to add one.',
+    ],
+  },
+  {
     version: 'clengan-v143',
     date: '2026-11-09',
     notes: [

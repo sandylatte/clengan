@@ -76,6 +76,14 @@
       <button type="button" class="primary" id="backup-nudge-export">Back up now</button>
     </div>
   </div>
+  <!-- Without an account nothing can be saved, so the way out comes before
+       the form, not halfway down it. Same one-line card as the backup nudge. -->
+  <div id="add-setup" class="card backup-nudge is-compact" role="status" hidden>
+    <p>Add an account in Settings before recording anything.</p>
+    <div class="backup-nudge__actions">
+      <button type="button" class="primary" id="add-setup-go">Add account</button>
+    </div>
+  </div>
   <!-- Four steps hung off one spine, rather than twelve fields stacked flat.
        The grouping is the same order the form always had — nothing moved
        between steps — so muscle memory and the tab order are unchanged. The
@@ -122,8 +130,6 @@
           </select>
         </div>
       </div>
-
-      <p id="add-setup" class="hint" hidden></p>
 
       <label for="add-note">Note <span class="label-optional">optional</span></label>
       <input type="text" id="add-note">
