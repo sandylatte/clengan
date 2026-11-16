@@ -2191,7 +2191,8 @@ async function offerDueRecurring() {
   if (askedAboutDue) return;
   askedAboutDue = true;
   const rules = await db.allRecurring();
-  const due = dueOccurrences(rules, new Date().toISOString().slice(0, 10));
+  // Local, like state.month: toISOString is UTC, a day behind in Jakarta until 7am.
+  const due = dueOccurrences(rules, toISO(new Date()));
   if (due.length === 0) return;
 
   const lines = due.map(({ rule, date }) => `${date}  ${rule.name}  ${formatAmount(rule.amount)}`);

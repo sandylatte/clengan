@@ -7,6 +7,13 @@
 
 export const RELEASES = [
   {
+    version: 'clengan-v146',
+    date: '2026-11-16',
+    notes: [
+      'Recurring payments are offered on the right day early in the morning, not a day late.',
+    ],
+  },
+  {
     version: 'clengan-v145',
     date: '2026-11-10',
     notes: [

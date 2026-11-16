@@ -101,3 +101,22 @@ test('a due occurrence becomes an ordinary transaction row', () => {
     note: '',
   });
 });
+
+// app.js passes toISO(new Date()) as today. At 06:00 on the 25th in Jakarta
+// the UTC date is still the 24th, which would leave a rule for the 25th unpaid.
+test('a rule for the 25th is due at 6am on the 25th in Jakarta', async () => {
+  const { spawnSync } = await import('node:child_process');
+  const probe = `
+    const { toISO } = await import(${JSON.stringify(new URL('../calendar.js', import.meta.url).href)});
+    const { dueOccurrences } = await import(${JSON.stringify(new URL('../recurring.js', import.meta.url).href)});
+    const now = new Date(2026, 10, 25, 6, 0);
+    if (now.toISOString().slice(0, 10) !== '2026-11-24') throw new Error('timezone did not apply');
+    const due = dueOccurrences([{ id: 'r1', day: 25, amount: -1, last_run: '2026-10', active: true }], toISO(now));
+    if (due.length !== 1 || due[0].date !== '2026-11-25') throw new Error(JSON.stringify(due));
+  `;
+  const result = spawnSync(process.execPath, ['--input-type=module', '-e', probe], {
+    env: { ...process.env, TZ: 'Asia/Jakarta' },
+    encoding: 'utf8',
+  });
+  assert.equal(result.status, 0, result.stderr);
+});
