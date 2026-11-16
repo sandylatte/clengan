@@ -1,7 +1,7 @@
 # Handoff
 
-Written 4 November 2026, updated 10 November (v145). Everything described here is
-pushed to `master` (`clengan-v145`). Check the live `sw.js` and the App version tile
+Written 4 November 2026, updated 16 November (v147). Everything described here is
+pushed to `master` (`clengan-v147`). Check the live `sw.js` and the App version tile
 on a phone before telling anyone a change is on their device.
 
 Read [README.md](README.md) for how to run it, [DESIGN.md](DESIGN.md) for the
@@ -9,11 +9,11 @@ design system (it is machine-checked — see the traps below), and
 [ARCHITECTURE-SYNC.md](ARCHITECTURE-SYNC.md) for the encrypted-sync design,
 which is the largest thing in the repo and the least finished.
 
-## Next, in order (2026-11-10)
+## Next, in order (2026-11-16)
 
-1. **See v142–v145 on a real phone, in both tones.** Checked only in the
+1. **See v142–v147 on a real phone, in both tones.** Checked only in the
    pane at 390×844. On the phone: open the App version tile and confirm
-   `clengan-v145`; swipe a row in Rose and read "Delete" easily; Year and All
+   `clengan-v147`; swipe a row in Rose and read "Delete" easily; Year and All
    are easy to tap; every screen's content sits 16px in from each edge with the
    title bar still edge to edge; with no backup yet, Add shows the one-line reminder; the
    Settings rail reads Money / Budget / Privacy / Data / About at 13px with
@@ -26,9 +26,31 @@ which is the largest thing in the repo and the least finished.
 3. **The older real-device list** under "What is not done" (v127 background
    reconnect, Argon2id unlock time, v129–v136 on the iPhone) still stands.
 
+4. **Architecture review, 2026-11-16** (candidates, none started): (a) one
+   pure dashboard model in place of `refresh()` + each card's own derivation —
+   `periodBuckets` runs twice per refresh (`renderBudget`, `renderFunds`) and
+   they agree only by copying; fold in the `Number.isInteger(t.amount)` split
+   repeated in 5 places; (b) one settings module owning keys, defaults, shape
+   repair and the export list (month-plan shape check runs only in `refresh()`);
+   (c) a ledger interface with an in-memory adapter so migrations and
+   `updateTransaction` get tests. The owner picked recurring first (v146–v147);
+   (a) is the recommended next.
+
 Sync and the Play Store stay on hold by the owner's word.
 
 ## Where the project actually is
+
+**v146–v147 (16 November) came from an architecture review.** v146:
+`offerDueRecurring` took today from `toISOString` (UTC), so before 7am in
+Jakarta a rule for today was a day late; it now uses `toISO(new Date())` like
+`state.month`, with a TZ=Asia/Jakarta test in `test/recurring.test.js`. v147:
+`db.fileRecurring(rows, stamps)` writes the rows and the rules' `last_run` in
+ONE transaction over both stores (`begin([...])`), replacing
+`putTransactions` + `markRecurringRun` (deleted). A put that throws aborts the
+whole transaction. A failure now shows "Recurring payments not added" instead
+of nothing. Checked in the pane on sample data: a bad key rolls back the
+earlier row, a missing account is refused, a good save writes both, and the
+real due dialog files and stamps. The error dialog itself was not seen.
 
 **v144–v145 (10 November) came from two design critiques.** v144: with no
 account, Add opens with a one-line card (`#add-setup`, same look as the
@@ -171,6 +193,9 @@ section below before adding a setting or a dropdown.
 | `9f7e22d` | Backup reminder one line until first backup; rail names 13px, Privacy page (v142) |
 | `285f15f` | 16px side gutter on every screen (v143) |
 | `054fc3e` | Account warning on top of Add (v144); Rose Delete contrast, 44px seg buttons (v145) |
+| `3b898b5` | Recurring payments use the local date, not UTC (v146) |
+| `50c4408` | Recurring rows and stamps in one transaction; error if it fails (v147) |
+| `94a9899` | Agent skills setup: `CLAUDE.md`, `docs/agents/` (GitHub issues, triage labels) |
 
 `680afd6`–`ecff77b` came from a separate cloud session on 1 October. They were
 pulled in and audited, not written here.
@@ -650,7 +675,7 @@ word.
 **Every device needs one manual update to v113.** See the auto-reload trap.
 From v113 on, v114 arrives by itself.
 
-**Not yet seen on a real phone:** v142–v145 (checked only in the pane at 390×844, both tones), the v127 reconnect after the app really sits in the background (simulated on the live site in the pane with a forced `close()`: saved), v129–v136's look on the iPhone itself, and Argon2id's
+**Not yet seen on a real phone:** v142–v147 (checked only in the pane at 390×844, both tones), the v127 reconnect after the app really sits in the background (simulated on the live site in the pane with a forced `close()`: saved), v129–v136's look on the iPhone itself, and Argon2id's
 unlock time. The v126–v132 checklist (limits, Add line, weekly reminder, fonts) was driven on the live site at 390×844 in the pane and passed (sync is hidden, so no one meets the second yet). Before that, everything in v117–v122 (the slides on Add and
 List, the new ring and budget card, the filters, the section eyes, the PIN
 dialog and its number pad, and the restyled buttons — the Save button on Add
