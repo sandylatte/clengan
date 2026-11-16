@@ -2205,11 +2205,15 @@ async function offerDueRecurring() {
   });
   if (!ok) return;
 
-  // Rows first, stamps second, never the reverse. A failure between the two
-  // offers the same month again — a duplicate the user can see and delete.
-  // Stamping first would swallow the payment with nothing to show for it.
-  await db.putTransactions(due.map((occurrence) => occurrenceToRow(occurrence, crypto.randomUUID())));
-  await db.markRecurringRun(runStamps(due));
+  try {
+    await db.fileRecurring(due.map((occurrence) => occurrenceToRow(occurrence, crypto.randomUUID())), runStamps(due));
+  } catch (error) {
+    await alertDialog({
+      title: 'Recurring payments not added',
+      body: `Nothing was saved, and they will be offered again next time. The reason given was: ${error.message}`,
+    });
+    return;
+  }
   await refresh();
 }
 

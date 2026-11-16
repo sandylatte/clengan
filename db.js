@@ -362,28 +362,6 @@ export function deleteRecurring(id) {
   });
 }
 
-// Stamped only after the rows are safely written. Doing it in the same call
-// that files them would mean a failure between the two silently swallowing an
-// occurrence — the rule would believe the month was handled and never offer
-// it again, and the payment would be missing with nothing to say so.
-//
-// Each rule is stamped with the month of ITS last filed occurrence, never with
-// a shared "now". A rule for the 25th, caught up on the 3rd, has been filed
-// only as far as last month; stamping it with this month would skip the 25th
-// silently.
-export function markRecurringRun(stamps) {
-  return run('recurring', 'readwrite', (store) => {
-    for (const [id, month] of stamps) {
-      const request = store.get(id);
-      request.onsuccess = () => {
-        const rule = request.result;
-        if (rule) store.put({ ...rule, last_run: month });
-      };
-    }
-    return { value: undefined };
-  });
-}
-
 export function putFund(name, percent) {
   return run('funds', 'readwrite', (store) => {
     store.put({ name, percent });
@@ -759,15 +737,46 @@ export async function deleteAccount(name) {
 
 // Bulk, so the account list is read once rather than once per row — an import
 // is thousands of rows and findAccount reads every account each time.
-export async function putTransactions(txns) {
+async function withAccountIds(txns) {
   const accounts = await allAccounts();
-  const rows = txns.map((txn) => {
+  return txns.map((txn) => {
     if (txn.account === undefined) return txn;
     const { account, ...rest } = txn;
     const found = matchAccountName(accounts, account);
     if (!found) throw new Error(`there is no account named "${account}"`);
     return { ...rest, account_id: found.id };
   });
+}
+
+// Files due recurring rows and stamps their rules' last_run in ONE transaction:
+// both land or neither does, so a crash can neither duplicate a month nor
+// swallow one.
+export async function fileRecurring(txns, stamps) {
+  const rows = await withAccountIds(txns);
+  return begin(['transactions', 'recurring'], 'readwrite', (transaction, resolve, reject) => {
+    transaction.oncomplete = () => resolve();
+    transaction.onerror = () => reject(transaction.error);
+    transaction.onabort = () => reject(transaction.error);
+    try {
+      const txnStore = transaction.objectStore('transactions');
+      for (const row of rows) txnStore.put(row);
+      const ruleStore = transaction.objectStore('recurring');
+      for (const [id, month] of stamps) {
+        const request = ruleStore.get(id);
+        request.onsuccess = () => {
+          if (request.result) ruleStore.put({ ...request.result, last_run: month });
+        };
+      }
+    } catch (error) {
+      // A put that throws (a bad key) would otherwise let the earlier puts commit.
+      transaction.abort();
+      reject(error);
+    }
+  });
+}
+
+export async function putTransactions(txns) {
+  const rows = await withAccountIds(txns);
   return run('transactions', 'readwrite', (store) => {
     for (const row of rows) store.put(row);
     return { value: undefined };

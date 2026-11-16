@@ -7,6 +7,14 @@
 
 export const RELEASES = [
   {
+    version: 'clengan-v147',
+    date: '2026-11-16',
+    notes: [
+      'Adding due recurring payments now saves all of them or none, so a payment can never be added twice or lost.',
+      'If adding them fails, the app now says so instead of doing nothing.',
+    ],
+  },
+  {
     version: 'clengan-v146',
     date: '2026-11-16',
     notes: [
