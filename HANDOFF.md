@@ -1,7 +1,7 @@
 # Handoff
 
-Written 4 November 2026, updated 16 November (v147). Everything described here is
-pushed to `master` (`clengan-v147`). Check the live `sw.js` and the App version tile
+Written 4 November 2026, updated 17 November (v148). v148 is committed locally, NOT pushed;
+everything older is on `master` (`clengan-v147` live). Check the live `sw.js` and the App version tile
 on a phone before telling anyone a change is on their device.
 
 Read [README.md](README.md) for how to run it, [DESIGN.md](DESIGN.md) for the
@@ -13,7 +13,7 @@ which is the largest thing in the repo and the least finished.
 
 1. **See v142–v147 on a real phone, in both tones.** Checked only in the
    pane at 390×844. On the phone: open the App version tile and confirm
-   `clengan-v147`; swipe a row in Rose and read "Delete" easily; Year and All
+   `clengan-v148` once pushed; swipe a row in Rose and read "Delete" easily; Year and All
    are easy to tap; every screen's content sits 16px in from each edge with the
    title bar still edge to edge; with no backup yet, Add shows the one-line reminder; the
    Settings rail reads Money / Budget / Privacy / Data / About at 13px with
@@ -26,7 +26,7 @@ which is the largest thing in the repo and the least finished.
 3. **The older real-device list** under "What is not done" (v127 background
    reconnect, Argon2id unlock time, v129–v136 on the iPhone) still stands.
 
-4. **Architecture review, 2026-11-16** (candidates, none started): (a) one
+4. **Architecture review, 2026-11-16**: (a) DONE in v148 (see below). Was: one
    pure dashboard model in place of `refresh()` + each card's own derivation —
    `periodBuckets` runs twice per refresh (`renderBudget`, `renderFunds`) and
    they agree only by copying; fold in the `Number.isInteger(t.amount)` split
@@ -34,11 +34,20 @@ which is the largest thing in the repo and the least finished.
    repair and the export list (month-plan shape check runs only in `refresh()`);
    (c) a ledger interface with an in-memory adapter so migrations and
    `updateTransaction` get tests. The owner picked recurring first (v146–v147);
-   (a) is the recommended next.
+   (b) is the recommended next.
 
 Sync and the Play Store stay on hold by the owner's word.
 
 ## Where the project actually is
+
+**v148 (17 November) is architecture candidate (a).** `dashboard.js` exports
+`dashboardModel(txns, opts)` (every Summary figure in cents, pure),
+`splitValid` (the one valid/invalid amount split) and `netLabel`. app.js
+builds the model once in `refresh()` and the card renderers only draw; the
+budget and funds cards read the same `buckets`. Tests in
+`test/dashboard.test.js`. Pane check on 236 sample rows, amounts shown:
+every Summary figure for Month and Year identical before and after. Not
+seen: chart account/bucket filters, an older month, All.
 
 **v146–v147 (16 November) came from an architecture review.** v146:
 `offerDueRecurring` took today from `toISOString` (UTC), so before 7am in
