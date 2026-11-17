@@ -7,6 +7,13 @@
 
 export const RELEASES = [
   {
+    version: 'clengan-v148',
+    date: '2026-11-17',
+    notes: [
+      'Behind the scenes: the Summary now works out all its figures in one place, so its cards cannot disagree. Nothing on screen changes.',
+    ],
+  },
+  {
     version: 'clengan-v147',
     date: '2026-11-16',
     notes: [

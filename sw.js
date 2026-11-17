@@ -5,7 +5,7 @@
 // NAME differs from CACHE — so an unbumped CACHE means every user with the
 // worker already installed keeps being served the OLD shell forever, silently,
 // including any money bug that edit was meant to fix.
-const CACHE = 'clengan-v147';
+const CACHE = 'clengan-v148';
 
 const SHELL = [
   './',
@@ -15,6 +15,7 @@ const SHELL = [
   './db.js',
   './money.js',
   './rollup.js',
+  './dashboard.js',
   './budget.js',
   './picker.js',
   './planner.js',

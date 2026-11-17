@@ -3,12 +3,11 @@ import {
   formatIDR as plainIDR, formatAmount as plainAmount, groupDigits, rupiahToCents, centsToRupiahDigits,
 } from './money.js';
 import {
-  filterMonth, monthlyTotals, spendingBreakdown, accountBalances, netTrend, bucketTotals, fundsByYear,
-  lastSixMonths, groupByDay, periodTotals, periodBuckets, searchTransactions, chartSlices,
+  filterMonth, monthlyTotals, groupByDay, searchTransactions,
   filterRows, rowCategory, rowsNet, limitTotals,
 } from './rollup.js';
 import {
-  BUCKETS, CATEGORY_KINDS, CATEGORY_COLOURS, DEFAULT_SPLIT, validateSplit, allocateFunds,
+  BUCKETS, CATEGORY_KINDS, CATEGORY_COLOURS, DEFAULT_SPLIT, validateSplit,
   splitBalance, categoryOptions, sortByPosition, normaliseColour, moveTo, UNCATEGORISED,
   categoryCodes, TRANSFER_CATEGORY, MONTH_PLANS_KEY, validateMonthPlan, planBalance,
   CATEGORY_LIMITS_KEY, limitFor, limitsIn, setLimit,
@@ -19,6 +18,7 @@ import { editTransaction } from './editor.js';
 import { exportXlsx, importXlsx, importPlanner } from './xlsx-io.js';
 import { attachCalendar, toISO, fromISO, formatDate } from './calendar.js';
 import { RELEASES } from './changelog.js';
+import { dashboardModel, splitValid } from './dashboard.js';
 import { attachMonthPicker, enhanceAllSelects } from './picker.js';
 import { initSettings } from './settings.js';
 import {
@@ -378,7 +378,7 @@ form.addEventListener('submit', async (event) => {
 function paintSaved() {
   if (!lastSaved) return;
   const { category, month } = lastSaved;
-  const valid = state.txns.filter((t) => Number.isInteger(t.amount));
+  const { valid } = splitValid(state.txns);
   const row = limitTotals(valid, state.limits, month).find((r) => r.category === category);
   if (!row) {
     status.textContent = 'Saved.';
@@ -813,8 +813,8 @@ async function openEditor(txn) {
 
 const BUCKET_LABELS = { fixed: 'Fixed', flexible: 'Flexible' };
 
-function renderBudget(txns) {
-  const t = periodBuckets(txns, state.filter.period, state.month, state.split, state.plans);
+function renderBudget(model) {
+  const t = model.buckets;
 
   // Answer first: what is left (or over) is the big figure, because that is
   // the question the card is opened to answer. How much of the bucket is
@@ -926,8 +926,7 @@ function renderBudget(txns) {
 
   // The same dials, one per category with a limit in force. A zero limit is
   // "nothing planned here", so any spending at all fills its dial red.
-  const order = sortByPosition(state.categories).map((c) => c.name);
-  const limitRows = monthView ? limitTotals(txns, state.limits, state.month, order) : [];
+  const limitRows = model.limits;
   document.getElementById('limits').hidden = limitRows.length === 0;
   document.getElementById('limit-dials').replaceChildren(...limitRows.map(({ category, limit, spent, remaining }) => {
     const over = remaining < 0;
@@ -949,7 +948,7 @@ const monthName = (month) => `${MONTH_NAMES[Number(month.slice(5, 7)) - 1]} ${mo
 
 // One editor for a month's plan, opened from Settings for any month.
 async function editMonthPlan(month) {
-  const { income } = monthlyTotals(state.txns.filter((t) => Number.isInteger(t.amount)), month);
+  const { income } = monthlyTotals(splitValid(state.txns).valid, month);
   const result = await monthPlanDialog({
     monthLabel: monthName(month),
     plan: state.plans[month],
@@ -1070,15 +1069,15 @@ function renderPlans() {
 // Funds are edited one at a time, so the set is routinely mid-edit and not
 // totalling 100. That is a state to report, not to throw on: allocateFunds
 // would reject it and take the whole dashboard render down with it.
-function renderFunds(txns) {
+function renderFunds(model) {
   const note = document.getElementById('funds-note');
   const body = document.getElementById('funds');
-  const total = state.funds.reduce((sum, f) => sum + f.percent, 0);
+  const { ready, empty, total } = model.funds;
 
-  if (state.funds.length === 0 || Math.round(total) !== 100) {
+  if (!ready) {
     body.replaceChildren();
     note.className = 'budget-note__warning';
-    note.textContent = state.funds.length === 0
+    note.textContent = empty
       ? 'No savings funds defined. Add some in Settings to divide savings up.'
       : `Fund shares total ${total}%, not 100%. Fix them in Settings to see the split.`;
     return;
@@ -1086,10 +1085,7 @@ function renderFunds(txns) {
 
   // Follows the period too, so the funds card cannot describe a different
   // span from the budget card sitting directly above it.
-  const month = periodBuckets(txns, state.filter.period, state.month, state.split, state.plans).savings.projected;
-  const year = fundsByYear(txns, state.split, state.funds, Number(state.month.slice(0, 4)), state.plans);
-  const monthly = new Map(allocateFunds(month, state.funds).map((f) => [f.name, f.amount]));
-  const yearly = new Map(year.funds.map((f) => [f.name, f.amount]));
+  const { period: month, year, rows: fundRows, yearTotal } = model.funds;
 
   // One bar for the split, then a table: what each fund gets in the period
   // on screen and what it has had so far this year, side by side, so the
@@ -1135,7 +1131,7 @@ function renderFunds(txns) {
   thead.append(head);
 
   const tbody = document.createElement('tbody');
-  tbody.append(...state.funds.map((fund, i) => {
+  tbody.append(...fundRows.map((fund, i) => {
     const row = document.createElement('tr');
     const name = document.createElement('th');
     name.scope = 'row';
@@ -1144,14 +1140,14 @@ function renderFunds(txns) {
     swatch.style.background = shade(i);
     // The share is drawn by the bar, which a screen reader skips; said here.
     name.append(swatch, fund.name, cell('span', `, ${fund.percent}% of savings`, 'visually-hidden'));
-    row.append(name, money(monthly.get(fund.name)));
-    if (!yearView) row.append(yearMoney(yearly.get(fund.name), 'funds__year'));
+    row.append(name, money(fund.period));
+    if (!yearView) row.append(yearMoney(fund.year, 'funds__year'));
     return row;
   }));
 
   const totalRow = document.createElement('tr');
   totalRow.append(cell('th', 'Total'), money(month, month < 0 ? '' : 'amount--in'));
-  if (!yearView) totalRow.append(yearMoney(year.funds.reduce((sum, f) => sum + f.amount, 0), 'funds__year'));
+  if (!yearView) totalRow.append(yearMoney(yearTotal, 'funds__year'));
   const tfoot = document.createElement('tfoot');
   tfoot.append(totalRow);
 
@@ -1303,45 +1299,27 @@ function headNet(slot, label, net, title) {
   slot.title = title;
 }
 
-function renderHeadNet(txns) {
+function renderHeadNet(net) {
   const month = currentMonth();
   headNet(document.getElementById('head-balance'), MONTH_ABBR[Number(month.slice(5, 7)) - 1],
-    monthlyTotals(txns, month).net, 'Net this month: income minus spending since the 1st');
+    net, 'Net this month: income minus spending since the 1st');
 }
 
-function netLabel() {
-  const current = currentMonth();
-  if (state.filter.period === 'year') {
-    return state.month.slice(0, 4) === current.slice(0, 4) ? 'Net this year' : `Net in ${state.month.slice(0, 4)}`;
-  }
-  return state.month === current
-    ? 'Net this month'
-    : `Net in ${MONTH_ABBR[Number(state.month.slice(5, 7)) - 1]} ${state.month.slice(0, 4)}`;
-}
-
-function renderSummary(txns, accounts, invalidTxns) {
-  renderHeadNet(txns);
-  const totals = periodTotals(txns, state.filter.period, state.month);
+function renderSummary(model, accounts) {
+  const { totals, breakdown, spentTotal, slices, balances, invalid: invalidTxns } = model;
+  renderHeadNet(model.headNet);
   // Each card answers to its own eye (see inScope).
-  inScope('budget', () => renderBudget(txns));
-  inScope('funds', () => renderFunds(txns));
+  inScope('budget', () => renderBudget(model));
+  inScope('funds', () => renderFunds(model));
   inScope('balance', () => {
     document.getElementById('stat-income').textContent = formatIDR(totals.income);
     document.getElementById('stat-spent').textContent = formatIDR(-totals.spending);
     const net = document.getElementById('stat-net');
-    document.querySelector('.stat--net .stat__label').textContent = netLabel();
+    document.querySelector('.stat--net .stat__label').textContent = model.netLabel;
     net.textContent = formatAmount(totals.net);
     net.className = `amount ${totals.net >= 0 ? 'amount--in' : 'amount--out'}`;
   });
 
-  const breakdown = spendingBreakdown(txns, {
-    period: state.filter.period,
-    month: state.month,
-    account: state.filter.account,
-    bucket: state.filter.bucket,
-  });
-  const spentTotal = breakdown.reduce((sum, b) => sum + b.total, 0);
-  const slices = chartSlices(breakdown);
   const colours = slices.map((_, i) => sliceColour(i));
   document.getElementById('bars-empty').hidden = breakdown.length > 0;
   inScope('spending', () => renderPie(slices, colours, breakdown));
@@ -1363,8 +1341,7 @@ function renderSummary(txns, accounts, invalidTxns) {
     }),
   ));
 
-  const balances = accountBalances(txns, accounts);
-  const total = balances.reduce((sum, b) => sum + b.balance, 0);
+  const total = model.balanceTotal;
 
   // Net answers "how did this month go"; Balance answers "what do I hold".
   // Showing only the first made the initial balance look lost, and folding
@@ -1386,7 +1363,7 @@ function renderSummary(txns, accounts, invalidTxns) {
     figureRow('Total', formatIDR(total), { total: true, tone: total < 0 ? 'amount--out' : '' }),
   ));
 
-  renderTrend(netTrend(txns, lastSixMonths(state.month)));
+  renderTrend(model.trend);
 
   const statusEl = document.getElementById('summary-status');
   if (invalidTxns.length) {
@@ -1728,9 +1705,11 @@ async function refresh() {
   // a shared value (e.g. `spending += 'lots'` silently string-concatenating)
   // or leave sections mid-render at different states of the data.
   try {
-    const validTxns = txns.filter((t) => Number.isInteger(t.amount));
-    const invalidTxns = txns.filter((t) => !Number.isInteger(t.amount));
-    renderSummary(validTxns, accounts, invalidTxns);
+    renderSummary(dashboardModel(txns, {
+      accounts, categories: state.categories, funds: state.funds, split: state.split,
+      plans: state.plans, limits: state.limits, period: state.filter.period, month: state.month,
+      today: currentMonth(), account: state.filter.account, bucket: state.filter.bucket,
+    }), accounts);
     await renderAccounts(accounts);
     renderCategories(categories);
     renderDefaultAccount(accounts);
@@ -1825,7 +1804,7 @@ document.getElementById('export-button').addEventListener('click', async () => {
     await db.putSetting(LAST_BACKUP_KEY, Date.now());
     await db.putSetting(BACKUP_SNOOZE_KEY, null);
     renderBackupState(txns);
-    const unreadable = txns.filter((t) => !Number.isInteger(t.amount)).length;
+    const unreadable = splitValid(txns).invalid.length;
     ioStatus.className = 'is-ok';
     ioStatus.textContent = unreadable
       ? `Exported. ${unreadable} row${unreadable === 1 ? '' : 's'} had an unreadable amount — fix the raw value in the file and re-import.`
